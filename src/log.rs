@@ -20,7 +20,7 @@ use log::{Level, LevelFilter, Metadata, Record, SetLoggerError};
 use tokio::prelude::*;
 
 pub struct SimpleLogger {
-    pub sender: std::sync::mpsc::Sender<String>,
+    pub sender: std::sync::mpsc::SyncSender<String>,
     pub recv: std::sync::mpsc::Receiver<String>,
 }
 
@@ -30,7 +30,7 @@ unsafe impl Sync for SimpleLogger {}
 
 impl SimpleLogger {
     pub fn new() -> Self {
-        let (s, r) = std::sync::mpsc::channel();
+        let (s, r) = std::sync::mpsc::sync_channel(1000);
         return Self {
             sender: s,
             recv: r,
