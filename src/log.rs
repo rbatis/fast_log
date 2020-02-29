@@ -56,8 +56,12 @@ impl log::Log for Logger {
     }
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
+            let mut module="";
+            if record.module_path().is_some(){
+                module=record.module_path().unwrap();
+            }
             let local: DateTime<Local> = Local::now();
-            let data = format!("{} - {} - {}", local, record.level(), record.args());
+            let data = format!("{:?} {} {} - {}", local, record.level(),module, record.args());
             LOG.send(data);
         }
     }
@@ -106,8 +110,6 @@ pub fn init_log(log_file_path: &str) -> Result<(), Box<dyn std::error::Error+Sen
 
 #[test]
 pub fn test_log() {
-    println!("{:?}", SystemTime::now());
-
     init_log("requests.log");
     info!("Commencing yak shaving");
     std::thread::sleep(Duration::from_secs(5));

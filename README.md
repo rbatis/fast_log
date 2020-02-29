@@ -4,7 +4,7 @@ the fast log
 * how to use?
 ```toml
 log = "0.4"
-fast_log="1.0.0"
+fast_log="1.0.1"
 ```
 
 ```rust
