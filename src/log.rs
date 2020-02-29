@@ -17,6 +17,7 @@ use std::error::Error;
 use crate::error::LogError;
 
 use log::{Level, LevelFilter, Metadata, Record, SetLoggerError};
+use tokio::prelude::*;
 
 pub struct SimpleLogger {
     pub sender: std::sync::mpsc::Sender<String>,
@@ -108,6 +109,47 @@ pub fn init_log(log_file_path: &str) -> Result<(), Box<dyn std::error::Error+Sen
 }
 
 
+
+/// async write based on tokio
+pub async fn init_async_log(log_file_path: &str) -> Result<(), Box<dyn std::error::Error+Send>> {
+    let mut file = open_file(log_file_path).await;
+    if file.is_err(){
+        let e= LogError::from(format!("[log] open error! {}",file.err().unwrap().to_string().as_str()));
+        return Err(Box::new(e));
+    }
+    let mut file=file.unwrap();
+
+    let path=log_file_path.to_owned();
+    tokio::spawn(async move {
+        loop {
+            let data = LOG.recv();
+            if data.is_ok() {
+                 let s: String = data.unwrap() + "\n";
+                 print!("{}", s.as_str());
+                 file.write_all(s.as_bytes()).await;
+                 file.sync_data().await;
+            }
+        }
+    });
+    let r=log::set_logger(&LOGGER)
+        .map(|()| log::set_max_level(LevelFilter::Info));
+    if r.is_err(){
+        return Err(Box::new(r.err().unwrap()));
+    }else{
+        return Ok(());
+    }
+}
+
+
+
+async fn open_file(log_file_path: &str) -> std::result::Result<tokio::fs::File, std::io::Error> {
+    let mut file = tokio::fs::OpenOptions::new().write(true).create(true).open(log_file_path).await?;
+    return Ok(file);
+}
+
+
+
+
 #[test]
 pub fn test_log() {
     init_log("requests.log");
@@ -116,15 +158,31 @@ pub fn test_log() {
 }
 
 
-//cargo.exe test --release --color=always --package rbatis --lib log::bench_log --all-features -- --nocapture --exact
+//cargo.exe test --release --color=always --package fast_log --lib log::bench_log --all-features -- --nocapture --exact
 #[test]
 pub fn bench_log() {
     init_log("requests.log");
-    let total = 100000;
+    let total = 10000000;
     let now = SystemTime::now();
     for i in 0..total {
         //sleep(Duration::from_secs(1));
         info!("Commencing yak shaving");
     }
     time_util::count_time_tps(total, now);
+}
+
+
+//cargo.exe test --release --color=always --package fast_log --lib log::bench_async_log --all-features -- --nocapture --exact
+#[tokio::main]
+#[test]
+async fn bench_async_log() {
+    init_async_log("requests.log").await;
+    let total = 10000000;
+    let now = SystemTime::now();
+    for i in 0..total {
+        //sleep(Duration::from_secs(1));
+        info!("Commencing yak shaving");
+    }
+    time_util::count_time_tps(total, now);
+    sleep(Duration::from_secs(3600));
 }
