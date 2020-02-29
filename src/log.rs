@@ -10,13 +10,13 @@ use std::thread::sleep;
 use std::time::{Duration, SystemTime};
 
 use chrono::{DateTime, Utc, Local};
-use log::{Level, Metadata, Record};
-use log::{LevelFilter, SetLoggerError};
 use log::{error, info, warn};
 
 use crate::time_util;
 use std::error::Error;
 use crate::error::LogError;
+
+use log::{Level, LevelFilter, Metadata, Record, SetLoggerError};
 
 pub struct SimpleLogger {
     pub sender: std::sync::mpsc::Sender<String>,
