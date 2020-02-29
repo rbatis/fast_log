@@ -16,5 +16,11 @@ fn  main(){
 ```
 
 
-## TODO 
-* add tokio async await future
+* or use tokio
+```rust
+#[tokio::main]
+#[test]
+async fn bench_async_log() {
+    init_async_log("requests.log").await;
+}
+```
