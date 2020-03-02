@@ -118,8 +118,6 @@ pub async fn init_async_log(log_file_path: &str) -> Result<(), Box<dyn std::erro
         return Err(Box::new(e));
     }
     let mut file=file.unwrap();
-
-    let path=log_file_path.to_owned();
     tokio::spawn(async move {
         loop {
             let data = LOG.recv();
