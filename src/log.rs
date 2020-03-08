@@ -1,23 +1,23 @@
 use std::borrow::{Borrow, BorrowMut};
+use std::error::Error;
 use std::fs;
 use std::fs::{File, OpenOptions};
 use std::intrinsics::write_bytes;
 use std::io::Write;
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
+use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::RecvError;
 use std::thread::sleep;
 use std::time::{Duration, SystemTime};
 
-use chrono::{DateTime, Utc, Local};
+use chrono::{DateTime, Local, Utc};
 use log::{error, info, warn};
-
-use crate::time_util;
-use std::error::Error;
-use crate::error::LogError;
-
 use log::{Level, LevelFilter, Metadata, Record, SetLoggerError};
 use tokio::prelude::*;
+
+use crate::error::LogError;
+use crate::time_util;
 
 pub struct SimpleLogger {
     pub sender: std::sync::mpsc::SyncSender<String>,
@@ -49,6 +49,10 @@ lazy_static! {
    static ref LOG:SimpleLogger=SimpleLogger::new();
 }
 
+/// debug mode,true:print to console, false ,only write to file.
+pub static DEBUG_MODE: AtomicBool = AtomicBool::new(true);
+
+
 pub struct Logger {}
 
 impl log::Log for Logger {
@@ -57,12 +61,12 @@ impl log::Log for Logger {
     }
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
-            let mut module="";
-            if record.module_path().is_some(){
-                module=record.module_path().unwrap();
+            let mut module = "";
+            if record.module_path().is_some() {
+                module = record.module_path().unwrap();
             }
             let local: DateTime<Local> = Local::now();
-            let data = format!("{:?} {} {} - {}", local, record.level(),module, record.args());
+            let data = format!("{:?} {} {} - {}", local, record.level(), module, record.args());
             LOG.send(data);
         }
     }
@@ -76,7 +80,7 @@ static LOGGER: Logger = Logger {};
 /// log_file_path for example "test.log"
 /// 初始化日志文件路径
 /// log_file_path 文件路径 例如 "test.log"
-pub fn init_log(log_file_path: &str) -> Result<(), Box<dyn std::error::Error+Send>> {
+pub fn init_log(log_file_path: &str) -> Result<(), Box<dyn std::error::Error + Send>> {
     let log_path = log_file_path.to_owned();
     let mut file = OpenOptions::new().create(true).append(true).open(log_path.as_str());
     if file.is_err() {
@@ -84,8 +88,8 @@ pub fn init_log(log_file_path: &str) -> Result<(), Box<dyn std::error::Error+Sen
     }
     if file.is_err() {
         println!("[log] the log path:{} is not true!", log_path.as_str());
-        let e= LogError::from(format!("[log] the log path:{} is not true!", log_path.as_str()).as_str());
-         return Err(Box::new(e));
+        let e = LogError::from(format!("[log] the log path:{} is not true!", log_path.as_str()).as_str());
+        return Err(Box::new(e));
     }
     let mut file = file.unwrap();
     std::thread::spawn(move || {
@@ -93,51 +97,55 @@ pub fn init_log(log_file_path: &str) -> Result<(), Box<dyn std::error::Error+Sen
             let data = LOG.recv();
             if data.is_ok() {
                 let s: String = data.unwrap() + "\n";
-                print!("{}", s.as_str());
+                let debug = DEBUG_MODE.load(std::sync::atomic::Ordering::Relaxed);
+                if debug {
+                    print!("{}", s.as_str());
+                }
                 file.write(s.as_bytes());
                 file.flush();
             }
         }
     });
-    let r=log::set_logger(&LOGGER)
+    let r = log::set_logger(&LOGGER)
         .map(|()| log::set_max_level(LevelFilter::Info));
-    if r.is_err(){
+    if r.is_err() {
         return Err(Box::new(r.err().unwrap()));
-    }else{
+    } else {
         return Ok(());
     }
 }
 
 
-
 /// async write based on tokio
-pub async fn init_async_log(log_file_path: &str) -> Result<(), Box<dyn std::error::Error+Send>> {
+pub async fn init_async_log(log_file_path: &str) -> Result<(), Box<dyn std::error::Error + Send>> {
     let mut file = open_file(log_file_path).await;
-    if file.is_err(){
-        let e= LogError::from(format!("[log] open error! {}",file.err().unwrap().to_string().as_str()));
+    if file.is_err() {
+        let e = LogError::from(format!("[log] open error! {}", file.err().unwrap().to_string().as_str()));
         return Err(Box::new(e));
     }
-    let mut file=file.unwrap();
+    let mut file = file.unwrap();
     tokio::spawn(async move {
         loop {
             let data = LOG.recv();
             if data.is_ok() {
-                 let s: String = data.unwrap() + "\n";
-                 print!("{}", s.as_str());
-                 file.write_all(s.as_bytes()).await;
-                 file.sync_data().await;
+                let s: String = data.unwrap() + "\n";
+                let debug = DEBUG_MODE.load(std::sync::atomic::Ordering::Relaxed);
+                if debug {
+                    print!("{}", s.as_str());
+                }
+                file.write_all(s.as_bytes()).await;
+                file.sync_data().await;
             }
         }
     });
-    let r=log::set_logger(&LOGGER)
+    let r = log::set_logger(&LOGGER)
         .map(|()| log::set_max_level(LevelFilter::Info));
-    if r.is_err(){
+    if r.is_err() {
         return Err(Box::new(r.err().unwrap()));
-    }else{
+    } else {
         return Ok(());
     }
 }
-
 
 
 async fn open_file(log_file_path: &str) -> std::result::Result<tokio::fs::File, std::io::Error> {
@@ -146,11 +154,10 @@ async fn open_file(log_file_path: &str) -> std::result::Result<tokio::fs::File, 
 }
 
 
-
-
 #[test]
 pub fn test_log() {
     init_log("requests.log");
+    // DEBUG_MODE.store(false,std::sync::atomic::Ordering::Relaxed);
     info!("Commencing yak shaving");
     std::thread::sleep(Duration::from_secs(5));
 }
@@ -160,6 +167,7 @@ pub fn test_log() {
 #[test]
 pub fn bench_log() {
     init_log("requests.log");
+    // DEBUG_MODE.store(false,std::sync::atomic::Ordering::Relaxed);
     let total = 10000000;
     let now = SystemTime::now();
     for i in 0..total {
@@ -175,6 +183,7 @@ pub fn bench_log() {
 #[test]
 async fn bench_async_log() {
     init_async_log("requests.log").await;
+    // DEBUG_MODE.store(false,std::sync::atomic::Ordering::Relaxed);
     let total = 10000000;
     let now = SystemTime::now();
     for i in 0..total {
