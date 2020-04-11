@@ -21,19 +21,17 @@ use crate::time_util;
 
 pub struct SimpleLogger {
     pub sender: std::sync::mpsc::SyncSender<String>,
-    pub recv: std::sync::mpsc::Receiver<String>,
+    pub recv: Mutex<std::sync::mpsc::Receiver<String>>,
 }
 
-unsafe impl Send for SimpleLogger {}
 
-unsafe impl Sync for SimpleLogger {}
 
 impl SimpleLogger {
     pub fn new() -> Self {
         let (s, r) = std::sync::mpsc::sync_channel(1000);
         return Self {
             sender: s,
-            recv: r,
+            recv: Mutex::new(r)
         };
     }
     pub fn send(&self, arg: String) {
@@ -41,7 +39,7 @@ impl SimpleLogger {
     }
 
     pub fn recv(&self) -> Result<String, RecvError> {
-        self.recv.recv()
+        self.recv.lock().unwrap().recv()
     }
 }
 

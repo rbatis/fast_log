@@ -1,5 +1,5 @@
 # log
-the fast log
+the fast log  . This crate uses #![forbid(unsafe_code)] to ensure everything is implemented in 100% Safe Rust.
 
 * how to use?
 ```toml
