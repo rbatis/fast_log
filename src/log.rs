@@ -161,7 +161,7 @@ pub fn test_log() {
 }
 
 
-//cargo.exe test --release --color=always --package fast_log --lib log::bench_log --all-features -- --nocapture --exact
+//cargo test --release --color=always --package fast_log --lib log::bench_log --all-features -- --nocapture --exact
 #[test]
 pub fn bench_log() {
     init_log("requests.log");
@@ -176,7 +176,7 @@ pub fn bench_log() {
 }
 
 
-//cargo.exe test --release --color=always --package fast_log --lib log::bench_async_log --all-features -- --nocapture --exact
+//cargo test --release --color=always --package fast_log --lib log::bench_async_log --all-features -- --nocapture --exact
 #[tokio::main]
 #[test]
 async fn bench_async_log() {
