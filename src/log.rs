@@ -123,6 +123,10 @@ impl log::Log for Logger {
             let local: DateTime<Local> = Local::now();
             let data = format!("{:?} {} {} - {}", local, record.level(), module, record.args());
 
+            let debug = DEBUG_MODE.load(std::sync::atomic::Ordering::Relaxed);
+            if debug {
+                print!("{}\n", data.as_str());
+            }
             //send
             LOG.read().unwrap().as_ref().unwrap().send(data);
         }
@@ -156,12 +160,7 @@ pub fn init_log(log_file_path: &str, runtime_type: RuntimeType) -> Result<(), Bo
             let data = recv.std_recv.as_ref().unwrap().recv();
             if data.is_ok() {
                 let s: String = data.unwrap() + "\n";
-                let debug = DEBUG_MODE.load(std::sync::atomic::Ordering::Relaxed);
-                if debug {
-                    print!("{}", s.as_str());
-                }
                 file.write(s.as_bytes());
-                file.flush();
             }
         }
     });
@@ -197,12 +196,11 @@ pub async fn init_async_log(log_file_path: &str, runtime_type: RuntimeType) -> R
             let data = recv.tokio_recv.as_mut().unwrap().recv().await;
             if data.is_some() {
                 let s: String = data.unwrap() + "\n";
-                let debug = DEBUG_MODE.load(std::sync::atomic::Ordering::Relaxed);
-                if debug {
-                    print!("{}", s.as_str());
-                }
-                file.write_all(s.as_bytes()).await;
-                file.sync_data().await;
+                file.write(s.as_bytes()).await;
+                // let debug = DEBUG_MODE.load(std::sync::atomic::Ordering::Relaxed);
+                // if debug {
+                //     print!("{}", s.as_str());
+                // }
             }
         }
     });
@@ -255,7 +253,6 @@ async fn bench_async_log() {
     let total = 10000000;
     let now = SystemTime::now();
     for i in 0..total {
-        //sleep(Duration::from_secs(1));
         info!("Commencing yak shaving{}",i);
     }
     time_util::count_time_tps(total, now);
