@@ -15,17 +15,25 @@ use tokio::prelude::*;
 use crate::error::LogError;
 use crate::time_util;
 
+pub struct LoggerRecv {
+    //std recv
+    pub std_recv: Option<std::sync::mpsc::Receiver<String>>,
+    // recv
+    pub tokio_recv: Option<tokio::sync::mpsc::Receiver<String>>,
+}
+
+
 pub struct SimpleLogger {
     pub runtime_type: RuntimeType,
 
     //std sender
     pub std_sender: Option<std::sync::mpsc::SyncSender<String>>,
-    //std recv
-    pub std_recv: Option<Mutex<std::sync::mpsc::Receiver<String>>>,
+    //std sender
+    pub tokio_sender: Option<tokio::sync::mpsc::Sender<String>>,
 }
 
 ///runtime Type
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub enum RuntimeType {
     Std,
     TokIo,
@@ -34,12 +42,27 @@ pub enum RuntimeType {
 
 
 impl SimpleLogger {
-    pub fn new(runtime_type: RuntimeType) -> Self {
-        let (s, r) = std::sync::mpsc::sync_channel(1000);
-        return Self {
-            runtime_type,
-            std_sender: Some(s),
-            std_recv: Some(Mutex::new(r)),
+    pub fn new(runtime_type: RuntimeType) -> (Self, LoggerRecv) {
+        return match runtime_type {
+            RuntimeType::Std => {
+                let (s, r) = std::sync::mpsc::sync_channel(1000);
+                (Self {
+                    runtime_type,
+                    std_sender: Some(s),
+                    tokio_sender: None,
+                }, LoggerRecv { std_recv: Some(r), tokio_recv: None })
+            }
+            RuntimeType::TokIo => {
+                let (mut tx, mut rx) = tokio::sync::mpsc::channel(1000);
+                (Self {
+                    runtime_type,
+                    std_sender: None,
+                    tokio_sender: Some(tx),
+                }, LoggerRecv { std_recv: None, tokio_recv: Some(rx) })
+            }
+            _ => {
+                panic!(format!("[fast_log] un support send for type:{:?}", runtime_type))
+            }
         };
     }
     pub fn send(&self, arg: String) {
@@ -48,50 +71,36 @@ impl SimpleLogger {
                 self.std_sender.as_ref().unwrap().send(arg);
             }
             RuntimeType::TokIo => {
-                self.std_sender.as_ref().unwrap().send(arg);
+                let mut s = self.tokio_sender.clone().unwrap();
+                tokio::spawn(async move {
+                    s.send(arg).await;
+                });
             }
-            _ => { panic!(format!("[fast_log] un support send for type:{:?}",self.runtime_type)) }
+            _ => { panic!(format!("[fast_log] un support send for type:{:?}", self.runtime_type)) }
         }
     }
 
-    pub fn recv(&self) -> Result<String, RecvError> {
+
+    pub async fn send_sync(&self, arg: String) {
         match self.runtime_type {
-            RuntimeType::Std => {
-                self.std_recv.as_ref().unwrap().lock().unwrap().recv()
-            }
             RuntimeType::TokIo => {
-                self.std_recv.as_ref().unwrap().lock().unwrap().recv()
+                self.tokio_sender.clone().unwrap().send(arg).await;
             }
-            _ => { panic!(format!("[fast_log] un support recv for type:{:?}",self.runtime_type)) }
+            _ => { panic!(format!("[fast_log] un support send for type:{:?}", self.runtime_type)) }
         }
     }
 }
 
 lazy_static! {
-   static ref LOG:RwLock<Option<SimpleLogger>>= RwLock::new(None);
+   static ref LOG:RwLock<Option<SimpleLogger>>=RwLock::new(Option::None);
 }
 
-fn set_log(runtime_type: RuntimeType) {
-    let mut n = LOG.write().unwrap();
-    *n = Some(SimpleLogger::new(runtime_type));
-}
 
-fn log_recv() -> Option<String> {
-    let lockResult = LOG.read();
-    if lockResult.is_err() {
-        println!("{}", lockResult.err().unwrap());
-        return None;
-    }
-    let lockResult = lockResult.as_ref().unwrap();
-    if lockResult.is_none() {
-        println!("fast log not init");
-        return None;
-    }
-    let data = lockResult.as_ref().unwrap().recv();
-    if data.is_ok() {
-        return Some(data.unwrap());
-    }
-    return None;
+fn set_log(runtime_type: RuntimeType) -> LoggerRecv {
+    let mut w = LOG.write().unwrap();
+    let (log, recv) = SimpleLogger::new(runtime_type);
+    *w = Some(log);
+    return recv;
 }
 
 
@@ -115,17 +124,7 @@ impl log::Log for Logger {
             let data = format!("{:?} {} {} - {}", local, record.level(), module, record.args());
 
             //send
-            let lockResult = LOG.read();
-            if lockResult.is_err() {
-                println!("{}", lockResult.err().unwrap());
-                return;
-            }
-            let lockResult = lockResult.unwrap();
-            if lockResult.is_none() {
-                println!("fast log not init");
-                return;
-            }
-            lockResult.as_ref().unwrap().send(data);
+            LOG.read().unwrap().as_ref().unwrap().send(data);
         }
     }
     fn flush(&self) {}
@@ -139,7 +138,7 @@ static LOGGER: Logger = Logger {};
 /// 初始化日志文件路径
 /// log_file_path 文件路径 例如 "test.log"
 pub fn init_log(log_file_path: &str, runtime_type: RuntimeType) -> Result<(), Box<dyn std::error::Error + Send>> {
-    set_log(runtime_type);
+    let recv = set_log(runtime_type);
     let log_path = log_file_path.to_owned();
     let mut file = OpenOptions::new().create(true).append(true).open(log_path.as_str());
     if file.is_err() {
@@ -153,10 +152,9 @@ pub fn init_log(log_file_path: &str, runtime_type: RuntimeType) -> Result<(), Bo
     let mut file = file.unwrap();
     std::thread::spawn(move || {
         loop {
-
             //recv
-            let data = log_recv();
-            if data.is_some() {
+            let data = recv.std_recv.as_ref().unwrap().recv();
+            if data.is_ok() {
                 let s: String = data.unwrap() + "\n";
                 let debug = DEBUG_MODE.load(std::sync::atomic::Ordering::Relaxed);
                 if debug {
@@ -185,17 +183,18 @@ pub async fn init_async_log(log_file_path: &str, runtime_type: RuntimeType) -> R
         }
         _ => {}
     }
-    set_log(runtime_type);
+    let mut recv = set_log(runtime_type);
     let mut file = open_file(log_file_path).await;
     if file.is_err() {
         let e = LogError::from(format!("[log] open error! {}", file.err().unwrap().to_string().as_str()));
         return Err(Box::new(e));
     }
     let mut file = file.unwrap();
+
     tokio::spawn(async move {
         loop {
             //recv
-            let data = log_recv();
+            let data = recv.tokio_recv.as_mut().unwrap().recv().await;
             if data.is_some() {
                 let s: String = data.unwrap() + "\n";
                 let debug = DEBUG_MODE.load(std::sync::atomic::Ordering::Relaxed);
@@ -218,7 +217,7 @@ pub async fn init_async_log(log_file_path: &str, runtime_type: RuntimeType) -> R
 
 
 async fn open_file(log_file_path: &str) -> std::result::Result<tokio::fs::File, std::io::Error> {
-    let file = tokio::fs::OpenOptions::new().write(true).create(true).open(log_file_path).await?;
+    let file = tokio::fs::OpenOptions::new().append(true).create(true).open(log_file_path).await?;
     return Ok(file);
 }
 
@@ -257,7 +256,7 @@ async fn bench_async_log() {
     let now = SystemTime::now();
     for i in 0..total {
         //sleep(Duration::from_secs(1));
-        info!("Commencing yak shaving");
+        info!("Commencing yak shaving{}",i);
     }
     time_util::count_time_tps(total, now);
     sleep(Duration::from_secs(3600));
