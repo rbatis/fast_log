@@ -197,10 +197,6 @@ pub async fn init_async_log(log_file_path: &str, runtime_type: RuntimeType) -> R
             if data.is_some() {
                 let s: String = data.unwrap() + "\n";
                 file.write(s.as_bytes()).await;
-                // let debug = DEBUG_MODE.load(std::sync::atomic::Ordering::Relaxed);
-                // if debug {
-                //     print!("{}", s.as_str());
-                // }
             }
         }
     });
