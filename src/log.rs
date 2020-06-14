@@ -121,7 +121,7 @@ impl log::Log for Logger {
                 module = record.module_path().unwrap();
             }
             let local: DateTime<Local> = Local::now();
-            let data = format!("{:?} {} {} - {}", local, record.level(), module, record.args());
+            let data = format!("{:?} {} {} - {} line{}", local, record.level(), module, record.args(),format_line(record));
 
             let debug = DEBUG_MODE.load(std::sync::atomic::Ordering::Relaxed);
             if debug {
@@ -132,6 +132,13 @@ impl log::Log for Logger {
         }
     }
     fn flush(&self) {}
+}
+
+fn format_line(record: &Record<'_>) -> String {
+    match (record.file(), record.line()) {
+        (Some(file), Some(line)) => format!("({}:{})", file, line),
+        _ => String::new(),
+    }
 }
 
 static LOGGER: Logger = Logger {};
