@@ -53,7 +53,7 @@ impl SimpleLogger {
                 (Self {
                     runtime_type,
                     std_sender: Some(s),
-                }, LoggerRecv { std_recv: Some(r), })
+                }, LoggerRecv { std_recv: Some(r) })
             }
         };
     }
@@ -87,7 +87,7 @@ impl log::Log for Logger {
                 module = record.module_path().unwrap();
             }
             let local: DateTime<Local> = Local::now();
-            let data = format!("{:?} {} {} - {} line{}", local, record.level(), module, record.args(),format_line(record));
+            let data = format!("{:?} {} {} - {} line{}", local, record.level(), module, record.args(), format_line(record));
 
             let debug = DEBUG_MODE.load(std::sync::atomic::Ordering::Relaxed);
             if debug {
@@ -157,7 +157,7 @@ pub async fn init_async_log(log_file_path: &str, runtime_type: &RuntimeType) -> 
     }
     let mut recv = set_log(runtime_type.clone());
     match runtime_type {
-        RuntimeType::TokIo =>{
+        RuntimeType::TokIo => {
             let mut file = open_tokio_file(log_file_path).await;
             if file.is_err() {
                 let e = LogError::from(format!("[log] open error! {}", file.err().unwrap().to_string().as_str()));
@@ -174,7 +174,7 @@ pub async fn init_async_log(log_file_path: &str, runtime_type: &RuntimeType) -> 
                         let s: String = data.unwrap() + "\n";
 
                         let rwclone = rwlock.clone();
-                        tokio::spawn(async  move {
+                        tokio::spawn(async move {
                             let mut guard = rwclone.write().await;
                             guard.write(s.as_bytes()).await;
                         });
@@ -182,7 +182,7 @@ pub async fn init_async_log(log_file_path: &str, runtime_type: &RuntimeType) -> 
                 }
             });
         }
-        RuntimeType::AsyncStd =>{
+        RuntimeType::AsyncStd => {
             use async_std::prelude::*;
             let mut file = open_async_std_file(log_file_path).await;
             if file.is_err() {
@@ -199,7 +199,7 @@ pub async fn init_async_log(log_file_path: &str, runtime_type: &RuntimeType) -> 
                         let s: String = data.unwrap() + "\n";
 
                         let mut rwclone = rwlock.clone();
-                        async_std::task::spawn(async  move {
+                        async_std::task::spawn(async move {
                             let mut guard = rwclone.write().await;
                             guard.write(s.as_bytes()).await;
                         });
@@ -208,7 +208,7 @@ pub async fn init_async_log(log_file_path: &str, runtime_type: &RuntimeType) -> 
             });
         }
         _ => {
-            panic!("[rbatis] un support runtime type:{:?}",runtime_type.clone());
+            panic!("[rbatis] un support runtime type:{:?}", runtime_type.clone());
         }
     }
 
@@ -266,7 +266,7 @@ async fn bench_tokio_log() {
     let total = 10000;
     let now = SystemTime::now();
     for i in 0..total {
-        info!("Commencing yak shaving{}",i);
+        info!("Commencing yak shaving{}", i);
     }
     time_util::count_time_tps(total, now);
 }
@@ -280,7 +280,7 @@ async fn bench_async_std_log() {
     let total = 100000;
     let now = SystemTime::now();
     for i in 0..total {
-        info!("Commencing yak shaving{}",i);
+        info!("Commencing yak shaving{}", i);
     }
     time_util::count_time_tps(total, now);
 }
