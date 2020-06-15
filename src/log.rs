@@ -16,6 +16,14 @@ use crate::error::LogError;
 use crate::time_util;
 use std::cell::{Cell, RefCell};
 
+/// debug mode,true:print to console, false ,only write to file.
+pub static DEBUG_MODE: AtomicBool = AtomicBool::new(true);
+
+lazy_static! {
+   static ref LOG:RwLock<Option<SimpleLogger>>=RwLock::new(Option::None);
+}
+
+
 pub struct LoggerRecv {
     //std recv
     pub std_recv: Option<std::sync::mpsc::Receiver<String>>,
@@ -58,21 +66,12 @@ impl SimpleLogger {
     }
 }
 
-lazy_static! {
-   static ref LOG:RwLock<Option<SimpleLogger>>=RwLock::new(Option::None);
-}
-
-
 fn set_log(runtime_type: RuntimeType) -> LoggerRecv {
     let mut w = LOG.write().unwrap();
     let (log, recv) = SimpleLogger::new(runtime_type);
     *w = Some(log);
     return recv;
 }
-
-
-/// debug mode,true:print to console, false ,only write to file.
-pub static DEBUG_MODE: AtomicBool = AtomicBool::new(true);
 
 
 pub struct Logger {}
@@ -115,8 +114,8 @@ static LOGGER: Logger = Logger {};
 /// log_file_path for example "test.log"
 /// 初始化日志文件路径
 /// log_file_path 文件路径 例如 "test.log"
-pub fn init_log(log_file_path: &str, runtime_type: RuntimeType) -> Result<(), Box<dyn std::error::Error + Send>> {
-    let recv = set_log(runtime_type);
+pub fn init_log(log_file_path: &str, runtime_type: &RuntimeType) -> Result<(), Box<dyn std::error::Error + Send>> {
+    let recv = set_log(runtime_type.clone());
     let log_path = log_file_path.to_owned();
     let mut file = OpenOptions::new().create(true).append(true).open(log_path.as_str());
     if file.is_err() {
@@ -149,37 +148,70 @@ pub fn init_log(log_file_path: &str, runtime_type: RuntimeType) -> Result<(), Bo
 
 
 /// async write based on tokio
-pub async fn init_async_log(log_file_path: &str, runtime_type: RuntimeType) -> Result<(), Box<dyn std::error::Error + Send>> {
+pub async fn init_async_log(log_file_path: &str, runtime_type: &RuntimeType) -> Result<(), Box<dyn std::error::Error + Send>> {
     match runtime_type {
         RuntimeType::Std => {
             panic!("async log un support type Std! must use tokio and async_std");
         }
         _ => {}
     }
-    let mut recv = set_log(runtime_type);
-    let mut file = open_file(log_file_path).await;
-    if file.is_err() {
-        let e = LogError::from(format!("[log] open error! {}", file.err().unwrap().to_string().as_str()));
-        return Err(Box::new(e));
+    let mut recv = set_log(runtime_type.clone());
+    match runtime_type {
+        RuntimeType::TokIo =>{
+            let mut file = open_tokio_file(log_file_path).await;
+            if file.is_err() {
+                let e = LogError::from(format!("[log] open error! {}", file.err().unwrap().to_string().as_str()));
+                return Err(Box::new(e));
+            }
+
+            std::thread::spawn(move || {
+                let mut file = file.unwrap();
+                let rwlock = Arc::new(tokio::sync::RwLock::<tokio::fs::File>::new(file));
+                loop {
+                    //recv
+                    let data = recv.std_recv.as_ref().unwrap().recv();
+                    if data.is_ok() {
+                        let s: String = data.unwrap() + "\n";
+
+                        let rwclone = rwlock.clone();
+                        tokio::spawn(async  move {
+                            let mut guard = rwclone.write().await;
+                            guard.write(s.as_bytes()).await;
+                        });
+                    }
+                }
+            });
+        }
+        RuntimeType::AsyncStd =>{
+            use async_std::prelude::*;
+            let mut file = open_async_std_file(log_file_path).await;
+            if file.is_err() {
+                let e = LogError::from(format!("[log] open error! {}", file.err().unwrap().to_string().as_str()));
+                return Err(Box::new(e));
+            }
+            std::thread::spawn(move || {
+                let mut file = file.unwrap();
+                let rwlock = Arc::new(async_std::sync::RwLock::<async_std::fs::File>::new(file));
+                loop {
+                    //recv
+                    let data = recv.std_recv.as_ref().unwrap().recv();
+                    if data.is_ok() {
+                        let s: String = data.unwrap() + "\n";
+
+                        let mut rwclone = rwlock.clone();
+                        async_std::task::spawn(async  move {
+                            let mut guard = rwclone.write().await;
+                            guard.write(s.as_bytes()).await;
+                        });
+                    }
+                }
+            });
+        }
+        _ => {
+            panic!("[rbatis] un support runtime type:{:?}",runtime_type.clone());
+        }
     }
 
-    std::thread::spawn(move || {
-        let mut file = file.unwrap();
-        let rwlock = Arc::new(tokio::sync::RwLock::<tokio::fs::File>::new(file));
-        loop {
-            //recv
-            let data = recv.std_recv.as_ref().unwrap().recv();
-            if data.is_ok() {
-                let s: String = data.unwrap() + "\n";
-
-                let rwclone = rwlock.clone();
-                tokio::spawn(async  move {
-                    let mut guard = rwclone.write().await;
-                    guard.write(s.as_bytes()).await;
-                });
-            }
-        }
-    });
 
     let r = log::set_logger(&LOGGER)
         .map(|()| log::set_max_level(LevelFilter::Info));
@@ -191,15 +223,19 @@ pub async fn init_async_log(log_file_path: &str, runtime_type: RuntimeType) -> R
 }
 
 
-async fn open_file(log_file_path: &str) -> std::result::Result<tokio::fs::File, std::io::Error> {
+async fn open_tokio_file(log_file_path: &str) -> std::result::Result<tokio::fs::File, std::io::Error> {
     let file = tokio::fs::OpenOptions::new().append(true).create(true).open(log_file_path).await?;
     return Ok(file);
 }
 
+async fn open_async_std_file(log_file_path: &str) -> std::result::Result<async_std::fs::File, std::io::Error> {
+    let file = async_std::fs::OpenOptions::new().append(true).create(true).open(log_file_path).await?;
+    return Ok(file);
+}
 
 #[test]
 pub fn test_log() {
-    init_log("requests.log", RuntimeType::Std);
+    init_log("requests.log", &RuntimeType::Std);
     // DEBUG_MODE.store(false,std::sync::atomic::Ordering::Relaxed);
     info!("Commencing yak shaving");
     std::thread::sleep(Duration::from_secs(5));
@@ -209,9 +245,9 @@ pub fn test_log() {
 //cargo test --release --color=always --package fast_log --lib log::bench_log --all-features -- --nocapture --exact
 #[test]
 pub fn bench_log() {
-    init_log("requests.log", RuntimeType::Std);
+    init_log("requests.log", &RuntimeType::Std);
     // DEBUG_MODE.store(false,std::sync::atomic::Ordering::Relaxed);
-    let total = 10000000;
+    let total = 10000;
     let now = SystemTime::now();
     for i in 0..total {
         //sleep(Duration::from_secs(1));
@@ -221,17 +257,30 @@ pub fn bench_log() {
 }
 
 
-//cargo test --release --color=always --package fast_log --lib log::bench_async_log --all-features -- --nocapture --exact
+//cargo test --release --color=always --package fast_log --lib log::bench_tokio_log --all-features -- --nocapture --exact
 #[tokio::main]
 #[test]
-async fn bench_async_log() {
-    init_async_log("requests.log", RuntimeType::TokIo).await;
-    // DEBUG_MODE.store(false,std::sync::atomic::Ordering::Relaxed);
-    let total = 10000000;
+async fn bench_tokio_log() {
+    init_async_log("requests.log", &RuntimeType::TokIo).await;
+    //DEBUG_MODE.store(false,std::sync::atomic::Ordering::Relaxed);
+    let total = 10000;
     let now = SystemTime::now();
     for i in 0..total {
         info!("Commencing yak shaving{}",i);
     }
     time_util::count_time_tps(total, now);
-    sleep(Duration::from_secs(3600));
+}
+
+//cargo test --release --color=always --package fast_log --lib log::bench_async_std_log --all-features -- --nocapture --exact
+#[tokio::main]
+#[test]
+async fn bench_async_std_log() {
+    init_async_log("requests.log", &RuntimeType::AsyncStd).await;
+    // DEBUG_MODE.store(false,std::sync::atomic::Ordering::Relaxed);
+    let total = 100000;
+    let now = SystemTime::now();
+    for i in 0..total {
+        info!("Commencing yak shaving{}",i);
+    }
+    time_util::count_time_tps(total, now);
 }
