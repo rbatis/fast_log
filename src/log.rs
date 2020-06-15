@@ -79,16 +79,6 @@ impl SimpleLogger {
             _ => { panic!(format!("[fast_log] un support send for type:{:?}", self.runtime_type)) }
         }
     }
-
-
-    pub async fn send_sync(&self, arg: String) {
-        match self.runtime_type {
-            RuntimeType::TokIo => {
-                self.tokio_sender.clone().unwrap().send(arg).await;
-            }
-            _ => { panic!(format!("[fast_log] un support send for type:{:?}", self.runtime_type)) }
-        }
-    }
 }
 
 lazy_static! {
