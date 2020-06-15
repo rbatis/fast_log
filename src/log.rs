@@ -1,7 +1,7 @@
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
-use std::sync::{Mutex, RwLock};
+use std::sync::{Mutex, RwLock, Arc};
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::RecvError;
 use std::thread::sleep;
@@ -14,22 +14,18 @@ use tokio::prelude::*;
 
 use crate::error::LogError;
 use crate::time_util;
+use std::cell::{Cell, RefCell};
 
 pub struct LoggerRecv {
     //std recv
     pub std_recv: Option<std::sync::mpsc::Receiver<String>>,
-    // recv
-    pub tokio_recv: Option<tokio::sync::mpsc::Receiver<String>>,
 }
 
 
 pub struct SimpleLogger {
     pub runtime_type: RuntimeType,
-
     //std sender
     pub std_sender: Option<std::sync::mpsc::SyncSender<String>>,
-    //std sender
-    pub tokio_sender: Option<tokio::sync::mpsc::Sender<String>>,
 }
 
 ///runtime Type
@@ -44,39 +40,20 @@ pub enum RuntimeType {
 impl SimpleLogger {
     pub fn new(runtime_type: RuntimeType) -> (Self, LoggerRecv) {
         return match runtime_type {
-            RuntimeType::Std => {
+            _ => {
                 let (s, r) = std::sync::mpsc::sync_channel(1000);
                 (Self {
                     runtime_type,
                     std_sender: Some(s),
-                    tokio_sender: None,
-                }, LoggerRecv { std_recv: Some(r), tokio_recv: None })
-            }
-            RuntimeType::TokIo => {
-                let (mut tx, mut rx) = tokio::sync::mpsc::channel(1000);
-                (Self {
-                    runtime_type,
-                    std_sender: None,
-                    tokio_sender: Some(tx),
-                }, LoggerRecv { std_recv: None, tokio_recv: Some(rx) })
-            }
-            _ => {
-                panic!(format!("[fast_log] un support send for type:{:?}", runtime_type))
+                }, LoggerRecv { std_recv: Some(r), })
             }
         };
     }
     pub fn send(&self, arg: String) {
         match self.runtime_type {
-            RuntimeType::Std => {
+            _ => {
                 self.std_sender.as_ref().unwrap().send(arg);
             }
-            RuntimeType::TokIo => {
-                let mut s = self.tokio_sender.clone().unwrap();
-                tokio::spawn(async move {
-                    s.send(arg).await;
-                });
-            }
-            _ => { panic!(format!("[fast_log] un support send for type:{:?}", self.runtime_type)) }
         }
     }
 }
@@ -185,18 +162,25 @@ pub async fn init_async_log(log_file_path: &str, runtime_type: RuntimeType) -> R
         let e = LogError::from(format!("[log] open error! {}", file.err().unwrap().to_string().as_str()));
         return Err(Box::new(e));
     }
-    let mut file = file.unwrap();
 
-    tokio::spawn(async move {
+    std::thread::spawn(move || {
+        let mut file = file.unwrap();
+        let rwlock = Arc::new(tokio::sync::RwLock::<tokio::fs::File>::new(file));
         loop {
             //recv
-            let data = recv.tokio_recv.as_mut().unwrap().recv().await;
-            if data.is_some() {
+            let data = recv.std_recv.as_ref().unwrap().recv();
+            if data.is_ok() {
                 let s: String = data.unwrap() + "\n";
-                file.write(s.as_bytes()).await;
+
+                let rwclone = rwlock.clone();
+                tokio::spawn(async  move {
+                    let mut guard = rwclone.write().await;
+                    guard.write(s.as_bytes()).await;
+                });
             }
         }
     });
+
     let r = log::set_logger(&LOGGER)
         .map(|()| log::set_max_level(LevelFilter::Info));
     if r.is_err() {
