@@ -1,9 +1,7 @@
 # log
 the fast log  . This crate uses #![forbid(unsafe_code)] to ensure everything is implemented in 100% Safe Rust.
 
-* support Future mode,async await based on tokio
-* support thread mode
-
+* support Future mode,async await based on mpsc channel, tokio or async_std
 * how to use?
 ```toml
 log = "0.4"
