@@ -87,7 +87,7 @@ impl log::Log for Logger {
                 module = record.module_path().unwrap();
             }
             let local: DateTime<Local> = Local::now();
-            let data = format!("{:?} {} {} - {} line{}", local, record.level(), module, record.args(), format_line(record));
+            let data = format!("{:?} {} {} - {}  {}", local, record.level(), module, record.args(), format_line(record));
 
             let debug = DEBUG_MODE.load(std::sync::atomic::Ordering::Relaxed);
             if debug {
