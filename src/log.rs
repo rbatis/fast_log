@@ -272,15 +272,16 @@ async fn bench_tokio_log() {
 }
 
 //cargo test --release --color=always --package fast_log --lib log::bench_async_std_log --all-features -- --nocapture --exact
-#[tokio::main]
 #[test]
-async fn bench_async_std_log() {
-    init_async_log("requests.log", &RuntimeType::AsyncStd).await;
-    // DEBUG_MODE.store(false,std::sync::atomic::Ordering::Relaxed);
-    let total = 100000;
-    let now = SystemTime::now();
-    for i in 0..total {
-        info!("Commencing yak shaving{}", i);
-    }
-    time_util::count_time_tps(total, now);
+fn bench_async_std_log() {
+   async_std::task::block_on(async {
+       init_async_log("requests.log", &RuntimeType::AsyncStd).await;
+       // DEBUG_MODE.store(false,std::sync::atomic::Ordering::Relaxed);
+       let total = 100000;
+       let now = SystemTime::now();
+       for i in 0..total {
+           info!("Commencing yak shaving{}", i);
+       }
+       time_util::count_time_tps(total, now);
+   });
 }
