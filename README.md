@@ -9,18 +9,7 @@ fast_log="*"
 ```
 
 
-
-###  use Future mode
-```rust
-#[tokio::main]
-#[test]
-async fn bench_async_log() {
-    fast_log::log::init_async_log("requests.log", &RuntimeType::TokIo).await;
-    info!("Commencing yak shaving");
-}
-```
-
-#### use thread mode
+#### use log
 ```rust
 use log::{error, info, warn};
 fn  main(){
