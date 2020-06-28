@@ -91,10 +91,10 @@ impl log::Log for Logger {
             let level = record.level();
             match level {
                 Level::Warn | Level::Error => {
-                     data = format!("{:?} {} {} - {}", local, record.level(), module, record.args());
+                    data = format!("{:?} {} {} - {}  {}", local, record.level(), module, record.args(), format_line(record));
                 }
                 _ => {
-                     data = format!("{:?} {} {} - {}  {}", local, record.level(), module, record.args(), format_line(record));
+                    data = format!("{:?} {} {} - {}", local, record.level(), module, record.args());
                 }
             }
 
