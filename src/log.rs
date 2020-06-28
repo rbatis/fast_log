@@ -7,10 +7,12 @@ use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::RecvError;
 use std::thread::sleep;
 use std::time::{Duration, SystemTime};
+
 use chrono::{DateTime, Local};
 use log::{error, info, warn};
 use log::{Level, LevelFilter, Metadata, Record};
 use tokio::prelude::*;
+
 use crate::error::LogError;
 use crate::time_util;
 
@@ -83,7 +85,18 @@ impl log::Log for Logger {
                 module = record.module_path().unwrap();
             }
             let local: DateTime<Local> = Local::now();
-            let data = format!("{:?} {} {} - {}  {}", local, record.level(), module, record.args(), format_line(record));
+
+            let data;
+
+            let level = record.level();
+            match level {
+                Level::Warn | Level::Error => {
+                    let data = format!("{:?} {} {} - {}", local, record.level(), module, record.args());
+                }
+                _ => {
+                    let data = format!("{:?} {} {} - {}  {}", local, record.level(), module, record.args(), format_line(record));
+                }
+            }
 
             let debug = DEBUG_MODE.load(std::sync::atomic::Ordering::Relaxed);
             if debug {
