@@ -18,7 +18,7 @@ use crate::time_util;
 pub static DEBUG_MODE: AtomicBool = AtomicBool::new(true);
 
 lazy_static! {
-   static ref LOG:RwLock<Option<SimpleLogger>>=RwLock::new(Option::None);
+   static ref LOG_SENDER:RwLock<Option<LoggerSender>>=RwLock::new(Option::None);
 }
 
 
@@ -28,7 +28,7 @@ pub struct LoggerRecv {
 }
 
 
-pub struct SimpleLogger {
+pub struct LoggerSender {
     pub runtime_type: RuntimeType,
     //std sender
     pub std_sender: Option<std::sync::mpsc::SyncSender<String>>,
@@ -41,7 +41,7 @@ pub enum RuntimeType {
 }
 
 
-impl SimpleLogger {
+impl LoggerSender {
     pub fn new(runtime_type: RuntimeType) -> (Self, LoggerRecv) {
         return match runtime_type {
             _ => {
@@ -63,8 +63,8 @@ impl SimpleLogger {
 }
 
 fn set_log(runtime_type: RuntimeType) -> LoggerRecv {
-    let mut w = LOG.write().unwrap();
-    let (log, recv) = SimpleLogger::new(runtime_type);
+    let mut w = LOG_SENDER.write().unwrap();
+    let (log, recv) = LoggerSender::new(runtime_type);
     *w = Some(log);
     return recv;
 }
@@ -90,7 +90,7 @@ impl log::Log for Logger {
                 print!("{}\n", data.as_str());
             }
             //send
-            LOG.read().unwrap().as_ref().unwrap().send(data);
+            LOG_SENDER.read().unwrap().as_ref().unwrap().send(data);
         }
     }
     fn flush(&self) {}
