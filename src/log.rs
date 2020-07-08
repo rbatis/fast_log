@@ -91,16 +91,16 @@ impl log::Log for Logger {
             let level = record.level();
             match level {
                 Level::Warn | Level::Error => {
-                    data = format!("{:?} {} {} - {}  {}", local, record.level(), module, record.args(), format_line(record));
+                    data = format!("{:?} {} {} - {}  {}\n", local, record.level(), module, record.args(), format_line(record));
                 }
                 _ => {
-                    data = format!("{:?} {} {} - {}", local, record.level(), module, record.args());
+                    data = format!("{:?} {} {} - {}\n", local, record.level(), module, record.args());
                 }
             }
 
             let debug = DEBUG_MODE.load(std::sync::atomic::Ordering::Relaxed);
             if debug {
-                print!("{}\n", data.as_str());
+                print!("{}", data.as_str());
             }
             //send
             LOG_SENDER.read().unwrap().as_ref().unwrap().send(data);
@@ -141,7 +141,7 @@ pub fn init_log(log_file_path: &str, runtime_type: &RuntimeType) -> Result<(), B
             //recv
             let data = recv.std_recv.as_ref().unwrap().recv();
             if data.is_ok() {
-                let s: String = data.unwrap() + "\n";
+                let s: String = data.unwrap();
                 file.write(s.as_bytes());
             }
         }
