@@ -14,7 +14,7 @@ use tokio::prelude::*;
 
 use crate::error::LogError;
 use crate::time_util;
-use crossbeam_channel::bounded;
+use crossbeam_channel::{bounded, RecvError, SendError};
 
 /// debug mode,true:print to console, false ,only write to file.
 pub static DEBUG_MODE: AtomicBool = AtomicBool::new(true);
@@ -26,7 +26,13 @@ lazy_static! {
 
 pub struct LoggerRecv {
     //std recv
-    pub std_recv: Option<crossbeam_channel::Receiver<String>>,
+    pub recv: Option<crossbeam_channel::Receiver<String>>,
+}
+
+impl LoggerRecv{
+    pub fn recv(&self)->Result<String,RecvError>{
+        self.recv.as_ref().unwrap().recv()
+    }
 }
 
 
@@ -35,14 +41,6 @@ pub struct LoggerSender {
     //std sender
     pub std_sender: Option<crossbeam_channel::Sender<String>>,
 }
-
-///runtime Type
-#[derive(Clone, Debug)]
-pub enum RuntimeType {
-    Std
-}
-
-
 impl LoggerSender {
     pub fn new(runtime_type: RuntimeType) -> (Self, LoggerRecv) {
         return match runtime_type {
@@ -51,18 +49,21 @@ impl LoggerSender {
                 (Self {
                     runtime_type,
                     std_sender: Some(s),
-                }, LoggerRecv { std_recv: Some(r) })
+                }, LoggerRecv { recv: Some(r) })
             }
         };
     }
-    pub fn send(&self, arg: String) {
-        match self.runtime_type {
-            _ => {
-                self.std_sender.as_ref().unwrap().send(arg);
-            }
-        }
+    pub fn send(&self, data: &str)-> Result<(), SendError<String>> {
+        self.std_sender.as_ref().unwrap().send(data.to_string())
     }
 }
+
+///runtime Type
+#[derive(Clone, Debug)]
+pub enum RuntimeType {
+    Std
+}
+
 
 fn set_log(runtime_type: RuntimeType) -> LoggerRecv {
     let mut w = LOG_SENDER.write().unwrap();
@@ -103,7 +104,17 @@ impl log::Log for Logger {
                 print!("{}", data.as_str());
             }
             //send
-            LOG_SENDER.read().unwrap().as_ref().unwrap().send(data);
+            match LOG_SENDER.read(){
+                 Ok(lock)=>{
+                     match lock.is_some(){
+                         true => {
+                             lock.as_ref().unwrap().send(&data);
+                         }
+                         _ => {}
+                     }
+                 }
+                _ => {}
+            }
         }
     }
     fn flush(&self) {}
@@ -139,7 +150,7 @@ pub fn init_log(log_file_path: &str, runtime_type: &RuntimeType) -> Result<(), B
     std::thread::spawn(move || {
         loop {
             //recv
-            let data = recv.std_recv.as_ref().unwrap().recv();
+            let data = recv.recv();
             if data.is_ok() {
                 let s: String = data.unwrap();
                 file.write(s.as_bytes());
