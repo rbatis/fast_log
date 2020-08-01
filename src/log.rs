@@ -4,7 +4,6 @@ use std::io::Write;
 use std::path::Path;
 use std::sync::{Arc, Mutex, RwLock};
 use std::sync::atomic::AtomicBool;
-use std::sync::mpsc::RecvError;
 use std::thread::sleep;
 use std::time::{Duration, SystemTime};
 
@@ -15,6 +14,7 @@ use tokio::prelude::*;
 
 use crate::error::LogError;
 use crate::time_util;
+use crossbeam_channel::bounded;
 
 /// debug mode,true:print to console, false ,only write to file.
 pub static DEBUG_MODE: AtomicBool = AtomicBool::new(true);
@@ -26,14 +26,14 @@ lazy_static! {
 
 pub struct LoggerRecv {
     //std recv
-    pub std_recv: Option<std::sync::mpsc::Receiver<String>>,
+    pub std_recv: Option<crossbeam_channel::Receiver<String>>,
 }
 
 
 pub struct LoggerSender {
     pub runtime_type: RuntimeType,
     //std sender
-    pub std_sender: Option<std::sync::mpsc::SyncSender<String>>,
+    pub std_sender: Option<crossbeam_channel::Sender<String>>,
 }
 
 ///runtime Type
@@ -47,7 +47,7 @@ impl LoggerSender {
     pub fn new(runtime_type: RuntimeType) -> (Self, LoggerRecv) {
         return match runtime_type {
             _ => {
-                let (s, r) = std::sync::mpsc::sync_channel(1000);
+                let (s, r) = bounded(1000);
                 (Self {
                     runtime_type,
                     std_sender: Some(s),
