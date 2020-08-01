@@ -11,7 +11,7 @@ fast_log="1.2.3"
 ```
 
 
-#### use log
+#### use log 使用日志
 ```rust
 use log::{error, info, warn};
 fn  main(){
