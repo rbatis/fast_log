@@ -1,11 +1,13 @@
 # log
 the fast log  . This crate uses #![forbid(unsafe_code)] to ensure everything is implemented in 100% Safe Rust.
+一款追求极致速度的日志实现，使用crossbeam 提高channel一倍效率，使用channel异步写日志
+
 
 * support Future mode,async await based on mpsc channel, tokio or async_std
 * how to use?
 ```toml
 log = "0.4"
-fast_log="*"
+fast_log="1.2.3"
 ```
 
 
