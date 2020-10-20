@@ -10,7 +10,6 @@ use std::time::{Duration, SystemTime};
 use chrono::{DateTime, Local};
 use log::{error, info, warn};
 use log::{Level, LevelFilter, Metadata, Record};
-use tokio::prelude::*;
 
 use crate::error::LogError;
 use crate::time_util;
