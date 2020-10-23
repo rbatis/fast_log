@@ -153,6 +153,7 @@ pub fn init_log(log_file_path: &str, runtime_type: &RuntimeType) -> Result<(), B
             if data.is_ok() {
                 let s: String = data.unwrap();
                 file.write(s.as_bytes());
+                file.flush();
             }
         }
     });
