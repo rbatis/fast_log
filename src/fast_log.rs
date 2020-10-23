@@ -174,9 +174,9 @@ pub fn bench_log() {
     // DEBUG_MODE.store(false,std::sync::atomic::Ordering::Relaxed);
     let total = 10000;
     let now = SystemTime::now();
-    for i in 0..total {
+    for index in 0..total {
         //sleep(Duration::from_secs(1));
-        info!("Commencing yak shaving");
+        info!("Commencing yak shaving{}",index);
     }
     time_util::count_time_tps(total, now);
 }
