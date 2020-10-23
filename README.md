@@ -20,7 +20,7 @@ fast_log="1.2.3"
 ```rust
 use log::{error, info, warn};
 fn  main(){
-    fast_log::log::init_log("requests.log", &RuntimeType::Std);
+    fast_log::init_log("requests.log", &RuntimeType::Std);
     info!("Commencing yak shaving");
 }
 ```
