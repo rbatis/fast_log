@@ -13,12 +13,12 @@ fn test_count() {
 
 
 pub fn count_tps(total: u128, start: SystemTime) {
-    let mut time = SystemTime::now().duration_since(start).unwrap();
+    let time = SystemTime::now().duration_since(start).unwrap();
     println!("use TPS: {} QPS/s", (total * 1000000000 as u128 / time.as_nanos() as u128));
 }
 
 //计算每个操作耗时nano纳秒
 pub fn count_time(total: u128, start: SystemTime) {
-    let mut time = SystemTime::now().duration_since(start).unwrap();
+    let time = SystemTime::now().duration_since(start).unwrap();
     println!("use Time: {} s,each:{} nano/op", time.as_secs(), time.as_nanos() / total as u128);
 }

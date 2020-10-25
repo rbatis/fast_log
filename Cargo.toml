@@ -7,6 +7,13 @@ authors = ["ce <zhuxiujia@qq.com>"]
 edition = "2018"
 license = "MIT"
 
+
+[features]
+default = ["after_print"]
+befor_print = []
+after_print = []
+no_print = []
+
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
 lazy_static = "1.4.0"
