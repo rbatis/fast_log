@@ -94,6 +94,9 @@ impl log::Log for Logger {
             let data;
 
             let level = record.level();
+            if self.get_level() < level {
+                return;
+            }
             match level {
                 Level::Warn | Level::Error => {
                     data = format!("{:?} {} {} - {}  {}\n", local, record.level(), module, record.args(), format_line(record));
