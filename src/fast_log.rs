@@ -130,9 +130,9 @@ pub trait FastLog: Send {
 
 
 /// initializes the log file path
-/// log_file_path for example "test.log"
-/// 初始化日志文件路径
-/// log_file_path 文件路径 例如 "test.log"
+/// log_file_path:  example->  "test.log"
+/// cup: example -> 1000
+/// custom_log: default None
 pub fn init_log(log_file_path: &str, cup: usize, custom_log: Option<Box<dyn FastLog>>) -> Result<(), Box<dyn std::error::Error + Send>> {
     let recv = set_log(RuntimeType::Std, cup);
     let log_path = log_file_path.to_owned();
