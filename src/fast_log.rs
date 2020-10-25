@@ -1,12 +1,12 @@
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicI32, AtomicI8};
 use std::sync::RwLock;
 use std::time::SystemTime;
 
 use chrono::{DateTime, Local};
-use crossbeam_channel::{bounded, RecvError, SendError, Receiver};
+use crossbeam_channel::{bounded, Receiver, RecvError, SendError};
 use log::{Level, LevelFilter, Metadata, Record};
 use log::info;
 
@@ -49,7 +49,8 @@ pub enum RuntimeType {
 }
 
 
-fn set_log(runtime_type: RuntimeType, cup: usize) -> Receiver<String> {
+fn set_log(runtime_type: RuntimeType, cup: usize, level: log::Level) -> Receiver<String> {
+    LOGGER.set_level(level);
     let mut w = LOG_SENDER.write().unwrap();
     let (log, recv) = LoggerSender::new(runtime_type, cup);
     *w = Some(log);
@@ -57,11 +58,30 @@ fn set_log(runtime_type: RuntimeType, cup: usize) -> Receiver<String> {
 }
 
 
-pub struct Logger {}
+pub struct Logger {
+    level: AtomicI32,
+}
+
+impl Logger {
+    pub fn set_level(&self, level: log::Level) {
+        self.level.swap(level as i32, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    pub fn get_level(&self) -> log::Level {
+        match self.level.load(std::sync::atomic::Ordering::Relaxed) {
+            1 => Level::Error,
+            2 => Level::Warn,
+            3 => Level::Info,
+            4 => Level::Debug,
+            5 => Level::Trace,
+            _ => panic!("error log level!")
+        }
+    }
+}
 
 impl log::Log for Logger {
     fn enabled(&self, metadata: &Metadata) -> bool {
-        metadata.level() <= Level::Info
+        metadata.level() <= self.get_level()
     }
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
@@ -109,7 +129,7 @@ fn format_line(record: &Record<'_>) -> String {
     }
 }
 
-static LOGGER: Logger = Logger {};
+static LOGGER: Logger = Logger { level: AtomicI32::new(1) };
 
 
 pub trait FastLog: Send {
@@ -122,8 +142,8 @@ pub trait FastLog: Send {
 /// log_file_path:  example->  "test.log"
 /// cup: example -> 1000
 /// custom_log: default None
-pub fn init_log(log_file_path: &str, cup: usize, custom_log: Option<Box<dyn FastLog>>) -> Result<(), Box<dyn std::error::Error + Send>> {
-    let recv = set_log(RuntimeType::Std, cup);
+pub fn init_log(log_file_path: &str, cup: usize, level: log::Level, custom_log: Option<Box<dyn FastLog>>) -> Result<(), Box<dyn std::error::Error + Send>> {
+    let recv = set_log(RuntimeType::Std, cup, level);
     let log_path = log_file_path.to_owned();
     let mut file = None;
     if custom_log.is_none() {
@@ -164,7 +184,7 @@ pub fn init_log(log_file_path: &str, cup: usize, custom_log: Option<Box<dyn Fast
 //cargo test --release --color=always --package fast_log --lib log::bench_log --all-features -- --nocapture --exact
 #[test]
 pub fn bench_log() {
-    init_log("requests.log", 1000, None);
+    init_log("requests.log", 1000, log::Level::Info, None);
     let total = 10000;
     let now = SystemTime::now();
     for index in 0..total {
