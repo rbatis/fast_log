@@ -93,10 +93,8 @@ impl log::Log for Logger {
                     data = format!("{:?} {} {} - {}\n", local, record.level(), module, record.args());
                 }
             }
-            if !cfg!(feature = "no_print") {
-                if cfg!(feature = "befor_print") {
-                    print!("{}", &data);
-                }
+            if !cfg!(feature = "no_print") && cfg!(feature = "befor_print") {
+                print!("{}", &data);
             }
             //send
             match LOG_SENDER.read() {
@@ -126,7 +124,7 @@ static LOGGER: Logger = Logger {};
 
 
 pub trait FastLog: Send {
-    fn level(&self)->log::Level;
+    fn level(&self) -> log::Level;
     fn do_log(&self, info: &str);
 }
 
@@ -154,10 +152,8 @@ pub fn init_log(log_file_path: &str, cup: usize, custom_log: Option<Box<dyn Fast
             let data = recv.recv();
             if data.is_ok() {
                 let s: String = data.unwrap();
-                if !cfg!(feature = "no_print") {
-                    if cfg!(feature = "after_print") {
-                        print!("{}", &s);
-                    }
+                if !cfg!(feature = "no_print") && cfg!(feature = "after_print") {
+                    print!("{}", &s);
                 }
                 if custom_log.is_none() {
                     file.write(s.as_bytes());
