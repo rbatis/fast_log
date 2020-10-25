@@ -12,6 +12,7 @@ use log::info;
 
 use crate::error::LogError;
 use crate::time_util;
+use crate::plugin::file::FileAppender;
 
 lazy_static! {
    static ref LOG_SENDER:RwLock<Option<LoggerSender>>=RwLock::new(Option::None);
@@ -136,8 +137,7 @@ static LOGGER: Logger = Logger { level: AtomicI32::new(1) };
 
 
 pub trait FastLog: Send {
-    fn level(&self) -> log::Level;
-    fn do_log(&self, info: &str);
+    fn do_log(&mut self, info: &str);
 }
 
 
@@ -145,18 +145,14 @@ pub trait FastLog: Send {
 /// log_file_path:  example->  "test.log"
 /// cup: example -> 1000
 /// custom_log: default None
-pub fn init_log(log_file_path: &str, cup: usize, level: log::Level, custom_log: Option<Box<dyn FastLog>>) -> Result<(), Box<dyn std::error::Error + Send>> {
+pub fn init_log(log_file_path: &str, cup: usize, level: log::Level, mut custom_log: Option<Box<dyn FastLog>>) -> Result<(), Box<dyn std::error::Error + Send>> {
     let recv = set_log(RuntimeType::Std, cup, level);
-    let log_path = log_file_path.to_owned();
-    let mut file = None;
-    if custom_log.is_none() {
-        file = Some(OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(log_path.as_str())
-            .unwrap_or(File::create(Path::new(log_path.as_str())).unwrap()));
-    }
+    let path=log_file_path.to_owned();
     std::thread::spawn(move || {
+        let mut file = None;
+        if custom_log.is_none() {
+            file = Some(FileAppender::new(&path));
+        }
         loop {
             //recv
             let data = recv.recv();
@@ -166,10 +162,9 @@ pub fn init_log(log_file_path: &str, cup: usize, level: log::Level, custom_log: 
                     print!("{}", &s);
                 }
                 if custom_log.is_none() {
-                    file.as_mut().unwrap().write(s.as_bytes());
-                    file.as_mut().unwrap().flush();
+                    file.as_mut().unwrap().do_log(&s);
                 } else {
-                    custom_log.as_ref().unwrap().do_log(&s);
+                    custom_log.as_mut().unwrap().do_log(&s);
                 }
             }
         }
