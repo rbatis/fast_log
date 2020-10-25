@@ -6,7 +6,7 @@ use std::sync::RwLock;
 use std::time::SystemTime;
 
 use chrono::{DateTime, Local};
-use crossbeam_channel::{bounded, RecvError, SendError};
+use crossbeam_channel::{bounded, RecvError, SendError, Receiver};
 use log::{Level, LevelFilter, Metadata, Record};
 use log::info;
 
@@ -18,17 +18,6 @@ lazy_static! {
 }
 
 
-pub struct LoggerRecv {
-    //std recv
-    pub recv: Option<crossbeam_channel::Receiver<String>>,
-}
-
-impl LoggerRecv {
-    pub fn recv(&self) -> Result<String, RecvError> {
-        self.recv.as_ref().unwrap().recv()
-    }
-}
-
 
 pub struct LoggerSender {
     pub runtime_type: RuntimeType,
@@ -37,14 +26,14 @@ pub struct LoggerSender {
 }
 
 impl LoggerSender {
-    pub fn new(runtime_type: RuntimeType, cap: usize) -> (Self, LoggerRecv) {
+    pub fn new(runtime_type: RuntimeType, cap: usize) -> (Self, Receiver<String>) {
         return match runtime_type {
             _ => {
                 let (s, r) = bounded(cap);
                 (Self {
                     runtime_type,
                     std_sender: Some(s),
-                }, LoggerRecv { recv: Some(r) })
+                }, r)
             }
         };
     }
@@ -60,7 +49,7 @@ pub enum RuntimeType {
 }
 
 
-fn set_log(runtime_type: RuntimeType, cup: usize) -> LoggerRecv {
+fn set_log(runtime_type: RuntimeType, cup: usize) -> Receiver<String> {
     let mut w = LOG_SENDER.write().unwrap();
     let (log, recv) = LoggerSender::new(runtime_type, cup);
     *w = Some(log);
