@@ -136,16 +136,14 @@ pub trait FastLog: Send {
 pub fn init_log(log_file_path: &str, cup: usize, custom_log: Option<Box<dyn FastLog>>) -> Result<(), Box<dyn std::error::Error + Send>> {
     let recv = set_log(RuntimeType::Std, cup);
     let log_path = log_file_path.to_owned();
-    let mut file = OpenOptions::new().create(true).append(true).open(log_path.as_str());
-    if file.is_err() {
-        file = File::create(Path::new(log_path.as_str()));
+    let mut file = None;
+    if custom_log.is_none() {
+        file = Some(OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(log_path.as_str())
+            .unwrap_or(File::create(Path::new(log_path.as_str())).unwrap()));
     }
-    if file.is_err() {
-        println!("[log] the log path:{} is not true!", log_path.as_str());
-        let e = LogError::from(format!("[log] the log path:{} is not true!", log_path.as_str()).as_str());
-        return Err(Box::new(e));
-    }
-    let mut file = file.unwrap();
     std::thread::spawn(move || {
         loop {
             //recv
@@ -156,8 +154,8 @@ pub fn init_log(log_file_path: &str, cup: usize, custom_log: Option<Box<dyn Fast
                     print!("{}", &s);
                 }
                 if custom_log.is_none() {
-                    file.write(s.as_bytes());
-                    file.flush();
+                    file.as_mut().unwrap().write(s.as_bytes());
+                    file.as_mut().unwrap().flush();
                 } else {
                     custom_log.as_ref().unwrap().do_log(&s);
                 }
