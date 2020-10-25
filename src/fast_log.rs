@@ -152,7 +152,7 @@ pub fn init_log(log_file_path: &str, cup: usize, custom_log: Option<Box<dyn Fast
             let data = recv.recv();
             if data.is_ok() {
                 let s: String = data.unwrap();
-                if !cfg!(feature = "no_print") && cfg!(feature = "after_print") {
+                if !cfg!(feature = "no_print") && !cfg!(feature = "befor_print") && cfg!(feature = "after_print") {
                     print!("{}", &s);
                 }
                 if custom_log.is_none() {
