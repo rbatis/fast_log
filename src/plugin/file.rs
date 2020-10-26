@@ -7,6 +7,7 @@ use log::Level;
 
 use crate::fast_log::LogAppender;
 
+/// only write append into file
 pub struct FileAppender {
     file: File
 }
