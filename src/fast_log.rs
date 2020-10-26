@@ -134,7 +134,7 @@ pub trait LogAppender: Send {
 /// log_cup: example -> 1000
 /// custom_log: default None
 pub fn init_log(log_file_path: &str, log_cup: usize, level: log::Level) -> Result<(), Box<dyn std::error::Error + Send>> {
-    let appenders:Vec<Box<dyn LogAppender>> = vec![
+    let appenders: Vec<Box<dyn LogAppender>> = vec![
         Box::new(FileAppender::new(log_file_path)),
         Box::new(ConsoleAppender {})
     ];

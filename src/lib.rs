@@ -2,6 +2,7 @@
 
 #[macro_use]
 extern crate lazy_static;
+
 pub mod fast_log;
 pub mod error;
 pub mod time_util;
