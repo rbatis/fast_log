@@ -145,14 +145,11 @@ pub trait FastLog: Send {
 /// log_file_path:  example->  "test.log"
 /// cup: example -> 1000
 /// custom_log: default None
-pub fn init_log(log_file_path: &str, cup: usize, level: log::Level, mut custom_log: Option<Box<dyn FastLog>>) -> Result<(), Box<dyn std::error::Error + Send>> {
+pub fn init_log(log_file_path: &str, cup: usize, level: log::Level) -> Result<(), Box<dyn std::error::Error + Send>> {
     let recv = set_log(RuntimeType::Std, cup, level);
     let path=log_file_path.to_owned();
     std::thread::spawn(move || {
-        let mut file = None;
-        if custom_log.is_none() {
-            file = Some(FileAppender::new(&path));
-        }
+        let mut file = FileAppender::new(&path);
         loop {
             //recv
             let data = recv.recv();
@@ -161,11 +158,7 @@ pub fn init_log(log_file_path: &str, cup: usize, level: log::Level, mut custom_l
                 if !cfg!(feature = "no_print") && !cfg!(feature = "befor_print") && cfg!(feature = "after_print") {
                     print!("{}", &s);
                 }
-                if custom_log.is_none() {
-                    file.as_mut().unwrap().do_log(&s);
-                } else {
-                    custom_log.as_mut().unwrap().do_log(&s);
-                }
+                file.do_log(&s);
             }
         }
     });
@@ -178,16 +171,60 @@ pub fn init_log(log_file_path: &str, cup: usize, level: log::Level, mut custom_l
     }
 }
 
-
-//cargo test --release --color=always --package fast_log --lib log::bench_log --all-features -- --nocapture --exact
-#[test]
-pub fn bench_log() {
-    init_log("requests.log", 1000, log::Level::Info, None);
-    let total = 10000;
-    let now = SystemTime::now();
-    for index in 0..total {
-        //sleep(Duration::from_secs(1));
-        info!("Commencing yak shaving{}", index);
+pub fn init_custom_log(mut custom_log: Box<dyn FastLog>,cup: usize, level: log::Level) -> Result<(), Box<dyn std::error::Error + Send>> {
+    let recv = set_log(RuntimeType::Std, cup, level);
+    std::thread::spawn(move || {
+        loop {
+            //recv
+            let data = recv.recv();
+            if data.is_ok() {
+                let s: String = data.unwrap();
+                if !cfg!(feature = "no_print") && !cfg!(feature = "befor_print") && cfg!(feature = "after_print") {
+                    print!("{}", &s);
+                }
+                custom_log.as_mut().do_log(&s);
+            }
+        }
+    });
+    let r = log::set_logger(&LOGGER)
+        .map(|()| log::set_max_level(LevelFilter::Info));
+    if r.is_err() {
+        return Err(Box::new(r.err().unwrap()));
+    } else {
+        return Ok(());
     }
-    time_util::count_time_tps(total, now);
+}
+
+#[cfg(test)]
+mod test{
+    use crate::fast_log::{FastLog};
+    use crate::{time_util, init_log, init_custom_log};
+    use std::time::SystemTime;
+    use log::info;
+
+    //cargo test --release --color=always --package fast_log --lib log::bench_log --all-features -- --nocapture --exact
+    #[test]
+    pub fn bench_log() {
+        init_log("requests.log", 1000, log::Level::Info);
+        let total = 10000;
+        let now = SystemTime::now();
+        for index in 0..total {
+            //sleep(Duration::from_secs(1));
+            info!("Commencing yak shaving{}", index);
+        }
+        time_util::count_time_tps(total, now);
+    }
+
+    struct CustomLog{}
+
+    impl FastLog for CustomLog{
+        fn do_log(&mut self, info: &str) {
+            println!("{}",info);
+        }
+    }
+    #[test]
+    pub fn test_custom() {
+        init_custom_log(Box::new(CustomLog{}), 1000, log::Level::Info);
+        info!("Commencing yak shaving");
+    }
 }

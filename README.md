@@ -20,7 +20,22 @@ fast_log="1.2.3"
 ```rust
 use log::{error, info, warn};
 fn  main(){
-    fast_log::init_log("requests.log", 1000, log::Level::Info, None);
+    init_log("requests.log", 1000, log::Level::Info);
+    info!("Commencing yak shaving");
+}
+```
+
+```rust
+use log::{error, info, warn};
+
+    pub struct CustomLog{}
+    impl FastLog for CustomLog{
+        fn do_log(&mut self, info: &str) {
+            println!("{}",info);
+        }
+    }
+fn  main(){
+    init_custom_log(Box::new(custom_log),1000, log::Level::Info);
     info!("Commencing yak shaving");
 }
 ```
