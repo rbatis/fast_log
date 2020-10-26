@@ -149,9 +149,6 @@ pub fn init_custom_log(mut appenders: Vec<Box<dyn LogAppender>>, log_cup: usize,
             let data = recv.recv();
             if data.is_ok() {
                 let s: String = data.unwrap();
-                if !cfg!(feature = "no_print") && !cfg!(feature = "befor_print") && cfg!(feature = "after_print") {
-                    print!("{}", &s);
-                }
                 for x in &mut appenders {
                     x.do_log(&s);
                 }
@@ -186,6 +183,7 @@ mod test {
             info!("Commencing yak shaving{}", index);
         }
         time_util::count_time_tps(total, now);
+        sleep(Duration::from_secs(1));
     }
 
     struct CustomLog {}
