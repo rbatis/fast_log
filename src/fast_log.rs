@@ -50,20 +50,40 @@ pub enum RuntimeType {
 }
 
 
-fn set_log(runtime_type: RuntimeType, cup: usize, level: log::Level) -> Receiver<String> {
+fn set_log(runtime_type: RuntimeType, cup: usize, level: log::Level, print_type: PrintType) -> Receiver<String> {
     LOGGER.set_level(level);
+    LOGGER.set_print_type(print_type);
     let mut w = LOG_SENDER.write().unwrap();
     let (log, recv) = LoggerSender::new(runtime_type, cup);
     *w = Some(log);
     return recv;
 }
 
+#[derive(Eq, PartialEq, Debug,Clone,Copy)]
+pub enum PrintType {
+    TYPE_DISABLE = 1,
+    TYPE_BEFORE = 2,
+    TYPE_AFTER = 3,
+}
 
 pub struct Logger {
     level: AtomicI32,
+    print_type: AtomicI32,
 }
 
 impl Logger {
+    pub fn set_print_type(&self, t: PrintType) {
+        self.print_type.swap(t as i32, std::sync::atomic::Ordering::Relaxed);
+    }
+    pub fn get_print_type(&self) -> PrintType {
+        match self.print_type.load(std::sync::atomic::Ordering::Relaxed) {
+            1 => PrintType::TYPE_DISABLE,
+            2 => PrintType::TYPE_BEFORE,
+            3 => PrintType::TYPE_DISABLE,
+            _ => panic!("error print type!")
+        }
+    }
+
     pub fn set_level(&self, level: log::Level) {
         self.level.swap(level as i32, std::sync::atomic::Ordering::Relaxed);
     }
@@ -106,7 +126,8 @@ impl log::Log for Logger {
                     data = format!("{:?} {} {} - {}\n", local, record.level(), module, record.args());
                 }
             }
-            if !cfg!(feature = "no_print") && cfg!(feature = "befor_print") {
+            let t = LOGGER.get_print_type();
+            if t != PrintType::TYPE_DISABLE && t == PrintType::TYPE_BEFORE {
                 print!("{}", &data);
             }
             //send
@@ -133,7 +154,7 @@ fn format_line(record: &Record<'_>) -> String {
     }
 }
 
-static LOGGER: Logger = Logger { level: AtomicI32::new(1) };
+static LOGGER: Logger = Logger { level: AtomicI32::new(1), print_type: AtomicI32::new(3) };
 
 
 pub trait FastLog: Send {
@@ -145,9 +166,9 @@ pub trait FastLog: Send {
 /// log_file_path:  example->  "test.log"
 /// cup: example -> 1000
 /// custom_log: default None
-pub fn init_log(log_file_path: &str, cup: usize, level: log::Level) -> Result<(), Box<dyn std::error::Error + Send>> {
-    let recv = set_log(RuntimeType::Std, cup, level);
-    let path=log_file_path.to_owned();
+pub fn init_log(log_file_path: &str, cup: usize, level: log::Level, print_type: PrintType) -> Result<(), Box<dyn std::error::Error + Send>> {
+    let recv = set_log(RuntimeType::Std, cup, level, print_type);
+    let path = log_file_path.to_owned();
     std::thread::spawn(move || {
         let mut file = FileAppender::new(&path);
         loop {
@@ -155,7 +176,8 @@ pub fn init_log(log_file_path: &str, cup: usize, level: log::Level) -> Result<()
             let data = recv.recv();
             if data.is_ok() {
                 let s: String = data.unwrap();
-                if !cfg!(feature = "no_print") && !cfg!(feature = "befor_print") && cfg!(feature = "after_print") {
+                let t = LOGGER.get_print_type();
+                if t != PrintType::TYPE_DISABLE && t == PrintType::TYPE_AFTER {
                     print!("{}", &s);
                 }
                 file.do_log(&s);
@@ -171,8 +193,8 @@ pub fn init_log(log_file_path: &str, cup: usize, level: log::Level) -> Result<()
     }
 }
 
-pub fn init_custom_log(mut custom_log: Box<dyn FastLog>,cup: usize, level: log::Level) -> Result<(), Box<dyn std::error::Error + Send>> {
-    let recv = set_log(RuntimeType::Std, cup, level);
+pub fn init_custom_log(mut custom_log: Box<dyn FastLog>, cup: usize, level: log::Level, print_type: PrintType) -> Result<(), Box<dyn std::error::Error + Send>> {
+    let recv = set_log(RuntimeType::Std, cup, level, print_type);
     std::thread::spawn(move || {
         loop {
             //recv
@@ -196,16 +218,17 @@ pub fn init_custom_log(mut custom_log: Box<dyn FastLog>,cup: usize, level: log::
 }
 
 #[cfg(test)]
-mod test{
-    use crate::fast_log::{FastLog};
+mod test {
+    use crate::fast_log::{FastLog, PrintType};
     use crate::{time_util, init_log, init_custom_log};
-    use std::time::SystemTime;
+    use std::time::{SystemTime, Duration};
     use log::info;
+    use std::thread::sleep;
 
     //cargo test --release --color=always --package fast_log --lib log::bench_log --all-features -- --nocapture --exact
     #[test]
     pub fn bench_log() {
-        init_log("requests.log", 1000, log::Level::Info);
+        init_log("requests.log", 1000, log::Level::Info, PrintType::TYPE_AFTER);
         let total = 10000;
         let now = SystemTime::now();
         for index in 0..total {
@@ -215,16 +238,18 @@ mod test{
         time_util::count_time_tps(total, now);
     }
 
-    struct CustomLog{}
+    struct CustomLog {}
 
-    impl FastLog for CustomLog{
+    impl FastLog for CustomLog {
         fn do_log(&mut self, info: &str) {
-            println!("{}",info);
+            println!("{}", info);
         }
     }
+
     #[test]
     pub fn test_custom() {
-        init_custom_log(Box::new(CustomLog{}), 1000, log::Level::Info);
+        init_custom_log(Box::new(CustomLog {}), 1000, log::Level::Info, PrintType::TYPE_AFTER);
         info!("Commencing yak shaving");
+        sleep(Duration::from_secs(1));
     }
 }

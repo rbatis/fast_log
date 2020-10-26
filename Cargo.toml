@@ -9,10 +9,6 @@ license = "MIT"
 
 
 [features]
-default = ["after_print"]
-befor_print = []
-after_print = []
-no_print = []
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }

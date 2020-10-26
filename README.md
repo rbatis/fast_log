@@ -20,7 +20,7 @@ fast_log="1.2.3"
 ```rust
 use log::{error, info, warn};
 fn  main(){
-    init_log("requests.log", 1000, log::Level::Info);
+    init_log("requests.log", 1000, log::Level::Info,PrintType::TYPE_AFTER);
     info!("Commencing yak shaving");
 }
 ```
@@ -35,7 +35,7 @@ use log::{error, info, warn};
         }
     }
 fn  main(){
-    init_custom_log(Box::new(custom_log),1000, log::Level::Info);
+    init_custom_log(Box::new(custom_log),1000, log::Level::Info,PrintType::TYPE_AFTER);
     info!("Commencing yak shaving");
 }
 ```
