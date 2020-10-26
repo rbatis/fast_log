@@ -37,7 +37,7 @@ use log::{error, info, warn};
         }
     }
 fn  main(){
-    init_custom_log(vec![Box::new(custom_log)],1000, log::Level::Info);
+    init_custom_log(vec![Box::new(custom_log)],1000, log::Level::Info,true);
     info!("Commencing yak shaving");
     std::thread::sleep(std::time::Duration::from_secs(1));
 }
