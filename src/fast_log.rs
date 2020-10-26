@@ -192,7 +192,7 @@ mod test {
 
     impl LogAppender for CustomLog {
         fn do_log(&mut self, info: &str) {
-            println!("{}", info);
+            print!("{}", info);
         }
     }
 

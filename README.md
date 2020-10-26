@@ -31,7 +31,7 @@ use log::{error, info, warn};
     pub struct CustomLog{}
     impl FastLog for CustomLog{
         fn do_log(&mut self, info: &str) {
-            println!("{}",info);
+            print!("{}",info);
         }
     }
 fn  main(){
