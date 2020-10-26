@@ -164,10 +164,10 @@ pub trait FastLog: Send {
 
 /// initializes the log file path
 /// log_file_path:  example->  "test.log"
-/// cup: example -> 1000
+/// log_cup: example -> 1000
 /// custom_log: default None
-pub fn init_log(log_file_path: &str, cup: usize, level: log::Level, print_type: PrintType) -> Result<(), Box<dyn std::error::Error + Send>> {
-    let recv = set_log(RuntimeType::Std, cup, level, print_type);
+pub fn init_log(log_file_path: &str, log_cup: usize, level: log::Level, print_type: PrintType) -> Result<(), Box<dyn std::error::Error + Send>> {
+    let recv = set_log(RuntimeType::Std, log_cup, level, print_type);
     let path = log_file_path.to_owned();
     std::thread::spawn(move || {
         let mut file = FileAppender::new(&path);
@@ -193,8 +193,8 @@ pub fn init_log(log_file_path: &str, cup: usize, level: log::Level, print_type: 
     }
 }
 
-pub fn init_custom_log(mut custom_log: Box<dyn FastLog>, cup: usize, level: log::Level, print_type: PrintType) -> Result<(), Box<dyn std::error::Error + Send>> {
-    let recv = set_log(RuntimeType::Std, cup, level, print_type);
+pub fn init_custom_log(mut custom_log: Box<dyn FastLog>, log_cup: usize, level: log::Level, print_type: PrintType) -> Result<(), Box<dyn std::error::Error + Send>> {
+    let recv = set_log(RuntimeType::Std, log_cup, level, print_type);
     std::thread::spawn(move || {
         loop {
             //recv
