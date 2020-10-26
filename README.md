@@ -18,6 +18,7 @@ fast_log="1.2.3"
 
 #### use log 使用日志
 ```rust
+use fast_log::{init_log};
 use log::{error, info, warn};
 fn  main(){
     init_log("requests.log", 1000, log::Level::Info);
@@ -26,6 +27,7 @@ fn  main(){
 ```
 
 ```rust
+use fast_log::{init_custom_log};
 use log::{error, info, warn};
 
     pub struct CustomLog{}
