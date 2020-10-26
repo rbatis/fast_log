@@ -27,7 +27,7 @@ fn  main(){
 ```
 
 ```rust
-use fast_log::{init_custom_log};
+use fast_log::{init_custom_log,LogAppender};
 use log::{error, info, warn};
 
     pub struct CustomLog{}
