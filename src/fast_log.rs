@@ -1,9 +1,10 @@
-use std::sync::atomic::{ AtomicI32};
+use std::sync::atomic::{AtomicI32};
 use std::sync::RwLock;
 use chrono::{DateTime, Local};
 use crossbeam_channel::{bounded, Receiver, SendError};
 use log::{Level, LevelFilter, Metadata, Record};
 use crate::plugin::file::FileAppender;
+use crate::plugin::console::ConsoleAppender;
 
 lazy_static! {
    static ref LOG_SENDER:RwLock<Option<LoggerSender>>=RwLock::new(Option::None);
@@ -41,40 +42,19 @@ pub enum RuntimeType {
 }
 
 
-fn set_log(runtime_type: RuntimeType, cup: usize, level: log::Level, print_type: PrintType) -> Receiver<String> {
+fn set_log(runtime_type: RuntimeType, cup: usize, level: log::Level) -> Receiver<String> {
     LOGGER.set_level(level);
-    LOGGER.set_print_type(print_type);
     let mut w = LOG_SENDER.write().unwrap();
     let (log, recv) = LoggerSender::new(runtime_type, cup);
     *w = Some(log);
     return recv;
 }
 
-#[derive(Eq, PartialEq, Debug,Clone,Copy)]
-pub enum PrintType {
-    TYPE_DISABLE = 1,
-    TYPE_BEFORE = 2,
-    TYPE_AFTER = 3,
-}
-
 pub struct Logger {
     level: AtomicI32,
-    print_type: AtomicI32,
 }
 
 impl Logger {
-    pub fn set_print_type(&self, t: PrintType) {
-        self.print_type.swap(t as i32, std::sync::atomic::Ordering::Relaxed);
-    }
-    pub fn get_print_type(&self) -> PrintType {
-        match self.print_type.load(std::sync::atomic::Ordering::Relaxed) {
-            1 => PrintType::TYPE_DISABLE,
-            2 => PrintType::TYPE_BEFORE,
-            3 => PrintType::TYPE_DISABLE,
-            _ => panic!("error print type!")
-        }
-    }
-
     pub fn set_level(&self, level: log::Level) {
         self.level.swap(level as i32, std::sync::atomic::Ordering::Relaxed);
     }
@@ -117,10 +97,6 @@ impl log::Log for Logger {
                     data = format!("{:?} {} {} - {}\n", local, record.level(), module, record.args());
                 }
             }
-            let t = LOGGER.get_print_type();
-            if t != PrintType::TYPE_DISABLE && t == PrintType::TYPE_BEFORE {
-                print!("{}", &data);
-            }
             //send
             match LOG_SENDER.read() {
                 Ok(lock) => {
@@ -145,7 +121,7 @@ fn format_line(record: &Record<'_>) -> String {
     }
 }
 
-static LOGGER: Logger = Logger { level: AtomicI32::new(1), print_type: AtomicI32::new(3) };
+static LOGGER: Logger = Logger { level: AtomicI32::new(1) };
 
 
 pub trait LogAppender: Send {
@@ -157,35 +133,16 @@ pub trait LogAppender: Send {
 /// log_file_path:  example->  "test.log"
 /// log_cup: example -> 1000
 /// custom_log: default None
-pub fn init_log(log_file_path: &str, log_cup: usize, level: log::Level, print_type: PrintType) -> Result<(), Box<dyn std::error::Error + Send>> {
-    let recv = set_log(RuntimeType::Std, log_cup, level, print_type);
-    let path = log_file_path.to_owned();
-    std::thread::spawn(move || {
-        let mut file = FileAppender::new(&path);
-        loop {
-            //recv
-            let data = recv.recv();
-            if data.is_ok() {
-                let s: String = data.unwrap();
-                let t = LOGGER.get_print_type();
-                if t != PrintType::TYPE_DISABLE && t == PrintType::TYPE_AFTER {
-                    print!("{}", &s);
-                }
-                file.do_log(&s);
-            }
-        }
-    });
-    let r = log::set_logger(&LOGGER)
-        .map(|()| log::set_max_level(LevelFilter::Info));
-    if r.is_err() {
-        return Err(Box::new(r.err().unwrap()));
-    } else {
-        return Ok(());
-    }
+pub fn init_log(log_file_path: &str, log_cup: usize, level: log::Level) -> Result<(), Box<dyn std::error::Error + Send>> {
+    let appenders:Vec<Box<dyn LogAppender>> = vec![
+        Box::new(FileAppender::new(log_file_path)),
+        Box::new(ConsoleAppender {})
+    ];
+    return init_custom_log(appenders, log_cup, level);
 }
 
-pub fn init_custom_log(mut custom_log: Box<dyn LogAppender>, log_cup: usize, level: log::Level, print_type: PrintType) -> Result<(), Box<dyn std::error::Error + Send>> {
-    let recv = set_log(RuntimeType::Std, log_cup, level, print_type);
+pub fn init_custom_log(mut appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, level: log::Level) -> Result<(), Box<dyn std::error::Error + Send>> {
+    let recv = set_log(RuntimeType::Std, log_cup, level);
     std::thread::spawn(move || {
         loop {
             //recv
@@ -195,7 +152,9 @@ pub fn init_custom_log(mut custom_log: Box<dyn LogAppender>, log_cup: usize, lev
                 if !cfg!(feature = "no_print") && !cfg!(feature = "befor_print") && cfg!(feature = "after_print") {
                     print!("{}", &s);
                 }
-                custom_log.as_mut().do_log(&s);
+                for x in &mut appenders {
+                    x.do_log(&s);
+                }
             }
         }
     });
@@ -210,7 +169,7 @@ pub fn init_custom_log(mut custom_log: Box<dyn LogAppender>, log_cup: usize, lev
 
 #[cfg(test)]
 mod test {
-    use crate::fast_log::{LogAppender, PrintType};
+    use crate::fast_log::{LogAppender};
     use crate::{time_util, init_log, init_custom_log};
     use std::time::{SystemTime, Duration};
     use log::info;
@@ -219,7 +178,7 @@ mod test {
     //cargo test --release --color=always --package fast_log --lib log::bench_log --all-features -- --nocapture --exact
     #[test]
     pub fn bench_log() {
-        init_log("requests.log", 1000, log::Level::Info, PrintType::TYPE_AFTER);
+        init_log("requests.log", 1000, log::Level::Info);
         let total = 10000;
         let now = SystemTime::now();
         for index in 0..total {
@@ -239,7 +198,7 @@ mod test {
 
     #[test]
     pub fn test_custom() {
-        init_custom_log(Box::new(CustomLog {}), 1000, log::Level::Info, PrintType::TYPE_AFTER);
+        init_custom_log(vec![Box::new(CustomLog {})], 1000, log::Level::Info);
         info!("Commencing yak shaving");
         sleep(Duration::from_secs(1));
     }
