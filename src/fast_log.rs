@@ -1,10 +1,12 @@
-use std::sync::atomic::{AtomicI32};
+use std::sync::atomic::AtomicI32;
 use std::sync::RwLock;
+
 use chrono::{DateTime, Local};
 use crossbeam_channel::{bounded, Receiver, SendError};
 use log::{Level, LevelFilter, Metadata, Record};
-use crate::plugin::file::FileAppender;
+
 use crate::plugin::console::ConsoleAppender;
+use crate::plugin::file::FileAppender;
 
 lazy_static! {
    static ref LOG_SENDER:RwLock<Option<LoggerSender>>=RwLock::new(Option::None);
@@ -133,11 +135,13 @@ pub trait LogAppender: Send {
 /// log_file_path:  example->  "test.log"
 /// log_cup: example -> 1000
 /// custom_log: default None
-pub fn init_log(log_file_path: &str, log_cup: usize, level: log::Level) -> Result<(), Box<dyn std::error::Error + Send>> {
-    let appenders: Vec<Box<dyn LogAppender>> = vec![
-        Box::new(FileAppender::new(log_file_path)),
-        Box::new(ConsoleAppender {})
+pub fn init_log(log_file_path: &str, log_cup: usize, level: log::Level, debug_mode: bool) -> Result<(), Box<dyn std::error::Error + Send>> {
+    let mut appenders: Vec<Box<dyn LogAppender>> = vec![
+        Box::new(FileAppender::new(log_file_path))
     ];
+    if debug_mode {
+        appenders.push(Box::new(ConsoleAppender {}));
+    }
     return init_custom_log(appenders, log_cup, level);
 }
 
@@ -166,16 +170,18 @@ pub fn init_custom_log(mut appenders: Vec<Box<dyn LogAppender>>, log_cup: usize,
 
 #[cfg(test)]
 mod test {
-    use crate::fast_log::{LogAppender};
-    use crate::{time_util, init_log, init_custom_log};
-    use std::time::{SystemTime, Duration};
-    use log::info;
     use std::thread::sleep;
+    use std::time::{Duration, SystemTime};
 
-    //cargo test --release --color=always --package fast_log --lib log::bench_log --all-features -- --nocapture --exact
+    use log::info;
+
+    use crate::{init_custom_log, init_log, time_util};
+    use crate::fast_log::LogAppender;
+
+    //cargo test --release --color=always --package fast_log --lib fast_log::test::bench_log --no-fail-fast -- --exact -Z unstable-options --show-output
     #[test]
     pub fn bench_log() {
-        init_log("requests.log", 1000, log::Level::Info);
+        init_log("requests.log", 1000, log::Level::Info,false);
         let total = 10000;
         let now = SystemTime::now();
         for index in 0..total {
