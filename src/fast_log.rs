@@ -148,7 +148,7 @@ fn format_line(record: &Record<'_>) -> String {
 static LOGGER: Logger = Logger { level: AtomicI32::new(1), print_type: AtomicI32::new(3) };
 
 
-pub trait FastLog: Send {
+pub trait LogAppender: Send {
     fn do_log(&mut self, info: &str);
 }
 
@@ -184,7 +184,7 @@ pub fn init_log(log_file_path: &str, log_cup: usize, level: log::Level, print_ty
     }
 }
 
-pub fn init_custom_log(mut custom_log: Box<dyn FastLog>, log_cup: usize, level: log::Level, print_type: PrintType) -> Result<(), Box<dyn std::error::Error + Send>> {
+pub fn init_custom_log(mut custom_log: Box<dyn LogAppender>, log_cup: usize, level: log::Level, print_type: PrintType) -> Result<(), Box<dyn std::error::Error + Send>> {
     let recv = set_log(RuntimeType::Std, log_cup, level, print_type);
     std::thread::spawn(move || {
         loop {
@@ -210,7 +210,7 @@ pub fn init_custom_log(mut custom_log: Box<dyn FastLog>, log_cup: usize, level: 
 
 #[cfg(test)]
 mod test {
-    use crate::fast_log::{FastLog, PrintType};
+    use crate::fast_log::{LogAppender, PrintType};
     use crate::{time_util, init_log, init_custom_log};
     use std::time::{SystemTime, Duration};
     use log::info;
@@ -231,7 +231,7 @@ mod test {
 
     struct CustomLog {}
 
-    impl FastLog for CustomLog {
+    impl LogAppender for CustomLog {
         fn do_log(&mut self, info: &str) {
             println!("{}", info);
         }

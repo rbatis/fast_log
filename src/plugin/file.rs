@@ -5,7 +5,7 @@ use std::sync::RwLock;
 
 use log::Level;
 
-use crate::fast_log::FastLog;
+use crate::fast_log::LogAppender;
 
 pub struct FileAppender {
     file: File
@@ -23,7 +23,7 @@ impl FileAppender {
     }
 }
 
-impl FastLog for FileAppender {
+impl LogAppender for FileAppender {
     fn do_log(&mut self, info: &str) {
         self.file.write(info.as_bytes());
         self.file.flush();
