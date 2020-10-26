@@ -4,9 +4,9 @@ the fast log  . This crate uses #![forbid(unsafe_code)] to ensure everything is 
 
 * 有多快？
 //win10(PC 6核心,机械硬盘)
-* use TPS: 525892 条/s
+* use QPS: 525892 条/s
 //win10(PC 6核心,固态硬盘)
-* use TPS: 508215 条/s
+* use QPS: 508215 条/s
 
 * support Future mode,async await based on mpsc channel, tokio or async_std
 * how to use?
