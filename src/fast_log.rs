@@ -1,17 +1,8 @@
-use std::fs::{File, OpenOptions};
-use std::io::Write;
-use std::path::Path;
-use std::sync::atomic::{AtomicBool, AtomicI32, AtomicI8};
+use std::sync::atomic::{ AtomicI32};
 use std::sync::RwLock;
-use std::time::SystemTime;
-
 use chrono::{DateTime, Local};
-use crossbeam_channel::{bounded, Receiver, RecvError, SendError};
+use crossbeam_channel::{bounded, Receiver, SendError};
 use log::{Level, LevelFilter, Metadata, Record};
-use log::info;
-
-use crate::error::LogError;
-use crate::time_util;
 use crate::plugin::file::FileAppender;
 
 lazy_static! {
