@@ -14,16 +14,18 @@ impl Filter for NoFilter{
 }
 
 pub struct ModuleFilter {
-    pub modules: Vec<String>
+    pub contains: Vec<String>
 }
 
 impl Filter for ModuleFilter {
     fn filter(&self, module: &str) -> bool {
         for x in &self.modules {
-            if module == x {
+            if module.contains(x) {
+                //not filter
                 return false;
             }
         }
+        //filter
         return true;
     }
 }
