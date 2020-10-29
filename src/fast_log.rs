@@ -5,6 +5,7 @@ use chrono::{DateTime, Local};
 use crossbeam_channel::{bounded, Receiver, SendError};
 use log::{Level, LevelFilter, Metadata, Record};
 
+use crate::filter::{Filter, ModuleFilter, NoFilter};
 use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
 
@@ -16,18 +17,21 @@ lazy_static! {
 
 pub struct LoggerSender {
     pub runtime_type: RuntimeType,
+
+    pub filter: Box<dyn Filter>,
     //std sender
     pub std_sender: Option<crossbeam_channel::Sender<String>>,
 }
 
 impl LoggerSender {
-    pub fn new(runtime_type: RuntimeType, cap: usize) -> (Self, Receiver<String>) {
+    pub fn new(runtime_type: RuntimeType, cap: usize, filter: Box<dyn Filter>) -> (Self, Receiver<String>) {
         return match runtime_type {
             _ => {
                 let (s, r) = bounded(cap);
                 (Self {
                     runtime_type,
                     std_sender: Some(s),
+                    filter,
                 }, r)
             }
         };
@@ -44,10 +48,10 @@ pub enum RuntimeType {
 }
 
 
-fn set_log(runtime_type: RuntimeType, cup: usize, level: log::Level) -> Receiver<String> {
+fn set_log(runtime_type: RuntimeType, cup: usize, level: log::Level, filter: Box<dyn Filter>) -> Receiver<String> {
     LOGGER.set_level(level);
     let mut w = LOG_SENDER.write().unwrap();
-    let (log, recv) = LoggerSender::new(runtime_type, cup);
+    let (log, recv) = LoggerSender::new(runtime_type, cup, filter);
     *w = Some(log);
     return recv;
 }
@@ -91,20 +95,23 @@ impl log::Log for Logger {
             if self.get_level() < level {
                 return;
             }
-            match level {
-                Level::Warn | Level::Error => {
-                    data = format!("{:?} {} {} - {}  {}\n", local, record.level(), module, record.args(), format_line(record));
-                }
-                _ => {
-                    data = format!("{:?} {} {} - {}\n", local, record.level(), module, record.args());
-                }
-            }
             //send
             match LOG_SENDER.read() {
                 Ok(lock) => {
                     match lock.is_some() {
                         true => {
-                            lock.as_ref().unwrap().send(&data);
+                            let sender = lock.as_ref().unwrap();
+                            if !sender.filter.filter(module){
+                                match level {
+                                    Level::Warn | Level::Error => {
+                                        data = format!("{:?} {} {} - {}  {}\n", local, record.level(), module, record.args(), format_line(record));
+                                    }
+                                    _ => {
+                                        data = format!("{:?} {} {} - {}\n", local, record.level(), module, record.args());
+                                    }
+                                }
+                                sender.send(&data);
+                            }
                         }
                         _ => {}
                     }
@@ -142,11 +149,11 @@ pub fn init_log(log_file_path: &str, log_cup: usize, level: log::Level, debug_mo
     if debug_mode {
         appenders.push(Box::new(ConsoleAppender {}));
     }
-    return init_custom_log(appenders, log_cup, level);
+    return init_custom_log(appenders, log_cup, level, Box::new(NoFilter{}));
 }
 
-pub fn init_custom_log(mut appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, level: log::Level) -> Result<(), Box<dyn std::error::Error + Send>> {
-    let recv = set_log(RuntimeType::Std, log_cup, level);
+pub fn init_custom_log(mut appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, level: log::Level, filter: Box<dyn Filter>) -> Result<(), Box<dyn std::error::Error + Send>> {
+    let recv = set_log(RuntimeType::Std, log_cup, level,filter);
     std::thread::spawn(move || {
         loop {
             //recv
@@ -177,11 +184,12 @@ mod test {
 
     use crate::{init_custom_log, init_log, time_util};
     use crate::fast_log::LogAppender;
+    use crate::filter::{ModuleFilter, NoFilter};
 
     //cargo test --release --color=always --package fast_log --lib fast_log::test::bench_log --no-fail-fast -- --exact -Z unstable-options --show-output
     #[test]
     pub fn bench_log() {
-        init_log("requests.log", 1000, log::Level::Info,false);
+        init_log("requests.log", 1000, log::Level::Info, false);
         let total = 10000;
         let now = SystemTime::now();
         for index in 0..total {
@@ -202,7 +210,7 @@ mod test {
 
     #[test]
     pub fn test_custom() {
-        init_custom_log(vec![Box::new(CustomLog {})], 1000, log::Level::Info);
+        init_custom_log(vec![Box::new(CustomLog {})], 1000, log::Level::Info,Box::new(NoFilter{}));
         info!("Commencing yak shaving");
         sleep(Duration::from_secs(1));
     }
