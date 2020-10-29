@@ -19,7 +19,7 @@ pub struct ModuleFilter {
 
 impl Filter for ModuleFilter {
     fn filter(&self, module: &str) -> bool {
-        for x in &self.modules {
+        for x in &self.contains {
             if module.contains(x) {
                 //not filter
                 return false;
