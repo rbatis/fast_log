@@ -5,7 +5,8 @@ use std::sync::RwLock;
 
 use log::Level;
 
-use crate::fast_log::LogAppender;
+use crate::fast_log::{LogAppender, FastLogRecord};
+use chrono::{DateTime, Local};
 
 /// only write append into file
 pub struct FileAppender {
@@ -25,8 +26,17 @@ impl FileAppender {
 }
 
 impl LogAppender for FileAppender {
-    fn do_log(&mut self, info: &str) {
-        self.file.write(info.as_bytes());
+    fn do_log(&mut self,record: &FastLogRecord) {
+        let mut data=String::new();
+        match record.level {
+            Level::Warn | Level::Error => {
+                data = format!("{} {} {} - {}  {}\n", &record.now, record.level, record.module_path, record.args, record.format_line());
+            }
+            _ => {
+                data = format!("{} {} {} - {}\n", &record.now, record.level, record.module_path, record.args);
+            }
+        }
+        self.file.write(data.as_bytes());
         self.file.flush();
     }
 }
