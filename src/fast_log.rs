@@ -2,7 +2,7 @@ use std::sync::atomic::AtomicI32;
 use std::sync::RwLock;
 
 use chrono::{DateTime, Local};
-use crossbeam_channel::{bounded, Receiver, SendError};
+use crossbeam_channel::{Receiver, SendError};
 use log::{Level, LevelFilter, Metadata, Record};
 
 use crate::filter::{Filter, ModuleFilter, NoFilter};
@@ -44,7 +44,7 @@ impl LoggerSender {
     pub fn new(runtime_type: RuntimeType, cap: usize, filter: Box<dyn Filter>) -> (Self, Receiver<FastLogRecord>) {
         return match runtime_type {
             _ => {
-                let (s, r) = bounded(cap);
+                let (s, r) = crossbeam_channel::bounded(cap);
                 (Self {
                     runtime_type,
                     std_sender: Some(s),
