@@ -14,9 +14,9 @@ impl Filter for NoFilter {
 
 pub struct ModuleFilter {
     //include
-    pub contains: Option<Vec<String>>,
+    pub contains: Option<Vec<&'static str>>,
     //exclude
-    pub exclude_contains: Option<Vec<String>>,
+    pub exclude_contains: Option<Vec<&'static str>>,
 }
 
 impl Filter for ModuleFilter {
