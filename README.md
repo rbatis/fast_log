@@ -2,6 +2,10 @@
 the fast log  . This crate uses #![forbid(unsafe_code)] to ensure everything is implemented in 100% Safe Rust.
 一款追求极致速度的日志实现，使用crossbeam 无锁channel提高一倍效率(相对于标准库的mpsc)，使用channel异步写日志。完全使用safe 代码实现，无不安全代码
 
+* 使用无锁消息队列,日志先存于队列中，后续flush磁盘。不阻塞调用方
+* 全Append模式写入文件，对固态/机械磁盘效率高
+
+
 * 有多快？
 //win10(PC 6核心,机械硬盘)
 * use QPS: 525892 条/s
