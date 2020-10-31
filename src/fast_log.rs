@@ -196,6 +196,15 @@ mod test {
     use crate::fast_log::{LogAppender, FastLogRecord};
     use crate::filter::{ModuleFilter, NoFilter};
 
+
+
+    #[test]
+    pub fn test_log() {
+        init_log("requests.log", 1000, log::Level::Info, true);
+        info!("Commencing yak shaving{}", 0);
+        sleep(Duration::from_secs(1));
+    }
+
     //cargo test --release --color=always --package fast_log --lib fast_log::test::bench_log --no-fail-fast -- --exact -Z unstable-options --show-output
     #[test]
     pub fn bench_log() {
