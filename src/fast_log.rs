@@ -2,7 +2,7 @@ use std::sync::atomic::AtomicI32;
 use std::sync::RwLock;
 
 use chrono::{DateTime, Local};
-use crossbeam_channel::{Receiver, SendError};
+use crossbeam_channel::{select, Receiver, Select, SendError};
 use log::{Level, LevelFilter, Metadata, Record};
 
 use crate::filter::{Filter, ModuleFilter, NoFilter};
@@ -10,7 +10,7 @@ use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
 
 lazy_static! {
-   static ref LOG_SENDER:RwLock<Option<LoggerSender>>=RwLock::new(Option::None);
+    static ref LOG_SENDER: RwLock<Option<LoggerSender>> = RwLock::new(Option::None);
 }
 
 #[derive(Clone, Debug)]
@@ -41,15 +41,22 @@ pub struct LoggerSender {
 }
 
 impl LoggerSender {
-    pub fn new(runtime_type: RuntimeType, cap: usize, filter: Box<dyn Filter>) -> (Self, Receiver<FastLogRecord>) {
+    pub fn new(
+        runtime_type: RuntimeType,
+        cap: usize,
+        filter: Box<dyn Filter>,
+    ) -> (Self, Receiver<FastLogRecord>) {
         return match runtime_type {
             _ => {
                 let (s, r) = crossbeam_channel::bounded(cap);
-                (Self {
-                    runtime_type,
-                    std_sender: Some(s),
-                    filter,
-                }, r)
+                (
+                    Self {
+                        runtime_type,
+                        std_sender: Some(s),
+                        filter,
+                    },
+                    r,
+                )
             }
         };
     }
@@ -61,11 +68,15 @@ impl LoggerSender {
 ///runtime Type
 #[derive(Clone, Debug)]
 pub enum RuntimeType {
-    Std
+    Std,
 }
 
-
-fn set_log(runtime_type: RuntimeType, cup: usize, level: log::Level, filter: Box<dyn Filter>) -> Receiver<FastLogRecord> {
+fn set_log(
+    runtime_type: RuntimeType,
+    cup: usize,
+    level: log::Level,
+    filter: Box<dyn Filter>,
+) -> Receiver<FastLogRecord> {
     LOGGER.set_level(level);
     let mut w = LOG_SENDER.write().unwrap();
     let (log, recv) = LoggerSender::new(runtime_type, cup, filter);
@@ -79,7 +90,8 @@ pub struct Logger {
 
 impl Logger {
     pub fn set_level(&self, level: log::Level) {
-        self.level.swap(level as i32, std::sync::atomic::Ordering::Relaxed);
+        self.level
+            .swap(level as i32, std::sync::atomic::Ordering::Relaxed);
     }
 
     pub fn get_level(&self) -> log::Level {
@@ -89,7 +101,7 @@ impl Logger {
             3 => Level::Info,
             4 => Level::Debug,
             5 => Level::Trace,
-            _ => panic!("error log level!")
+            _ => panic!("error log level!"),
         }
     }
 }
@@ -106,25 +118,23 @@ impl log::Log for Logger {
             }
             //send
             match LOG_SENDER.read() {
-                Ok(lock) => {
-                    match lock.is_some() {
-                        true => {
-                            let sender = lock.as_ref().unwrap();
-                            if !sender.filter.filter(record) {
-                                sender.send(FastLogRecord {
-                                    level,
-                                    target: record.metadata().target().to_string(),
-                                    args: record.args().to_string(),
-                                    module_path: record.module_path().unwrap_or("").to_string(),
-                                    file: record.file().unwrap_or("").to_string(),
-                                    line: record.line().clone(),
-                                    now: Local::now(),
-                                });
-                            }
+                Ok(lock) => match lock.is_some() {
+                    true => {
+                        let sender = lock.as_ref().unwrap();
+                        if !sender.filter.filter(record) {
+                            sender.send(FastLogRecord {
+                                level,
+                                target: record.metadata().target().to_string(),
+                                args: record.args().to_string(),
+                                module_path: record.module_path().unwrap_or("").to_string(),
+                                file: record.file().unwrap_or("").to_string(),
+                                line: record.line().clone(),
+                                now: Local::now(),
+                            });
                         }
-                        _ => {}
                     }
-                }
+                    _ => {}
+                },
                 _ => {}
             }
         }
@@ -139,44 +149,72 @@ fn format_line(record: &Record<'_>) -> String {
     }
 }
 
-static LOGGER: Logger = Logger { level: AtomicI32::new(1) };
+static LOGGER: Logger = Logger {
+    level: AtomicI32::new(1),
+};
 
+struct Wait {
+    done: crossbeam_channel::Sender<()>,
+}
+
+impl Drop for Wait {
+    fn drop(&mut self) {
+        self.done.send(());
+    }
+}
 
 pub trait LogAppender: Send {
     fn do_log(&mut self, record: &FastLogRecord);
 }
 
-
 /// initializes the log file path
 /// log_file_path:  example->  "test.log"
 /// log_cup: example -> 1000
 /// custom_log: default None
-pub fn init_log(log_file_path: &str, log_cup: usize, level: log::Level, debug_mode: bool) -> Result<(), Box<dyn std::error::Error + Send>> {
-    let mut appenders: Vec<Box<dyn LogAppender>> = vec![
-        Box::new(FileAppender::new(log_file_path))
-    ];
+pub fn init_log(
+    log_file_path: &str,
+    log_cup: usize,
+    level: log::Level,
+    debug_mode: bool,
+) -> Result<(), Box<dyn std::error::Error + Send>> {
+    let mut appenders: Vec<Box<dyn LogAppender>> = vec![Box::new(FileAppender::new(log_file_path))];
     if debug_mode {
         appenders.push(Box::new(ConsoleAppender {}));
     }
     return init_custom_log(appenders, log_cup, level, Box::new(NoFilter {}));
 }
 
-pub fn init_custom_log(mut appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, level: log::Level, filter: Box<dyn Filter>) -> Result<(), Box<dyn std::error::Error + Send>> {
+pub fn init_custom_log(
+    mut appenders: Vec<Box<dyn LogAppender>>,
+    log_cup: usize,
+    level: log::Level,
+    filter: Box<dyn Filter>,
+) -> Result<(), Box<dyn std::error::Error + Send>> {
     let recv = set_log(RuntimeType::Std, log_cup, level, filter);
+    let (done, done_recv) = crossbeam_channel::bounded::<()>(0);
+
     std::thread::spawn(move || {
+        let mut sel = Select::new();
+        let log_chan_index = sel.recv(&recv);
+        let done_chan_index = sel.recv(&done_recv);
         loop {
-            //recv
-            let data = recv.recv();
-            if data.is_ok() {
-                let s: FastLogRecord = data.unwrap();
-                for x in &mut appenders {
-                    x.do_log(&s);
-                }
+            let oper = sel.select();
+            let index = oper.index();
+            if index == done_chan_index {
+                // recv.try_recv()
+                oper.recv(&done_recv);
             }
+
+            //let data = recv.recv();
+            //if data.is_ok() {
+            //    let s: FastLogRecord = data.unwrap();
+            //    for x in &mut appenders {
+            //        x.do_log(&s);
+            //    }
+            //}
         }
     });
-    let r = log::set_logger(&LOGGER)
-        .map(|()| log::set_max_level(LevelFilter::Info));
+    let r = log::set_logger(&LOGGER).map(|()| log::set_max_level(LevelFilter::Info));
     if r.is_err() {
         return Err(Box::new(r.err().unwrap()));
     } else {
@@ -189,14 +227,12 @@ mod test {
     use std::thread::sleep;
     use std::time::{Duration, SystemTime};
 
-    use log::{info, Level};
     use log::error;
+    use log::{info, Level};
 
-    use crate::{init_custom_log, init_log, time_util};
-    use crate::fast_log::{LogAppender, FastLogRecord};
+    use crate::fast_log::{FastLogRecord, LogAppender};
     use crate::filter::{ModuleFilter, NoFilter};
-
-
+    use crate::{init_custom_log, init_log, time_util};
 
     #[test]
     pub fn test_log() {
@@ -226,10 +262,20 @@ mod test {
             let mut data;
             match record.level {
                 Level::Warn | Level::Error => {
-                    data = format!("{} {} {} - {}  {}\n", &record.now, record.level, record.module_path, record.args, record.format_line());
+                    data = format!(
+                        "{} {} {} - {}  {}\n",
+                        &record.now,
+                        record.level,
+                        record.module_path,
+                        record.args,
+                        record.format_line()
+                    );
                 }
                 _ => {
-                    data = format!("{} {} {} - {}\n", &record.now, record.level, record.module_path, record.args);
+                    data = format!(
+                        "{} {} {} - {}\n",
+                        &record.now, record.level, record.module_path, record.args
+                    );
                 }
             }
             print!("{}", data);
@@ -238,7 +284,12 @@ mod test {
 
     #[test]
     pub fn test_custom() {
-        init_custom_log(vec![Box::new(CustomLog {})], 1000, log::Level::Info, Box::new(NoFilter {}));
+        init_custom_log(
+            vec![Box::new(CustomLog {})],
+            1000,
+            log::Level::Info,
+            Box::new(NoFilter {}),
+        );
         info!("Commencing yak shaving");
         error!("Commencing error");
         sleep(Duration::from_secs(1));
