@@ -2,7 +2,7 @@ use std::sync::atomic::AtomicI32;
 use std::sync::RwLock;
 
 use chrono::{DateTime, Local};
-use crossbeam_channel::{select, Receiver, Select, SendError};
+use crossbeam_channel::{select, Receiver, Select, SendError, Sender};
 use log::{Level, LevelFilter, Metadata, Record};
 
 use crate::filter::{Filter, ModuleFilter, NoFilter};
@@ -153,18 +153,15 @@ static LOGGER: Logger = Logger {
     level: AtomicI32::new(1),
 };
 
-struct Wait {
-    done: crossbeam_channel::Sender<()>,
-}
-
-impl Drop for Wait {
-    fn drop(&mut self) {
-        self.done.send(());
-    }
-}
-
 pub trait LogAppender: Send {
     fn do_log(&mut self, record: &FastLogRecord);
+}
+
+pub struct WaitFinish(Sender<()>);
+impl Drop for WaitFinish {
+    fn drop(&mut self) {
+        self.0.send(());
+    }
 }
 
 /// initializes the log file path
@@ -176,7 +173,7 @@ pub fn init_log(
     log_cup: usize,
     level: log::Level,
     debug_mode: bool,
-) -> Result<(), Box<dyn std::error::Error + Send>> {
+) -> Result<WaitFinish, Box<dyn std::error::Error + Send>> {
     let mut appenders: Vec<Box<dyn LogAppender>> = vec![Box::new(FileAppender::new(log_file_path))];
     if debug_mode {
         appenders.push(Box::new(ConsoleAppender {}));
@@ -189,36 +186,45 @@ pub fn init_custom_log(
     log_cup: usize,
     level: log::Level,
     filter: Box<dyn Filter>,
-) -> Result<(), Box<dyn std::error::Error + Send>> {
+) -> Result<WaitFinish, Box<dyn std::error::Error + Send>> {
     let recv = set_log(RuntimeType::Std, log_cup, level, filter);
     let (done, done_recv) = crossbeam_channel::bounded::<()>(0);
 
+    let mut do_log = move |data| {
+        let s: FastLogRecord = data;
+        for x in &mut appenders {
+            x.do_log(&s);
+        }
+    };
+
     std::thread::spawn(move || {
         let mut sel = Select::new();
-        let log_chan_index = sel.recv(&recv);
-        let done_chan_index = sel.recv(&done_recv);
+        let log_index = sel.recv(&recv);
+        let done_index = sel.recv(&done_recv);
         loop {
-            let oper = sel.select();
-            let index = oper.index();
-            if index == done_chan_index {
-                // recv.try_recv()
-                oper.recv(&done_recv);
+            let index = sel.ready();
+
+            // 进程退出前， 将未写完的日志写完
+            if index == done_index {
+                while let Ok(data) = recv.try_recv() {
+                    do_log(data);
+                }
+                break;
             }
 
-            //let data = recv.recv();
-            //if data.is_ok() {
-            //    let s: FastLogRecord = data.unwrap();
-            //    for x in &mut appenders {
-            //        x.do_log(&s);
-            //    }
-            //}
+            if let Ok(data) = recv.try_recv() {
+                do_log(data);
+
+            }
         }
+
+        done_recv.try_recv();
     });
     let r = log::set_logger(&LOGGER).map(|()| log::set_max_level(LevelFilter::Info));
     if r.is_err() {
         return Err(Box::new(r.err().unwrap()));
     } else {
-        return Ok(());
+        return Ok(WaitFinish(done));
     }
 }
 
