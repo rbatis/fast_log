@@ -214,7 +214,6 @@ pub fn init_custom_log(
 
             if let Ok(data) = recv.try_recv() {
                 do_log(data);
-
             }
         }
 
@@ -242,15 +241,14 @@ mod test {
 
     #[test]
     pub fn test_log() {
-        init_log("requests.log", 1000, log::Level::Info, true);
+        let _wait = init_log("requests.log", 1000, log::Level::Info, true);
         info!("Commencing yak shaving{}", 0);
-        sleep(Duration::from_secs(1));
     }
 
     //cargo test --release --color=always --package fast_log --lib fast_log::test::bench_log --no-fail-fast -- --exact -Z unstable-options --show-output
     #[test]
     pub fn bench_log() {
-        init_log("requests.log", 1000, log::Level::Info, false);
+        let _wait = init_log("requests.log", 1000, log::Level::Info, false);
         let total = 10000;
         let now = SystemTime::now();
         for index in 0..total {
@@ -258,7 +256,6 @@ mod test {
             info!("Commencing yak shaving{}", index);
         }
         time_util::count_time_tps(total, now);
-        sleep(Duration::from_secs(1));
     }
 
     struct CustomLog {}
@@ -290,7 +287,7 @@ mod test {
 
     #[test]
     pub fn test_custom() {
-        init_custom_log(
+        let _wait = init_custom_log(
             vec![Box::new(CustomLog {})],
             1000,
             log::Level::Info,
@@ -298,6 +295,5 @@ mod test {
         );
         info!("Commencing yak shaving");
         error!("Commencing error");
-        sleep(Duration::from_secs(1));
     }
 }
