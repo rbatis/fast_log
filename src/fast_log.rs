@@ -33,8 +33,6 @@ impl FastLogRecord {
 }
 
 pub struct LoggerSender {
-    pub runtime_type: RuntimeType,
-
     pub filter: Box<dyn Filter>,
     //std sender
     pub std_sender: Option<crossbeam_channel::Sender<FastLogRecord>>,
@@ -46,7 +44,6 @@ impl LoggerSender {
             _ => {
                 let (s, r) = crossbeam_channel::bounded(cap);
                 (Self {
-                    runtime_type,
                     std_sender: Some(s),
                     filter,
                 }, r)

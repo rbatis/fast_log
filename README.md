@@ -25,7 +25,7 @@ fast_log="1.3"
 use fast_log::{init_log};
 use log::{error, info, warn};
 fn  main(){
-    init_log("requests.log", 1000, log::Level::Info);
+    init_log("requests.log", 1000, log::Level::Info, true);
     info!("Commencing yak shaving");
 }
 ```
