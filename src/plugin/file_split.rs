@@ -18,6 +18,8 @@ pub struct FileSplitAppender {
 }
 
 impl FileSplitAppender {
+    ///split_log_num: number of log file data num
+    ///dir_path the dir
     pub fn new(dir_path: &str, split_log_num: u64) -> FileSplitAppender {
         if !dir_path.is_empty() && dir_path.ends_with(".log") {
             panic!("FileCompactionAppender only support new from path,for example: 'logs/xx/'");
