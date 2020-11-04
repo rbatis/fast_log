@@ -163,9 +163,9 @@ pub fn init_log(log_file_path: &str, log_cup: usize, level: log::Level, debug_mo
 /// log_dir_path:  example->  "log/"
 /// log_cup: example -> 1000
 /// custom_log: default None
-pub fn init_split_log(log_dir_path: &str, log_cup: usize, level: log::Level, debug_mode: bool) -> Result<(), Box<dyn std::error::Error + Send>> {
+pub fn init_split_log(log_dir_path: &str, log_cup: usize, split_cup: u64, level: log::Level, debug_mode: bool) -> Result<(), Box<dyn std::error::Error + Send>> {
     let mut appenders: Vec<Box<dyn LogAppender>> = vec![
-        Box::new(FileSplitAppender::new(log_dir_path,100000))
+        Box::new(FileSplitAppender::new(log_dir_path,split_cup))
     ];
     if debug_mode {
         appenders.push(Box::new(ConsoleAppender {}));
@@ -258,7 +258,7 @@ mod test {
 
     #[test]
     pub fn test_file_compation() {
-        init_split_log("target/logs/", 1000, log::Level::Info, true);
+        init_split_log("target/logs/", 1000, 100000,log::Level::Info, true);
         for _ in 0 ..200000{
             info!("Commencing yak shaving");
         }
