@@ -147,30 +147,28 @@ pub trait LogAppender: Send {
 
 /// initializes the log file path
 /// log_file_path:  example->  "test.log"
-/// log_cup: example -> 1000
-/// custom_log: default None
-pub fn init_log(log_file_path: &str, log_cup: usize, level: log::Level, debug_mode: bool) -> Result<(), Box<dyn std::error::Error + Send>> {
+/// channel_cup: example -> 1000
+pub fn init_log(log_file_path: &str, channel_cup: usize, level: log::Level, debug_mode: bool) -> Result<(), Box<dyn std::error::Error + Send>> {
     let mut appenders: Vec<Box<dyn LogAppender>> = vec![
         Box::new(FileAppender::new(log_file_path))
     ];
     if debug_mode {
         appenders.push(Box::new(ConsoleAppender {}));
     }
-    return init_custom_log(appenders, log_cup, level, Box::new(NoFilter {}));
+    return init_custom_log(appenders, channel_cup, level, Box::new(NoFilter {}));
 }
 
 /// initializes the log file path
 /// log_dir_path:  example->  "log/"
-/// log_cup: example -> 1000
-/// custom_log: default None
-pub fn init_split_log(log_dir_path: &str, log_cup: usize, split_cup: u64, level: log::Level, debug_mode: bool) -> Result<(), Box<dyn std::error::Error + Send>> {
+/// channel_cup: example -> 1000
+pub fn init_split_log(log_dir_path: &str, channel_cup: usize, log_cup: u64, level: log::Level, debug_mode: bool) -> Result<(), Box<dyn std::error::Error + Send>> {
     let mut appenders: Vec<Box<dyn LogAppender>> = vec![
-        Box::new(FileSplitAppender::new(log_dir_path,split_cup))
+        Box::new(FileSplitAppender::new(log_dir_path,log_cup))
     ];
     if debug_mode {
         appenders.push(Box::new(ConsoleAppender {}));
     }
-    return init_custom_log(appenders, log_cup, level, Box::new(NoFilter {}));
+    return init_custom_log(appenders, channel_cup, level, Box::new(NoFilter {}));
 }
 
 pub fn init_custom_log(mut appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, level: log::Level, filter: Box<dyn Filter>) -> Result<(), Box<dyn std::error::Error + Send>> {
