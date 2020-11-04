@@ -8,6 +8,7 @@ use log::{Level, LevelFilter, Metadata, Record};
 use crate::filter::{Filter, ModuleFilter, NoFilter};
 use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
+use crate::plugin::file_split::FileSplitAppender;
 
 lazy_static! {
    static ref LOG_SENDER:RwLock<Option<LoggerSender>>=RwLock::new(Option::None);
@@ -158,6 +159,20 @@ pub fn init_log(log_file_path: &str, log_cup: usize, level: log::Level, debug_mo
     return init_custom_log(appenders, log_cup, level, Box::new(NoFilter {}));
 }
 
+/// initializes the log file path
+/// log_dir_path:  example->  "log/"
+/// log_cup: example -> 1000
+/// custom_log: default None
+pub fn init_split_log(log_dir_path: &str, log_cup: usize, level: log::Level, debug_mode: bool) -> Result<(), Box<dyn std::error::Error + Send>> {
+    let mut appenders: Vec<Box<dyn LogAppender>> = vec![
+        Box::new(FileSplitAppender::new(log_dir_path,100000))
+    ];
+    if debug_mode {
+        appenders.push(Box::new(ConsoleAppender {}));
+    }
+    return init_custom_log(appenders, log_cup, level, Box::new(NoFilter {}));
+}
+
 pub fn init_custom_log(mut appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, level: log::Level, filter: Box<dyn Filter>) -> Result<(), Box<dyn std::error::Error + Send>> {
     let recv = set_log(RuntimeType::Std, log_cup, level, filter);
     std::thread::spawn(move || {
@@ -189,7 +204,7 @@ mod test {
     use log::{info, Level};
     use log::error;
 
-    use crate::{init_custom_log, init_log, time_util};
+    use crate::{init_custom_log, init_log, time_util, init_split_log};
     use crate::fast_log::{LogAppender, FastLogRecord};
     use crate::filter::{ModuleFilter, NoFilter};
     use crate::plugin::file_split::FileSplitAppender;
@@ -243,8 +258,8 @@ mod test {
 
     #[test]
     pub fn test_file_compation() {
-        init_custom_log(vec![Box::new(FileSplitAppender::new("target/logs/", 1000))], 1000, log::Level::Info, Box::new(NoFilter {}));
-        for _ in 0 ..2000{
+        init_split_log("target/logs/", 1000, log::Level::Info, true);
+        for _ in 0 ..200000{
             info!("Commencing yak shaving");
         }
         sleep(Duration::from_secs(1));
