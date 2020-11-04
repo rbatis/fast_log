@@ -8,7 +8,7 @@ use log::Level;
 
 use crate::fast_log::{FastLogRecord, LogAppender};
 
-/// only write append into file
+/// split log file
 pub struct FileSplitAppender {
     split_log_num: u64,
     temp_log_num: u64,
