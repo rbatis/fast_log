@@ -192,7 +192,7 @@ mod test {
     use crate::{init_custom_log, init_log, time_util};
     use crate::fast_log::{LogAppender, FastLogRecord};
     use crate::filter::{ModuleFilter, NoFilter};
-
+    use crate::plugin::file_split::FileSplitAppender;
 
 
     #[test]
@@ -238,6 +238,15 @@ mod test {
         init_custom_log(vec![Box::new(CustomLog {})], 1000, log::Level::Info, Box::new(NoFilter {}));
         info!("Commencing yak shaving");
         error!("Commencing error");
+        sleep(Duration::from_secs(1));
+    }
+
+    #[test]
+    pub fn test_file_compation() {
+        init_custom_log(vec![Box::new(FileSplitAppender::new("target/logs/", 1000))], 1000, log::Level::Info, Box::new(NoFilter {}));
+        for _ in 0 ..2000{
+            info!("Commencing yak shaving");
+        }
         sleep(Duration::from_secs(1));
     }
 }
