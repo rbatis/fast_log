@@ -31,7 +31,7 @@ fast_log="1.3"
 ```
 
 
-#### use log 使用日志
+#### use log 简单日志
 ```rust
 use fast_log::{init_log};
 use log::{error, info, warn};
@@ -41,7 +41,7 @@ fn  main(){
 }
 ```
 
-##### split log
+##### split log 分割日志，不启用压缩（zip_compass参数为ture启用压缩）
 ```rust
 #[test]
     pub fn test_file_compation() {
@@ -53,7 +53,7 @@ fn  main(){
     }
 ```
 
-##### custom log
+##### custom log 自定义日志
 ```rust
 use fast_log::{init_custom_log,LogAppender};
 use log::{error, info, warn};
