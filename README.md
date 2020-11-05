@@ -34,7 +34,7 @@ fn  main(){
 ```rust
 #[test]
     pub fn test_file_compation() {
-        fast_log::init_split_log("target/logs/", 1000, 100000, log::Level::Info, None,true);
+        init_split_log("target/logs/", 1000, 10000, false,log::Level::Info, None, true);
         for _ in 0..200000 {
             info!("Commencing yak shaving");
         }
