@@ -10,8 +10,10 @@ the fast log  . This crate uses #![forbid(unsafe_code)] to ensure everything is 
 
 
 > 有多快？
+
 //win10(PC 6核心,机械硬盘)
 * use QPS: 525892 条/s
+
 //win10(PC 6核心,固态硬盘)
 * use QPS: 508215 条/s
 
