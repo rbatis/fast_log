@@ -13,17 +13,32 @@ impl Filter for NoFilter {
 }
 
 pub struct ModuleFilter {
-    //include
-    pub contains: Option<Vec<String>>,
-    //exclude
-    pub exclude_contains: Option<Vec<String>>,
+    //include contains
+    pub include: Option<Vec<String>>,
+    //exclude contains
+    pub exclude: Option<Vec<String>>,
+}
+
+impl ModuleFilter {
+    fn new_include(arg: Vec<String>) -> Self {
+        Self {
+            include: Some(arg),
+            exclude: None,
+        }
+    }
+    fn new_exclude(arg: Vec<String>) -> Self {
+        Self {
+            include: None,
+            exclude: Some(arg),
+        }
+    }
 }
 
 impl Filter for ModuleFilter {
     fn filter(&self, record: &log::Record) -> bool {
         let module = record.module_path().unwrap_or("");
-        if self.contains.is_some() {
-            for x in self.contains.as_ref().unwrap() {
+        if self.include.is_some() {
+            for x in self.include.as_ref().unwrap() {
                 if module.contains(x) {
                     //not filter
                     return false;
@@ -32,8 +47,8 @@ impl Filter for ModuleFilter {
             //filter
             return true;
         }
-        if self.exclude_contains.is_some() {
-            for x in self.exclude_contains.as_ref().unwrap() {
+        if self.exclude.is_some() {
+            for x in self.exclude.as_ref().unwrap() {
                 if module.contains(x) {
                     //filter
                     return true;
