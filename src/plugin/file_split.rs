@@ -7,6 +7,7 @@ use chrono::{DateTime, Local};
 use log::Level;
 
 use crate::fast_log::{FastLogRecord, LogAppender};
+use zip::write::FileOptions;
 
 /// split log file
 pub struct FileSplitAppender {
@@ -15,12 +16,13 @@ pub struct FileSplitAppender {
     create_num: u64,
     dir_path: String,
     file: File,
+    zip_compress: bool,
 }
 
 impl FileSplitAppender {
     ///split_log_num: number of log file data num
     ///dir_path the dir
-    pub fn new(dir_path: &str, split_log_num: u64) -> FileSplitAppender {
+    pub fn new(dir_path: &str, split_log_num: u64, zip_compress: bool) -> FileSplitAppender {
         if !dir_path.is_empty() && dir_path.ends_with(".log") {
             panic!("FileCompactionAppender only support new from path,for example: 'logs/xx/'");
         }
@@ -31,6 +33,9 @@ impl FileSplitAppender {
             DirBuilder::new().create(dir_path);
         }
         let mut last = open_last_num(dir_path).unwrap();
+        if zip_compress {
+            spawn_to_zip(&format!("{}{}.log", dir_path.to_string(), last));
+        }
         last = last + 1;
         let first_file_path = format!("{}{}.log", dir_path.to_string(), last);
         Self {
@@ -43,6 +48,7 @@ impl FileSplitAppender {
                 .append(true)
                 .open(first_file_path.as_str())
                 .unwrap_or(File::create(Path::new(first_file_path.as_str())).unwrap()),
+            zip_compress,
         }
     }
 }
@@ -59,6 +65,7 @@ impl LogAppender for FileSplitAppender {
             }
         }
         if self.temp_log_num >= self.split_log_num {
+            let current_file_path = format!("{}{}.log", self.dir_path.to_string(), self.create_num);
             self.create_num += 1;
             let first_file_path = format!("{}{}.log", self.dir_path.to_string(), self.create_num);
             let create = OpenOptions::new()
@@ -69,6 +76,10 @@ impl LogAppender for FileSplitAppender {
                 self.file = create.unwrap();
                 write_last_num(&self.dir_path, self.create_num);
                 self.temp_log_num = 0;
+                if self.zip_compress {
+                    //to zip
+                    spawn_to_zip(&current_file_path);
+                }
             } else {
                 self.create_num -= 1;
             }
@@ -110,4 +121,45 @@ fn write_last_num(dir_path: &str, last: u64) {
         .unwrap();
     config.write(last.to_string().as_bytes());
     config.flush();
+}
+
+fn spawn_to_zip(log_file: &str) {
+    let log_file = log_file.to_owned();
+    std::thread::spawn(move || {
+        // let log_file=log_file.clone();
+        to_zip(log_file.as_str());
+    });
+}
+
+fn to_zip(log_file_path: &str) {
+    if log_file_path.is_empty() {
+        return;
+    }
+    let log_names: Vec<&str> = log_file_path.split("/").collect();
+    let log_name = log_names[log_names.len() - 1];
+    let mut log_file = std::fs::File::open(log_file_path);
+    match log_file {
+        Ok(_) => {
+            //make zip
+            let zip_path = log_file_path.replace(".log", ".zip");
+            let zip_file = std::fs::File::create(&zip_path);
+            match zip_file {
+                Ok(zip_file) => {
+                    let mut zip = zip::ZipWriter::new(zip_file);
+                    zip.start_file(log_name, FileOptions::default());
+                    let finish = zip.finish();
+                    match finish {
+                        Ok(f) => {
+                            std::fs::remove_file(log_file_path);
+                        }
+                        _ => {
+                            //nothing
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        _ => {}
+    }
 }

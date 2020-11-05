@@ -155,7 +155,7 @@ pub fn init_log(log_file_path: &str, channel_cup: usize, level: log::Level, mut 
     if debug_mode {
         appenders.push(Box::new(ConsoleAppender {}));
     }
-    let mut log_filter:Box<dyn Filter> = Box::new(NoFilter {});
+    let mut log_filter: Box<dyn Filter> = Box::new(NoFilter {});
     if filter.is_some() {
         log_filter = filter.take().unwrap();
     }
@@ -165,14 +165,14 @@ pub fn init_log(log_file_path: &str, channel_cup: usize, level: log::Level, mut 
 /// initializes the log file path
 /// log_dir_path:  example->  "log/"
 /// channel_cup: example -> 1000
-pub fn init_split_log(log_dir_path: &str, channel_cup: usize, log_cup: u64, level: log::Level, mut filter: Option<Box<dyn Filter>>, debug_mode: bool) -> Result<(), Box<dyn std::error::Error + Send>> {
+pub fn init_split_log(log_dir_path: &str, channel_cup: usize, log_cup: u64, zip_compress: bool, level: log::Level, mut filter: Option<Box<dyn Filter>>, debug_mode: bool) -> Result<(), Box<dyn std::error::Error + Send>> {
     let mut appenders: Vec<Box<dyn LogAppender>> = vec![
-        Box::new(FileSplitAppender::new(log_dir_path, log_cup))
+        Box::new(FileSplitAppender::new(log_dir_path, log_cup, zip_compress))
     ];
     if debug_mode {
         appenders.push(Box::new(ConsoleAppender {}));
     }
-    let mut log_filter:Box<dyn Filter> = Box::new(NoFilter {});
+    let mut log_filter: Box<dyn Filter> = Box::new(NoFilter {});
     if filter.is_some() {
         log_filter = filter.take().unwrap();
     }
@@ -218,7 +218,7 @@ mod test {
 
     #[test]
     pub fn test_log() {
-        init_log("requests.log", 1000, log::Level::Info, None,true);
+        init_log("requests.log", 1000, log::Level::Info, None, true);
         info!("Commencing yak shaving{}", 0);
         sleep(Duration::from_secs(1));
     }
@@ -264,8 +264,8 @@ mod test {
 
     #[test]
     pub fn test_file_compation() {
-        init_split_log("target/logs/", 1000, 100000, log::Level::Info, None, true);
-        for _ in 0..200000 {
+        init_split_log("target/logs/", 1000, 10000, false,log::Level::Info, None, true);
+        for _ in 0..20000 {
             info!("Commencing yak shaving");
         }
         sleep(Duration::from_secs(1));
