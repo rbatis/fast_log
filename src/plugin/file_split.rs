@@ -169,7 +169,7 @@ fn to_zip(log_file_path: &str) {
             }
         }
         Err(e) => {
-            println!("[fast_log] {}",e);
+            println!("[fast_log] give up compress log file. because: {}",e);
         }
     }
 }
