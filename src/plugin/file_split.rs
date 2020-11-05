@@ -140,7 +140,8 @@ fn to_zip(log_file_path: &str) {
     match log_file {
         Ok(_) => {
             //make zip
-            let zip_path = log_file_path.replace(".log", ".zip");
+            let date=Local::now();
+            let zip_path = log_file_path.replace(".log", &format!("-{}.zip",date.date()));
             let zip_file = std::fs::File::create(&zip_path);
             match zip_file {
                 Ok(zip_file) => {

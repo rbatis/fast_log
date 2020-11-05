@@ -273,4 +273,13 @@ mod test {
         }
         sleep(Duration::from_secs(1));
     }
+
+    #[test]
+    pub fn test_file_compation_zip() {
+        init_split_log("target/logs/", 1000, 10000, true,log::Level::Info, None, true);
+        for _ in 0..20000 {
+            info!("Commencing yak shaving");
+        }
+        sleep(Duration::from_secs(1));
+    }
 }
