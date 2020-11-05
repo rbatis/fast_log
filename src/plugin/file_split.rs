@@ -3,7 +3,7 @@ use std::io::{Error, Read, Write};
 use std::path::Path;
 use std::sync::RwLock;
 
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Local, SecondsFormat};
 use log::Level;
 
 use crate::fast_log::{FastLogRecord, LogAppender};
@@ -141,7 +141,8 @@ fn to_zip(log_file_path: &str) {
         Ok(_) => {
             //make zip
             let date=Local::now();
-            let zip_path = log_file_path.replace(".log", &format!("-{}.zip",date.date()));
+            let date=date.format("%Y-%m-%dT%H:%M:%S").to_string();
+            let zip_path = log_file_path.replace(".log", &format!("-{}.zip",date));
             let zip_file = std::fs::File::create(&zip_path);
             match zip_file {
                 Ok(zip_file) => {
