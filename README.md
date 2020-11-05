@@ -4,7 +4,7 @@ the fast log  . This crate uses #![forbid(unsafe_code)] to ensure everything is 
 
 * 使用无锁消息队列,日志先存于队列中，后续flush磁盘。不阻塞调用方
 * 全Append模式写入文件，对固态/机械磁盘效率高
-* 支持日志分割，zip压缩
+* 支持日志分割，Zip压缩，过滤
 
 
 * 有多快？
