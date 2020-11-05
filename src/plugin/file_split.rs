@@ -126,7 +126,6 @@ fn write_last_num(dir_path: &str, last: u64) {
 fn spawn_to_zip(log_file: &str) {
     let log_file = log_file.to_owned();
     std::thread::spawn(move || {
-        // let log_file=log_file.clone();
         to_zip(log_file.as_str());
     });
 }
