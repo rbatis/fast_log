@@ -20,19 +20,19 @@ pub struct ModuleFilter {
 }
 
 impl ModuleFilter {
-    fn new_include(arg: Vec<String>) -> Self {
+    pub fn new_include(arg: Vec<String>) -> Self {
         Self {
             include: Some(arg),
             exclude: None,
         }
     }
-    fn new_exclude(arg: Vec<String>) -> Self {
+    pub fn new_exclude(arg: Vec<String>) -> Self {
         Self {
             include: None,
             exclude: Some(arg),
         }
     }
-    fn new(include: Option<Vec<String>>,exclude:Option<Vec<String>>) -> Self {
+    pub fn new(include: Option<Vec<String>>, exclude: Option<Vec<String>>) -> Self {
         Self {
             include,
             exclude,
