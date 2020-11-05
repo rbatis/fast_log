@@ -136,13 +136,17 @@ fn to_zip(log_file_path: &str) {
     }
     let log_names: Vec<&str> = log_file_path.split("/").collect();
     let log_name = log_names[log_names.len() - 1];
-    let mut log_file = std::fs::File::open(log_file_path);
+
+
+    let mut log_file = OpenOptions::new()
+        .read(true)
+        .open(Path::new(log_file_path));
     match log_file {
         Ok(_) => {
             //make zip
             let date=Local::now();
-            let date=date.format("%Y-%m-%dT%H:%M:%S").to_string();
-            let zip_path = log_file_path.replace(".log", &format!("-{}.zip",date));
+            let date=date.format("%Y_%m_%dT%H_%M_%S").to_string();
+            let zip_path = log_file_path.replace(".log", &format!("_{}.zip",date));
             let zip_file = std::fs::File::create(&zip_path);
             match zip_file {
                 Ok(zip_file) => {
@@ -153,14 +157,19 @@ fn to_zip(log_file_path: &str) {
                         Ok(f) => {
                             std::fs::remove_file(log_file_path);
                         }
-                        _ => {
+                        Err(e)  => {
                             //nothing
+                            println!("[fast_log] try zip fail{:?}",e);
                         }
                     }
                 }
-                _ => {}
+                Err(e) => {
+                    println!("[fast_log] create(&{}) fail:{}",zip_path,e);
+                }
             }
         }
-        _ => {}
+        Err(e) => {
+            println!("[fast_log] {}",e);
+        }
     }
 }
