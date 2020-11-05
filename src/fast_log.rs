@@ -148,27 +148,35 @@ pub trait LogAppender: Send {
 /// initializes the log file path
 /// log_file_path:  example->  "test.log"
 /// channel_cup: example -> 1000
-pub fn init_log(log_file_path: &str, channel_cup: usize, level: log::Level, debug_mode: bool) -> Result<(), Box<dyn std::error::Error + Send>> {
+pub fn init_log(log_file_path: &str, channel_cup: usize, level: log::Level, mut filter: Option<Box<dyn Filter>>, debug_mode: bool) -> Result<(), Box<dyn std::error::Error + Send>> {
     let mut appenders: Vec<Box<dyn LogAppender>> = vec![
         Box::new(FileAppender::new(log_file_path))
     ];
     if debug_mode {
         appenders.push(Box::new(ConsoleAppender {}));
     }
-    return init_custom_log(appenders, channel_cup, level, Box::new(NoFilter {}));
+    let mut log_filter:Box<dyn Filter> = Box::new(NoFilter {});
+    if filter.is_some() {
+        log_filter = filter.take().unwrap();
+    }
+    return init_custom_log(appenders, channel_cup, level, log_filter);
 }
 
 /// initializes the log file path
 /// log_dir_path:  example->  "log/"
 /// channel_cup: example -> 1000
-pub fn init_split_log(log_dir_path: &str, channel_cup: usize, log_cup: u64, level: log::Level, debug_mode: bool) -> Result<(), Box<dyn std::error::Error + Send>> {
+pub fn init_split_log(log_dir_path: &str, channel_cup: usize, log_cup: u64, level: log::Level, mut filter: Option<Box<dyn Filter>>, debug_mode: bool) -> Result<(), Box<dyn std::error::Error + Send>> {
     let mut appenders: Vec<Box<dyn LogAppender>> = vec![
-        Box::new(FileSplitAppender::new(log_dir_path,log_cup))
+        Box::new(FileSplitAppender::new(log_dir_path, log_cup))
     ];
     if debug_mode {
         appenders.push(Box::new(ConsoleAppender {}));
     }
-    return init_custom_log(appenders, channel_cup, level, Box::new(NoFilter {}));
+    let mut log_filter:Box<dyn Filter> = Box::new(NoFilter {});
+    if filter.is_some() {
+        log_filter = filter.take().unwrap();
+    }
+    return init_custom_log(appenders, channel_cup, level, log_filter);
 }
 
 pub fn init_custom_log(mut appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, level: log::Level, filter: Box<dyn Filter>) -> Result<(), Box<dyn std::error::Error + Send>> {
@@ -210,7 +218,7 @@ mod test {
 
     #[test]
     pub fn test_log() {
-        init_log("requests.log", 1000, log::Level::Info, true);
+        init_log("requests.log", 1000, log::Level::Info, None,true);
         info!("Commencing yak shaving{}", 0);
         sleep(Duration::from_secs(1));
     }
@@ -218,7 +226,7 @@ mod test {
     //cargo test --release --color=always --package fast_log --lib fast_log::test::bench_log --no-fail-fast -- --exact -Z unstable-options --show-output
     #[test]
     pub fn bench_log() {
-        init_log("requests.log", 1000, log::Level::Info, false);
+        init_log("requests.log", 1000, log::Level::Info, None, false);
         let total = 10000;
         let now = SystemTime::now();
         for index in 0..total {
@@ -256,8 +264,8 @@ mod test {
 
     #[test]
     pub fn test_file_compation() {
-        init_split_log("target/logs/", 1000, 100000,log::Level::Info, true);
-        for _ in 0 ..200000{
+        init_split_log("target/logs/", 1000, 100000, log::Level::Info, None, true);
+        for _ in 0..200000 {
             info!("Commencing yak shaving");
         }
         sleep(Duration::from_secs(1));

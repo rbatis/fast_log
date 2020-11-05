@@ -25,11 +25,24 @@ fast_log="1.3"
 use fast_log::{init_log};
 use log::{error, info, warn};
 fn  main(){
-    init_log("requests.log", 1000, log::Level::Info, true);
+    fast_log::init_log("requests.log", 1000, log::Level::Info, None,true);      
     info!("Commencing yak shaving");
 }
 ```
 
+##### split log
+```rust
+#[test]
+    pub fn test_file_compation() {
+        fast_log::init_split_log("target/logs/", 1000, 100000, log::Level::Info, None,true);
+        for _ in 0..200000 {
+            info!("Commencing yak shaving");
+        }
+        sleep(Duration::from_secs(1));
+    }
+```
+
+##### custom log
 ```rust
 use fast_log::{init_custom_log,LogAppender};
 use log::{error, info, warn};
@@ -41,7 +54,7 @@ use log::{error, info, warn};
         }
     }
 fn  main(){
-    init_custom_log(vec![Box::new(custom_log)],1000, log::Level::Info,true);
+    fast_log::init_custom_log(vec![Box::new(CustomLog {})], 1000, log::Level::Info, Box::new(NoFilter {}));
     info!("Commencing yak shaving");
     std::thread::sleep(std::time::Duration::from_secs(1));
 }
