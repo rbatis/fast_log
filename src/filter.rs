@@ -32,6 +32,12 @@ impl ModuleFilter {
             exclude: Some(arg),
         }
     }
+    fn new(include: Option<Vec<String>>,exclude:Option<Vec<String>>) -> Self {
+        Self {
+            include,
+            exclude,
+        }
+    }
 }
 
 impl Filter for ModuleFilter {
