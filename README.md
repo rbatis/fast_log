@@ -17,8 +17,9 @@ the fast log  . This crate uses #![forbid(unsafe_code)] to ensure everything is 
 //win10(PC 6核心,固态硬盘)
 * use QPS: 508215 条/s
 
-* support Future mode,async await based on mpsc channel, tokio or async_std
-* support log split,zip_compress
+> support Future mode,async await based on mpsc channel, tokio or async_std
+> support log split,zip_compress
+
 * how to use?
 ```toml
 log = "0.4"
