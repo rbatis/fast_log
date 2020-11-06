@@ -7,6 +7,7 @@ use log::Level;
 use crate::fast_log::{FastLogRecord, LogAppender};
 use zip::write::FileOptions;
 use std::cell::RefCell;
+use futures_core::future::BoxFuture;
 
 /// split log file allow zip compress log
 pub struct FileSplitAppender {
@@ -60,7 +61,7 @@ impl FileSplitAppender {
 }
 
 impl LogAppender for FileSplitAppender {
-    fn do_log(&self, record: &FastLogRecord) {
+    fn do_log(&self, record: &FastLogRecord)-> Option<BoxFuture<()>> {
         let mut log = String::new();
         match record.level {
             Level::Warn | Level::Error => {
@@ -94,6 +95,7 @@ impl LogAppender for FileSplitAppender {
         data.file.write(log.as_bytes());
         data.file.flush();
         data.temp_log_num += 1;
+        None
     }
 }
 

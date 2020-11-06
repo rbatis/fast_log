@@ -1,3 +1,5 @@
+use std::future::Future;
+use std::ops::Deref;
 use std::sync::atomic::AtomicI32;
 use std::sync::RwLock;
 
@@ -9,7 +11,7 @@ use crate::filter::{Filter, NoFilter};
 use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
 use crate::plugin::file_split::FileSplitAppender;
-use std::ops::Deref;
+use futures_core::future::BoxFuture;
 
 lazy_static! {
    static ref LOG_SENDER:RwLock<Option<LoggerSender>>=RwLock::new(Option::None);
@@ -135,7 +137,7 @@ static LOGGER: Logger = Logger { level: AtomicI32::new(1) };
 /// LogAppender append logs
 /// Appender will be running on single main thread,please do_log for new thread or new an Future
 pub trait LogAppender: Send {
-    fn do_log(&self, record: &FastLogRecord);
+    fn do_log(&self, record: &FastLogRecord) -> Option<BoxFuture<()>>;
 }
 
 
@@ -208,10 +210,10 @@ mod test {
     use log::error;
 
     use crate::{init_custom_log, init_log, init_split_log};
-    use crate::fast_log::{LogAppender, FastLogRecord};
-    use crate::filter::{NoFilter};
     use crate::bencher::QPS;
-
+    use crate::fast_log::{FastLogRecord, LogAppender};
+    use crate::filter::NoFilter;
+    use futures_core::future::BoxFuture;
 
     #[test]
     pub fn test_log() {
@@ -238,7 +240,7 @@ mod test {
     struct CustomLog {}
 
     impl LogAppender for CustomLog {
-        fn do_log(&self, record: &FastLogRecord) {
+        fn do_log(&self, record: &FastLogRecord)-> Option<BoxFuture<()>> {
             let data;
             match record.level {
                 Level::Warn | Level::Error => {
@@ -249,6 +251,7 @@ mod test {
                 }
             }
             print!("{}", data);
+            None
         }
     }
 
@@ -262,7 +265,7 @@ mod test {
 
     #[test]
     pub fn test_file_compation() {
-        init_split_log("target/logs/", 1000, 10000, false,log::Level::Info, None, true);
+        init_split_log("target/logs/", 1000, 10000, false, log::Level::Info, None, true);
         for _ in 0..20000 {
             info!("Commencing yak shaving");
         }
@@ -271,7 +274,7 @@ mod test {
 
     #[test]
     pub fn test_file_compation_zip() {
-        init_split_log("target/logs/", 1000, 100, true,log::Level::Info, None, true);
+        init_split_log("target/logs/", 1000, 100, true, log::Level::Info, None, true);
         for _ in 0..200 {
             info!("Commencing yak shaving");
         }
