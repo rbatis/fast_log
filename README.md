@@ -41,7 +41,7 @@ fn  main(){
 }
 ```
 
-##### split log 分割日志，不启用压缩（zip_compass参数为ture启用压缩）
+##### split log 分割日志，allow_zip_compress = Zip压缩
 ```rust
 #[test]
     pub fn test_file_compation() {
