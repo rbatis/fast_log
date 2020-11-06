@@ -1,12 +1,10 @@
+use std::cell::RefCell;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
-use std::path::Path;
 
 use log::Level;
 
-use crate::fast_log::{LogAppender, FastLogRecord};
-use std::cell::{UnsafeCell, RefCell};
-use std::borrow::BorrowMut;
+use crate::fast_log::{FastLogRecord, LogAppender};
 
 /// only write append into file
 pub struct FileAppender {
