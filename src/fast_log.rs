@@ -9,6 +9,7 @@ use crate::filter::{Filter, NoFilter};
 use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
 use crate::plugin::file_split::FileSplitAppender;
+use std::ops::Deref;
 
 lazy_static! {
    static ref LOG_SENDER:RwLock<Option<LoggerSender>>=RwLock::new(Option::None);
@@ -105,9 +106,8 @@ impl log::Log for Logger {
             //send
             match LOG_SENDER.read() {
                 Ok(lock) => {
-                    match lock.is_some() {
-                        true => {
-                            let sender = lock.as_ref().unwrap();
+                    match lock.deref() {
+                        Some(sender) => {
                             if !sender.filter.filter(record) {
                                 sender.send(FastLogRecord {
                                     level,
