@@ -5,7 +5,7 @@ use chrono::{DateTime, Local};
 use crossbeam_channel::{Receiver, SendError};
 use log::{Level, LevelFilter, Metadata, Record};
 
-use crate::filter::{Filter, ModuleFilter, NoFilter};
+use crate::filter::{Filter, NoFilter};
 use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
 use crate::plugin::file_split::FileSplitAppender;
@@ -130,13 +130,6 @@ impl log::Log for Logger {
     fn flush(&self) {}
 }
 
-fn format_line(record: &Record<'_>) -> String {
-    match (record.file(), record.line()) {
-        (Some(file), Some(line)) => format!("({}:{})", file, line),
-        _ => String::new(),
-    }
-}
-
 static LOGGER: Logger = Logger { level: AtomicI32::new(1) };
 
 
@@ -208,15 +201,15 @@ pub fn init_custom_log(mut appenders: Vec<Box<dyn LogAppender>>, log_cup: usize,
 #[cfg(test)]
 mod test {
     use std::thread::sleep;
-    use std::time::{Duration, SystemTime};
+    use std::time::{Duration, Instant};
 
     use log::{info, Level};
     use log::error;
 
-    use crate::{init_custom_log, init_log, time_util, init_split_log};
+    use crate::{init_custom_log, init_log, init_split_log};
     use crate::fast_log::{LogAppender, FastLogRecord};
-    use crate::filter::{ModuleFilter, NoFilter};
-    use crate::plugin::file_split::FileSplitAppender;
+    use crate::filter::{NoFilter};
+    use crate::bencher::QPS;
 
 
     #[test]
@@ -231,12 +224,13 @@ mod test {
     pub fn bench_log() {
         init_log("requests.log", 1000, log::Level::Info, None, false);
         let total = 10000;
-        let now = SystemTime::now();
+        let now = Instant::now();
         for index in 0..total {
             //sleep(Duration::from_secs(1));
             info!("Commencing yak shaving{}", index);
         }
-        time_util::count_time_tps(total, now);
+        now.time(total);
+        now.qps(total);
         sleep(Duration::from_secs(1));
     }
 
@@ -244,7 +238,7 @@ mod test {
 
     impl LogAppender for CustomLog {
         fn do_log(&mut self, record: &FastLogRecord) {
-            let mut data;
+            let data;
             match record.level {
                 Level::Warn | Level::Error => {
                     data = format!("{} {} {} - {}  {}\n", &record.now, record.level, record.module_path, record.args, record.format_line());

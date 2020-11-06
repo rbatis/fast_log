@@ -1,11 +1,14 @@
-//#![forbid(unsafe_code)]
+#![forbid(unsafe_code)]
+#![allow(unused_variables)]
+#![allow(unused_assignments)]
+#![allow(unused_must_use)]
 
 #[macro_use]
 extern crate lazy_static;
 
+mod bencher;
 pub mod fast_log;
 pub mod error;
-pub mod time_util;
 pub mod plugin;
 pub mod filter;
 

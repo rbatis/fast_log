@@ -1,9 +1,7 @@
 use std::fs::{DirBuilder, File, OpenOptions};
-use std::io::{Error, Read, Write};
+use std::io::{Read, Write};
 use std::path::Path;
-use std::sync::RwLock;
-
-use chrono::{DateTime, Local, SecondsFormat};
+use chrono::{Local};
 use log::Level;
 
 use crate::fast_log::{FastLogRecord, LogAppender};
@@ -138,7 +136,7 @@ fn to_zip(log_file_path: &str) {
     let log_name = log_names[log_names.len() - 1];
 
 
-    let mut log_file = OpenOptions::new()
+    let log_file = OpenOptions::new()
         .read(true)
         .open(Path::new(log_file_path));
     match log_file {

@@ -1,12 +1,10 @@
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
-use std::sync::RwLock;
 
 use log::Level;
 
 use crate::fast_log::{LogAppender, FastLogRecord};
-use chrono::{DateTime, Local};
 
 /// only write append into file
 pub struct FileAppender {
