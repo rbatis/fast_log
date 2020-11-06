@@ -219,7 +219,7 @@ pub fn init_custom_log(
 
         done_recv.try_recv();
     });
-    let r = log::set_logger(&LOGGER).map(|()| log::set_max_level(LevelFilter::Info));
+    let r = log::set_logger(&LOGGER).map(|()| log::set_max_level(LevelFilter::Trace));
     if r.is_err() {
         return Err(Box::new(r.err().unwrap()));
     } else {
