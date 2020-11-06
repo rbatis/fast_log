@@ -182,42 +182,56 @@ pub fn init_split_log(log_dir_path: &str, channel_cup: usize, log_cup: u64, allo
 
 pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, level: log::Level, filter: Box<dyn Filter>) -> Result<(), Box<dyn std::error::Error + Send>> {
     let main_recv = set_log(RuntimeType::Std, log_cup, level, filter);
-
-    let mut recvs = vec![];
-    let mut sends = vec![];
-    for idx in 0..appenders.len() {
-        let (s, r) = crossbeam_channel::bounded(log_cup);
-        recvs.push(r);
-        sends.push(s);
-    }
-    //main recv data
-    std::thread::spawn(move || {
-        loop {
-            let data = main_recv.recv();
-            if data.is_ok() {
-                let s: FastLogRecord = data.unwrap();
-                for x in &sends {
-                    x.send(s.clone());
-                }
-            }
-        }
-    });
-
-    //all appender recv
-    let mut index = 0;
-    for item in appenders {
-        let recv = recvs[index].to_owned();
+    if appenders.len() == 1 {
+        //main recv data
         std::thread::spawn(move || {
             loop {
-                //recv
-                let data = recv.recv();
+                let data = main_recv.recv();
                 if data.is_ok() {
                     let s: FastLogRecord = data.unwrap();
-                    item.do_log(&s);
+                    for x in &appenders {
+                        x.do_log(x);
+                    }
                 }
             }
         });
-        index += 1;
+    } else {
+        let mut recvs = vec![];
+        let mut sends = vec![];
+        for idx in 0..appenders.len() {
+            let (s, r) = crossbeam_channel::bounded(log_cup);
+            recvs.push(r);
+            sends.push(s);
+        }
+        //main recv data
+        std::thread::spawn(move || {
+            loop {
+                let data = main_recv.recv();
+                if data.is_ok() {
+                    let s: FastLogRecord = data.unwrap();
+                    for x in &sends {
+                        x.send(s.clone());
+                    }
+                }
+            }
+        });
+
+        //all appender recv
+        let mut index = 0;
+        for item in appenders {
+            let recv = recvs[index].to_owned();
+            std::thread::spawn(move || {
+                loop {
+                    //recv
+                    let data = recv.recv();
+                    if data.is_ok() {
+                        let s: FastLogRecord = data.unwrap();
+                        item.do_log(&s);
+                    }
+                }
+            });
+            index += 1;
+        }
     }
 
     let r = log::set_logger(&LOGGER)
