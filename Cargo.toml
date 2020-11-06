@@ -20,6 +20,3 @@ crossbeam-channel = "0.4.3"
 crossbeam-utils = "0.7.2"
 
 zip = "0.5"
-
-futures-core="0.3"
-async-std = { version = "1.7", features = ["attributes"] }
