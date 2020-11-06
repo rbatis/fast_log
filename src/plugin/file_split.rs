@@ -20,7 +20,7 @@ pub struct FileSplitAppender {
 impl FileSplitAppender {
     ///split_log_num: number of log file data num
     ///dir_path the dir
-    pub fn new(dir_path: &str, split_log_num: u64, zip_compress: bool) -> FileSplitAppender {
+    pub fn new(dir_path: &str, split_log_num: u64, allow_zip_compress: bool) -> FileSplitAppender {
         if !dir_path.is_empty() && dir_path.ends_with(".log") {
             panic!("FileCompactionAppender only support new from path,for example: 'logs/xx/'");
         }
@@ -31,7 +31,7 @@ impl FileSplitAppender {
             DirBuilder::new().create(dir_path);
         }
         let mut last = open_last_num(dir_path).unwrap();
-        if zip_compress {
+        if allow_zip_compress {
             spawn_to_zip(&format!("{}{}.log", dir_path.to_string(), last));
         }
         last = last + 1;
@@ -46,7 +46,7 @@ impl FileSplitAppender {
                 .append(true)
                 .open(first_file_path.as_str())
                 .unwrap_or(File::create(Path::new(first_file_path.as_str())).unwrap()),
-            zip_compress,
+            zip_compress: allow_zip_compress,
         }
     }
 }

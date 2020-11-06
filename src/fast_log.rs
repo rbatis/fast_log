@@ -159,11 +159,11 @@ pub fn init_log(log_file_path: &str, channel_cup: usize, level: log::Level, mut 
 /// log_dir_path:  example->  "log/"
 /// channel_cup: example -> 1000
 /// log_cup: splite if cup full
-/// zip_compress: zip compress log file
+/// allow_zip_compress: zip compress log file
 /// filter: log filter
-pub fn init_split_log(log_dir_path: &str, channel_cup: usize, log_cup: u64, zip_compress: bool, level: log::Level, mut filter: Option<Box<dyn Filter>>, debug_mode: bool) -> Result<(), Box<dyn std::error::Error + Send>> {
+pub fn init_split_log(log_dir_path: &str, channel_cup: usize, log_cup: u64, allow_zip_compress: bool, level: log::Level, mut filter: Option<Box<dyn Filter>>, debug_mode: bool) -> Result<(), Box<dyn std::error::Error + Send>> {
     let mut appenders: Vec<Box<dyn LogAppender>> = vec![
-        Box::new(FileSplitAppender::new(log_dir_path, log_cup, zip_compress))
+        Box::new(FileSplitAppender::new(log_dir_path, log_cup, allow_zip_compress))
     ];
     if debug_mode {
         appenders.push(Box::new(ConsoleAppender {}));
