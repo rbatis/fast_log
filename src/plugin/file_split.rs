@@ -7,7 +7,7 @@ use log::Level;
 use crate::fast_log::{FastLogRecord, LogAppender};
 use zip::write::FileOptions;
 
-/// split log file
+/// split log file allow zip compress log
 pub struct FileSplitAppender {
     split_log_num: u64,
     temp_log_num: u64,
