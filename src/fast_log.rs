@@ -11,7 +11,6 @@ use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
 use crate::plugin::file_split::FileSplitAppender;
 
-
 lazy_static! {
    static ref LOG_SENDER:RwLock<Option<LoggerSender>>=RwLock::new(Option::None);
 }
@@ -137,6 +136,10 @@ static LOGGER: Logger = Logger { level: AtomicI32::new(1) };
 /// Appender will be running on single main thread,please do_log for new thread or new an Future
 pub trait LogAppender: Send {
     fn do_log(&self, record: &FastLogRecord);
+
+    fn type_name(&self) -> &'static str {
+        std::any::type_name::<Self>()
+    }
 }
 
 
@@ -177,20 +180,46 @@ pub fn init_split_log(log_dir_path: &str, channel_cup: usize, log_cup: u64, allo
     return init_custom_log(appenders, channel_cup, level, log_filter);
 }
 
-pub fn init_custom_log(mut appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, level: log::Level, filter: Box<dyn Filter>) -> Result<(), Box<dyn std::error::Error + Send>> {
-    let recv = set_log(RuntimeType::Std, log_cup, level, filter);
+pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, level: log::Level, filter: Box<dyn Filter>) -> Result<(), Box<dyn std::error::Error + Send>> {
+    let main_recv = set_log(RuntimeType::Std, log_cup, level, filter);
+
+    let mut recvs = vec![];
+    let mut sends = vec![];
+    for idx in 0..appenders.len() {
+        let (s, r) = crossbeam_channel::bounded(log_cup);
+        recvs.push(r);
+        sends.push(s);
+    }
+    //main recv data
     std::thread::spawn(move || {
         loop {
-            //recv
-            let data = recv.recv();
+            let data = main_recv.recv();
             if data.is_ok() {
                 let s: FastLogRecord = data.unwrap();
-                for x in &mut appenders {
-                    x.do_log(&s);
+                for x in &sends {
+                    x.send(s.clone());
                 }
             }
         }
     });
+
+    //all appender recv
+    let mut index = 0;
+    for item in appenders {
+        let recv = recvs[index].to_owned();
+        std::thread::spawn(move || {
+            loop {
+                //recv
+                let data = recv.recv();
+                if data.is_ok() {
+                    let s: FastLogRecord = data.unwrap();
+                    item.do_log(&s);
+                }
+            }
+        });
+        index += 1;
+    }
+
     let r = log::set_logger(&LOGGER)
         .map(|()| log::set_max_level(LevelFilter::Info));
     if r.is_err() {
@@ -212,7 +241,6 @@ mod test {
     use crate::bencher::QPS;
     use crate::fast_log::{FastLogRecord, LogAppender};
     use crate::filter::NoFilter;
-
 
     #[test]
     pub fn test_log() {
