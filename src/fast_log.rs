@@ -135,7 +135,7 @@ static LOGGER: Logger = Logger { level: AtomicI32::new(1) };
 /// LogAppender append logs
 /// Appender will be running on single main thread,please do_log for new thread or new an Future
 pub trait LogAppender: Send {
-    fn do_log(&mut self, record: &FastLogRecord);
+    fn do_log(&self, record: &FastLogRecord);
 }
 
 
@@ -238,7 +238,7 @@ mod test {
     struct CustomLog {}
 
     impl LogAppender for CustomLog {
-        fn do_log(&mut self, record: &FastLogRecord) {
+        fn do_log(&self, record: &FastLogRecord) {
             let data;
             match record.level {
                 Level::Warn | Level::Error => {

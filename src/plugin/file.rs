@@ -5,26 +5,28 @@ use std::path::Path;
 use log::Level;
 
 use crate::fast_log::{LogAppender, FastLogRecord};
+use std::cell::{UnsafeCell, RefCell};
+use std::borrow::BorrowMut;
 
 /// only write append into file
 pub struct FileAppender {
-    file: File
+    file: RefCell<File>
 }
 
 impl FileAppender {
     pub fn new(log_file_path: &str) -> FileAppender {
         Self {
-            file: OpenOptions::new()
+            file: RefCell::new(OpenOptions::new()
                 .create(true)
                 .append(true)
                 .open(log_file_path)
-                .unwrap_or(File::create(Path::new(log_file_path)).unwrap())
+                .unwrap())
         }
     }
 }
 
 impl LogAppender for FileAppender {
-    fn do_log(&mut self, record: &FastLogRecord) {
+    fn do_log(&self, record: &FastLogRecord) {
         let mut data = String::new();
         match record.level {
             Level::Warn | Level::Error => {
@@ -34,7 +36,7 @@ impl LogAppender for FileAppender {
                 data = format!("{} {} {} - {}\n", &record.now, record.level, record.module_path, record.args);
             }
         }
-        self.file.write(data.as_bytes());
-        self.file.flush();
+        self.file.borrow_mut().write(data.as_bytes());
+        self.file.borrow_mut().flush();
     }
 }

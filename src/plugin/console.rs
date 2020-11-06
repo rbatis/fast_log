@@ -5,7 +5,7 @@ use log::Level;
 pub struct ConsoleAppender {}
 
 impl LogAppender for ConsoleAppender {
-    fn do_log(&mut self, record: &FastLogRecord) {
+    fn do_log(&self, record: &FastLogRecord) {
         let data;
         match record.level {
             Level::Warn | Level::Error => {
