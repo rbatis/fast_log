@@ -190,7 +190,7 @@ pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, lev
                 if data.is_ok() {
                     let s: FastLogRecord = data.unwrap();
                     for x in &appenders {
-                        x.do_log(x);
+                        x.do_log(&s);
                     }
                 }
             }
