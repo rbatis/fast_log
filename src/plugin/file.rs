@@ -5,7 +5,7 @@ use std::io::Write;
 use log::Level;
 
 use crate::fast_log::{FastLogRecord, LogAppender};
-use futures_core::future::BoxFuture;
+
 
 /// only write append into file
 pub struct FileAppender {
@@ -25,7 +25,7 @@ impl FileAppender {
 }
 
 impl LogAppender for FileAppender {
-    fn do_log(&self, record: &FastLogRecord) -> Option<BoxFuture<()>>{
+    fn do_log(&self, record: &FastLogRecord){
         let mut data = String::new();
         match record.level {
             Level::Warn | Level::Error => {
@@ -37,6 +37,5 @@ impl LogAppender for FileAppender {
         }
         self.file.borrow_mut().write(data.as_bytes());
         self.file.borrow_mut().flush();
-        None
     }
 }

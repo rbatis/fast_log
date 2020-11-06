@@ -1,12 +1,12 @@
 use crate::fast_log::{LogAppender, FastLogRecord};
 use log::Level;
-use futures_core::future::BoxFuture;
+
 
 /// only write append into console
 pub struct ConsoleAppender {}
 
 impl LogAppender for ConsoleAppender {
-    fn do_log(&self, record: &FastLogRecord)-> Option<BoxFuture<()>> {
+    fn do_log(&self, record: &FastLogRecord){
         let data;
         match record.level {
             Level::Warn | Level::Error => {
@@ -17,6 +17,5 @@ impl LogAppender for ConsoleAppender {
             }
         }
         print!("{}", data);
-        None
     }
 }

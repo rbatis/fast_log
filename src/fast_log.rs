@@ -1,4 +1,3 @@
-use std::future::Future;
 use std::ops::Deref;
 use std::sync::atomic::AtomicI32;
 use std::sync::RwLock;
@@ -11,7 +10,7 @@ use crate::filter::{Filter, NoFilter};
 use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
 use crate::plugin::file_split::FileSplitAppender;
-use futures_core::future::BoxFuture;
+
 
 lazy_static! {
    static ref LOG_SENDER:RwLock<Option<LoggerSender>>=RwLock::new(Option::None);
@@ -137,7 +136,7 @@ static LOGGER: Logger = Logger { level: AtomicI32::new(1) };
 /// LogAppender append logs
 /// Appender will be running on single main thread,please do_log for new thread or new an Future
 pub trait LogAppender: Send {
-    fn do_log(&self, record: &FastLogRecord) -> Option<BoxFuture<()>>;
+    fn do_log(&self, record: &FastLogRecord);
 }
 
 
@@ -213,7 +212,7 @@ mod test {
     use crate::bencher::QPS;
     use crate::fast_log::{FastLogRecord, LogAppender};
     use crate::filter::NoFilter;
-    use futures_core::future::BoxFuture;
+
 
     #[test]
     pub fn test_log() {
@@ -240,7 +239,7 @@ mod test {
     struct CustomLog {}
 
     impl LogAppender for CustomLog {
-        fn do_log(&self, record: &FastLogRecord)-> Option<BoxFuture<()>> {
+        fn do_log(&self, record: &FastLogRecord) {
             let data;
             match record.level {
                 Level::Warn | Level::Error => {
@@ -251,7 +250,6 @@ mod test {
                 }
             }
             print!("{}", data);
-            None
         }
     }
 
