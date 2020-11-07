@@ -9,6 +9,22 @@ the fast log  . This crate uses #![forbid(unsafe_code)] to ensure everything is 
 * 内置 过滤配置支持，可自定义过滤掉其他库打印的日志
 
 
+```
+                                         ----------------------
+                               ->        |   console appender  |
+                                         ----------------------
+
+              --------------   ->        ----------------------
+log data->    |   channel  |             |   file   appender  |
+              --------------             ----------------------
+
+                               ->        -------------------------------
+                                         |   orther custom   appender  |
+                                         -------------------------------
+```
+
+
+
 
 
 
