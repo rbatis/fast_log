@@ -10,17 +10,21 @@ the fast log  . This crate uses #![forbid(unsafe_code)] to ensure everything is 
 
 
 ```
-                                         ----------------------
-                               -> Thread |   console appender  |
-                                         ----------------------
 
-              --------------   ->        ----------------------
-log data->    |   channel  |     Thread  |   file   appender  |
-              --------------             ----------------------
+              -----------------
+log data->    | main channel  |   ->          
+              ----------------- 
+                                        ----------------             ----------------------
+                                  ->    |Thread channel|  -> Thread  |   file   appender  |
+                                        ----------------             ----------------------
+                                        ----------------             ----------------------
+                                  ->    |Thread channel|  -> Thread  |  console  appender  |
+                                        ----------------             ----------------------
+                                        ----------------             ----------------------
+                                  ->    |Thread channel|  -> Thread  |   other   appender  |
+                                        ----------------             ----------------------
 
-                               ->        -------------------------------
-                                 Thread  |   orther custom   appender  |
-                                         -------------------------------
+
 ```
 
 
