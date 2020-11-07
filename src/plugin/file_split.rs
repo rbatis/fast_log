@@ -2,7 +2,6 @@ use std::fs::{DirBuilder, File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::Path;
 use chrono::{Local};
-use log::Level;
 
 use crate::fast_log::{FastLogRecord, LogAppender};
 use zip::write::FileOptions;
@@ -62,15 +61,7 @@ impl FileSplitAppender {
 
 impl LogAppender for FileSplitAppender {
     fn do_log(&self, record: &FastLogRecord) {
-        let mut log = String::new();
-        match record.level {
-            Level::Warn | Level::Error => {
-                log = format!("{} {} {} - {}  {}\n", &record.now, record.level, record.module_path, record.args, record.format_line());
-            }
-            _ => {
-                log = format!("{} {} {} - {}\n", &record.now, record.level, record.module_path, record.args);
-            }
-        }
+        let mut log_data = record.formated.as_str();
         let mut data=self.cell.borrow_mut();
         if data.temp_log_num >= data.split_log_num {
             let current_file_path = format!("{}{}.log", data.dir_path.to_string(), data.create_num);
@@ -92,7 +83,7 @@ impl LogAppender for FileSplitAppender {
                 data.create_num -= 1;
             }
         }
-        data.file.write(log.as_bytes());
+        data.file.write(log_data.as_bytes());
         data.file.flush();
         data.temp_log_num += 1;
     }

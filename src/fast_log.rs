@@ -25,6 +25,7 @@ pub struct FastLogRecord {
     pub file: String,
     pub line: Option<u32>,
     pub now: DateTime<Local>,
+    pub formated: String,
 }
 
 impl FastLogRecord {
@@ -32,6 +33,18 @@ impl FastLogRecord {
         match (self.file.as_str(), self.line.unwrap_or(0)) {
             (file, line) => format!("({}:{})", file, line),
         }
+    }
+    pub fn set_formated(&mut self) {
+        let data;
+        match self.level {
+            Level::Warn | Level::Error => {
+                data = format!("{} {} {} - {}  {}\n", &self.now, self.level, self.module_path, self.args, self.format_line());
+            }
+            _ => {
+                data = format!("{} {} {} - {}\n", &self.now, self.level, self.module_path, self.args);
+            }
+        }
+        self.formated = data;
     }
 }
 
@@ -110,7 +123,7 @@ impl log::Log for Logger {
                     match lock.deref() {
                         Some(sender) => {
                             if !sender.filter.filter(record) {
-                                sender.send(FastLogRecord {
+                                let mut fast_log_record = FastLogRecord {
                                     level,
                                     target: record.metadata().target().to_string(),
                                     args: record.args().to_string(),
@@ -118,7 +131,10 @@ impl log::Log for Logger {
                                     file: record.file().unwrap_or("").to_string(),
                                     line: record.line().clone(),
                                     now: Local::now(),
-                                });
+                                    formated: "".to_string(),
+                                };
+                                fast_log_record.set_formated();
+                                sender.send(fast_log_record);
                             }
                         }
                         _ => {}
