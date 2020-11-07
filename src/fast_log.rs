@@ -6,6 +6,7 @@ use chrono::{DateTime, Local};
 use crossbeam_channel::{Receiver, SendError};
 use log::{Level, LevelFilter, Metadata, Record};
 
+use crate::error::LogError;
 use crate::filter::{Filter, NoFilter};
 use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
@@ -181,6 +182,9 @@ pub fn init_split_log(log_dir_path: &str, channel_cup: usize, log_cup: u64, allo
 }
 
 pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, level: log::Level, filter: Box<dyn Filter>) -> Result<(), Box<dyn std::error::Error + Send>> {
+    if appenders.is_empty() {
+        return Err(Box::new(LogError::from("[fast_log] appenders can not be empty!")));
+    }
     let main_recv = set_log(RuntimeType::Std, log_cup, level, filter);
     if appenders.len() == 1 {
         //main recv data
