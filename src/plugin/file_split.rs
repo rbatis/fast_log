@@ -61,7 +61,7 @@ impl FileSplitAppender {
 
 impl LogAppender for FileSplitAppender {
     fn do_log(&self, record: &FastLogRecord) {
-        let mut log_data = record.formated.as_str();
+        let log_data = record.formated.as_str();
         let mut data=self.cell.borrow_mut();
         if data.temp_log_num >= data.split_log_num {
             let current_file_path = format!("{}{}.log", data.dir_path.to_string(), data.create_num);

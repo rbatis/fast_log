@@ -4,7 +4,7 @@ use std::sync::RwLock;
 
 use chrono::{DateTime, Local};
 use crossbeam_channel::{Receiver, SendError};
-use log::{Level, LevelFilter, Metadata, Record};
+use log::{Level, Metadata, Record};
 
 use crate::error::LogError;
 use crate::filter::{Filter, NoFilter};
@@ -254,8 +254,7 @@ pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, lev
         }
     }
 
-    let r = log::set_logger(&LOGGER)
-        .map(|()| log::set_max_level(LevelFilter::Info));
+    let r = log::set_logger(&LOGGER).map(|()| log::set_max_level(level.to_level_filter()));
     if r.is_err() {
         return Err(Box::new(r.err().unwrap()));
     } else {
@@ -268,7 +267,7 @@ mod test {
     use std::thread::sleep;
     use std::time::{Duration, Instant};
 
-    use log::{info, Level};
+    use log::{info, Level,debug};
     use log::error;
 
     use crate::{init_custom_log, init_log, init_split_log};
@@ -278,8 +277,8 @@ mod test {
 
     #[test]
     pub fn test_log() {
-        init_log("requests.log", 1000, log::Level::Info, None, true);
-        info!("Commencing yak shaving{}", 0);
+        init_log("requests.log", 1000, log::Level::Debug, None, true);
+        debug!("Commencing yak shaving{}", 0);
         sleep(Duration::from_secs(1));
     }
 
