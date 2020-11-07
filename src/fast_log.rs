@@ -179,13 +179,13 @@ pub fn init_log(log_file_path: &str, channel_cup: usize, level: log::Level, mut 
 
 /// initializes the log file path
 /// log_dir_path:  example->  "log/"
-/// channel_cup: example -> 1000
-/// log_cup: splite if cup full
+/// channel_log_cup: example -> 1000
+/// split_log_cup: splite if cup full
 /// allow_zip_compress: zip compress log file
 /// filter: log filter
-pub fn init_split_log(log_dir_path: &str, channel_cup: usize, log_cup: u64, allow_zip_compress: bool, level: log::Level, mut filter: Option<Box<dyn Filter>>, debug_mode: bool) -> Result<(), Box<dyn std::error::Error + Send>> {
+pub fn init_split_log(log_dir_path: &str, channel_log_cup: usize, split_log_cup: u64, allow_zip_compress: bool, level: log::Level, mut filter: Option<Box<dyn Filter>>, debug_mode: bool) -> Result<(), Box<dyn std::error::Error + Send>> {
     let mut appenders: Vec<Box<dyn LogAppender>> = vec![
-        Box::new(FileSplitAppender::new(log_dir_path, log_cup, allow_zip_compress))
+        Box::new(FileSplitAppender::new(log_dir_path, split_log_cup, allow_zip_compress))
     ];
     if debug_mode {
         appenders.push(Box::new(ConsoleAppender {}));
@@ -194,7 +194,7 @@ pub fn init_split_log(log_dir_path: &str, channel_cup: usize, log_cup: u64, allo
     if filter.is_some() {
         log_filter = filter.take().unwrap();
     }
-    return init_custom_log(appenders, channel_cup, level, log_filter);
+    return init_custom_log(appenders, channel_log_cup, level, log_filter);
 }
 
 pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, level: log::Level, filter: Box<dyn Filter>) -> Result<(), Box<dyn std::error::Error + Send>> {
