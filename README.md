@@ -11,15 +11,15 @@ the fast log  . This crate uses #![forbid(unsafe_code)] to ensure everything is 
 
 ```
                                          ----------------------
-                               ->        |   console appender  |
+                               -> Thread |   console appender  |
                                          ----------------------
 
               --------------   ->        ----------------------
-log data->    |   channel  |             |   file   appender  |
+log data->    |   channel  |     Thread  |   file   appender  |
               --------------             ----------------------
 
                                ->        -------------------------------
-                                         |   orther custom   appender  |
+                                 Thread  |   orther custom   appender  |
                                          -------------------------------
 ```
 
