@@ -2,7 +2,7 @@ use std::ops::Deref;
 use std::sync::atomic::AtomicI32;
 use std::sync::RwLock;
 
-use chrono::{DateTime, Local};
+use chrono::{Local};
 use crossbeam_channel::{Receiver, SendError};
 use log::{Level, Metadata, Record};
 
@@ -11,42 +11,12 @@ use crate::filter::{Filter, NoFilter};
 use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
 use crate::plugin::file_split::FileSplitAppender;
+use crate::appender::{FastLogRecord, LogAppender};
 
 lazy_static! {
    static ref LOG_SENDER:RwLock<Option<LoggerSender>>=RwLock::new(Option::None);
 }
 
-#[derive(Clone, Debug)]
-pub struct FastLogRecord {
-    pub level: log::Level,
-    pub target: String,
-    pub args: String,
-    pub module_path: String,
-    pub file: String,
-    pub line: Option<u32>,
-    pub now: DateTime<Local>,
-    pub formated: String,
-}
-
-impl FastLogRecord {
-    pub fn format_line(&self) -> String {
-        match (self.file.as_str(), self.line.unwrap_or(0)) {
-            (file, line) => format!("({}:{})", file, line),
-        }
-    }
-    pub fn set_formated(&mut self) {
-        let data;
-        match self.level {
-            Level::Warn | Level::Error => {
-                data = format!("{} {} {} - {}  {}\n", &self.now, self.level, self.module_path, self.args, self.format_line());
-            }
-            _ => {
-                data = format!("{} {} {} - {}\n", &self.now, self.level, self.module_path, self.args);
-            }
-        }
-        self.formated = data;
-    }
-}
 
 pub struct LoggerSender {
     pub filter: Box<dyn Filter>,
@@ -148,16 +118,6 @@ impl log::Log for Logger {
 }
 
 static LOGGER: Logger = Logger { level: AtomicI32::new(1) };
-
-/// LogAppender append logs
-/// Appender will be running on single main thread,please do_log for new thread or new an Future
-pub trait LogAppender: Send {
-    fn do_log(&self, record: &FastLogRecord);
-
-    fn type_name(&self) -> &'static str {
-        std::any::type_name::<Self>()
-    }
-}
 
 
 /// initializes the log file path

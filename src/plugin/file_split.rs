@@ -2,10 +2,9 @@ use std::fs::{DirBuilder, File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::Path;
 use chrono::{Local};
-
-use crate::fast_log::{FastLogRecord, LogAppender};
 use zip::write::FileOptions;
 use std::cell::RefCell;
+use crate::appender::{FastLogRecord, LogAppender};
 
 
 /// split log file allow zip compress log

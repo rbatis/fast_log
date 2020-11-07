@@ -11,6 +11,7 @@ pub mod fast_log;
 pub mod error;
 pub mod plugin;
 pub mod filter;
+pub mod appender;
 
 ///init log
 pub use fast_log::init_log as init_log;

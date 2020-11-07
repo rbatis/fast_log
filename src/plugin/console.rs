@@ -1,4 +1,4 @@
-use crate::fast_log::{LogAppender, FastLogRecord};
+use crate::appender::{LogAppender, FastLogRecord};
 
 /// only write append into console
 pub struct ConsoleAppender {}
