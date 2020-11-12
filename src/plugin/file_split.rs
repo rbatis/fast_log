@@ -41,17 +41,20 @@ impl FileSplitAppender {
         }
         last = last + 1;
         let first_file_path = format!("{}{}.log", dir_path.to_string(), last);
+        let file=OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(first_file_path.as_str());
+        if file.is_err(){
+            panic!("[fast_log] open and create file fail:{}",file.err().unwrap());
+        }
         Self {
             cell:RefCell::new(FileSplitAppenderData{
                 split_log_num: split_log_num,
                 temp_log_num: 0,
                 create_num: last,
                 dir_path: dir_path.to_string(),
-                file: OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(first_file_path.as_str())
-                    .unwrap_or(File::create(Path::new(first_file_path.as_str())).unwrap()),
+                file: file.unwrap(),
                 zip_compress: allow_zip_compress,
             })
         }
