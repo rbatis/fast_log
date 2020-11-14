@@ -20,8 +20,7 @@ lazy_static! {
 
 pub struct LoggerSender {
     pub filter: Box<dyn Filter>,
-    //std sender
-    pub std_sender: Option<crossbeam_channel::Sender<FastLogRecord>>,
+    pub inner: crossbeam_channel::Sender<FastLogRecord>,
 }
 
 impl LoggerSender {
@@ -30,14 +29,14 @@ impl LoggerSender {
             _ => {
                 let (s, r) = crossbeam_channel::bounded(cap);
                 (Self {
-                    std_sender: Some(s),
+                    inner: s,
                     filter,
                 }, r)
             }
         };
     }
     pub fn send(&self, data: FastLogRecord) -> Result<(), SendError<FastLogRecord>> {
-        self.std_sender.as_ref().unwrap().send(data)
+        self.inner.send(data)
     }
 }
 
