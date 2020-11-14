@@ -298,4 +298,26 @@ mod test {
         }
         sleep(Duration::from_secs(1));
     }
+
+
+    struct BenchRecvLog {}
+
+    impl LogAppender for BenchRecvLog {
+        fn do_log(&self, record: &FastLogRecord) {
+        }
+    }
+    //cargo test --release --color=always --package fast_log --lib fast_log::test::bench_recv --no-fail-fast -- --exact -Z unstable-options --show-output
+    #[test]
+    pub fn bench_recv() {
+        init_custom_log(vec![Box::new(BenchRecvLog {})], 1000, log::Level::Info, Box::new(NoFilter {}));
+        let total = 10000;
+        let now = Instant::now();
+        for index in 0..total {
+            //sleep(Duration::from_secs(1));
+            info!("Commencing yak shaving{}", index);
+        }
+        now.time(total);
+        now.qps(total);
+        sleep(Duration::from_secs(1));
+    }
 }
