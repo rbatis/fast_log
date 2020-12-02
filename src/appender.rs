@@ -32,11 +32,7 @@ impl FastLogRecord {
     }
     pub fn set_formated(&mut self) {
         let data;
-        let mut now = self.now.to_string();
-        let len = now.len();
-        if now.len() == 33 {
-            now = now + "   ";
-        }
+        let now = format!("{:36}",self.now.to_string());
         match self.level {
             Level::Warn | Level::Error => {
                 data = format!("{} {} {} - {}  {}\n", &now, self.level, self.module_path, self.args, self.format_line());
