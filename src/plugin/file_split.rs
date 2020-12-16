@@ -7,6 +7,8 @@ use std::cell::RefCell;
 use crate::appender::{FastLogRecord, LogAppender};
 use crate::consts::LogSize;
 
+const SPLITE_CONFIG_NAME: &str = ".fast_log_split_appender";
+
 /// split log file allow zip compress log
 pub struct FileSplitAppender {
     cell: RefCell<FileSplitAppenderData>
@@ -85,10 +87,10 @@ impl LogAppender for FileSplitAppender {
                 data.create_num -= 1;
             }
         }
-        let write_bytes=data.file.write(log_data.as_bytes());
+        let write_bytes = data.file.write(log_data.as_bytes());
         data.file.flush();
-        match write_bytes{
-            Ok(size)=>{
+        match write_bytes {
+            Ok(size) => {
                 data.temp_bytes += size;
             }
             _ => {}
@@ -99,9 +101,9 @@ impl LogAppender for FileSplitAppender {
 fn open_last_num(dir_path: &str) -> Result<u64, String> {
     let mut config = OpenOptions::new()
         .read(true)
-        .open(Path::new(format!("{}.fast_log_split_appender", dir_path).as_str()));
+        .open(Path::new(format!("{}{}", dir_path, SPLITE_CONFIG_NAME).as_str()));
     if config.is_err() {
-        config = File::create(Path::new(format!("{}.fast_log_split_appender", dir_path).as_str()));
+        config = File::create(Path::new(format!("{}{}", dir_path, SPLITE_CONFIG_NAME).as_str()));
     }
     match config {
         Ok(mut ok) => {
@@ -123,7 +125,7 @@ fn open_last_num(dir_path: &str) -> Result<u64, String> {
 fn write_last_num(dir_path: &str, last: u64) {
     let mut config = OpenOptions::new()
         .write(true)
-        .open(Path::new(format!("{}.fast_log_split_appender", dir_path).as_str()))
+        .open(Path::new(format!("{}{}", dir_path, SPLITE_CONFIG_NAME).as_str()))
         .unwrap();
     config.write(last.to_string().as_bytes());
     config.flush();
@@ -132,11 +134,11 @@ fn write_last_num(dir_path: &str, last: u64) {
 fn spawn_to_zip(log_file: &str) {
     let log_file = log_file.to_owned();
     std::thread::spawn(move || {
-        to_zip(log_file.as_str());
+        do_zip(log_file.as_str());
     });
 }
 
-fn to_zip(log_file_path: &str) {
+fn do_zip(log_file_path: &str) {
     if log_file_path.is_empty() {
         return;
     }
