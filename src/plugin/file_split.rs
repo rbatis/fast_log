@@ -1,9 +1,11 @@
+use std::cell::RefCell;
 use std::fs::{DirBuilder, File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::Path;
-use chrono::{Local};
+
+use chrono::Local;
 use zip::write::FileOptions;
-use std::cell::RefCell;
+
 use crate::appender::{FastLogRecord, LogAppender};
 use crate::consts::LogSize;
 
@@ -73,20 +75,23 @@ impl LogAppender for FileSplitAppender {
         let mut data = self.cell.borrow_mut();
         if data.temp_bytes >= data.max_split_bytes {
             let current_file_path = format!("{}{}.log", data.dir_path.to_string(), data.create_num);
-            let first_file_path = format!("{}{}.log", data.dir_path.to_string(), data.create_num);
+            let next_file_path = format!("{}{}.log", data.dir_path.to_string(), data.create_num + 1);
             let create = OpenOptions::new()
                 .create(true)
                 .append(true)
-                .open(first_file_path.as_str());
-            if create.is_ok() {
-                data.create_num += 1;
-                data.temp_bytes = 0;
-                data.file = create.unwrap();
-                write_last_num(&data.dir_path, data.create_num);
-                if data.zip_compress {
-                    //to zip
-                    spawn_to_zip(&current_file_path);
+                .open(next_file_path.as_str());
+            match create {
+                Ok(next_file) => {
+                    data.temp_bytes = 0;
+                    data.create_num += 1;
+                    data.file = next_file;
+                    write_last_num(&data.dir_path, data.create_num);
+                    if data.zip_compress {
+                        //to zip
+                        spawn_to_zip(&current_file_path);
+                    }
                 }
+                _ => {}
             }
         }
         let write_bytes = data.file.write(log_data.as_bytes());
