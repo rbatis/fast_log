@@ -72,7 +72,6 @@ impl LogAppender for FileSplitAppender {
         let log_data = record.formated.as_str();
         let mut data = self.cell.borrow_mut();
         if data.temp_bytes >= data.max_split_bytes {
-            data.create_num += 1;
             let current_file_path = format!("{}{}.log", data.dir_path.to_string(), data.create_num);
             let first_file_path = format!("{}{}.log", data.dir_path.to_string(), data.create_num);
             let create = OpenOptions::new()
@@ -80,6 +79,7 @@ impl LogAppender for FileSplitAppender {
                 .append(true)
                 .open(first_file_path.as_str());
             if create.is_ok() {
+                data.create_num += 1;
                 data.temp_bytes = 0;
                 data.file = create.unwrap();
                 write_last_num(&data.dir_path, data.create_num);
@@ -87,8 +87,6 @@ impl LogAppender for FileSplitAppender {
                     //to zip
                     spawn_to_zip(&current_file_path);
                 }
-            } else {
-                data.create_num -= 1;
             }
         }
         let write_bytes = data.file.write(log_data.as_bytes());

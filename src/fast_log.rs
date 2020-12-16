@@ -295,7 +295,7 @@ mod test {
     #[test]
     pub fn test_file_compation_zip() {
         init_split_log("target/logs/", 1000, LogSize::KB(500), true, log::Level::Info, None, true);
-        for _ in 0..200 {
+        for _ in 0..20000 {
             info!("Commencing yak shaving");
         }
         sleep(Duration::from_secs(1));
