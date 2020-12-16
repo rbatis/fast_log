@@ -65,8 +65,8 @@ fn  main(){
 ```rust
 #[test]
     pub fn test_file_compation() {
-        fast_log::init_split_log("target/logs/", 1000, 10000, false,log::Level::Info, None, true);
-        for _ in 0..200000 {
+    init_split_log("target/logs/", 1000, LogSize::MB(1), false, log::Level::Info, None, true);
+    for _ in 0..200000 {
             info!("Commencing yak shaving");
         }
         sleep(Duration::from_secs(1));
