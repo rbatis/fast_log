@@ -5,17 +5,17 @@ use chrono::{Local};
 use zip::write::FileOptions;
 use std::cell::RefCell;
 use crate::appender::{FastLogRecord, LogAppender};
-
+use crate::consts::LogSize;
 
 /// split log file allow zip compress log
 pub struct FileSplitAppender {
-    cell:RefCell<FileSplitAppenderData>
+    cell: RefCell<FileSplitAppenderData>
 }
 
 /// split log file allow zip compress log
 pub struct FileSplitAppenderData {
-    split_log_num: u64,
-    temp_log_num: u64,
+    max_split_bytes: usize,
+    temp_bytes: usize,
     create_num: u64,
     dir_path: String,
     file: File,
@@ -23,9 +23,9 @@ pub struct FileSplitAppenderData {
 }
 
 impl FileSplitAppender {
-    ///split_log_num: number of log file data num
+    ///split_log_bytes: log file data bytes(MB) splite
     ///dir_path the dir
-    pub fn new(dir_path: &str, split_log_num: u64, allow_zip_compress: bool) -> FileSplitAppender {
+    pub fn new(dir_path: &str, max_temp_size: LogSize, allow_zip_compress: bool) -> FileSplitAppender {
         if !dir_path.is_empty() && dir_path.ends_with(".log") {
             panic!("FileCompactionAppender only support new from path,for example: 'logs/xx/'");
         }
@@ -41,17 +41,17 @@ impl FileSplitAppender {
         }
         last = last + 1;
         let first_file_path = format!("{}{}.log", dir_path.to_string(), last);
-        let file=OpenOptions::new()
+        let file = OpenOptions::new()
             .create(true)
             .append(true)
             .open(first_file_path.as_str());
-        if file.is_err(){
-            panic!("[fast_log] open and create file fail:{}",file.err().unwrap());
+        if file.is_err() {
+            panic!("[fast_log] open and create file fail:{}", file.err().unwrap());
         }
         Self {
-            cell:RefCell::new(FileSplitAppenderData{
-                split_log_num: split_log_num,
-                temp_log_num: 0,
+            cell: RefCell::new(FileSplitAppenderData {
+                max_split_bytes: max_temp_size.get_len(),
+                temp_bytes: 0,
                 create_num: last,
                 dir_path: dir_path.to_string(),
                 file: file.unwrap(),
@@ -64,19 +64,19 @@ impl FileSplitAppender {
 impl LogAppender for FileSplitAppender {
     fn do_log(&self, record: &FastLogRecord) {
         let log_data = record.formated.as_str();
-        let mut data=self.cell.borrow_mut();
-        if data.temp_log_num >= data.split_log_num {
-            let current_file_path = format!("{}{}.log", data.dir_path.to_string(), data.create_num);
+        let mut data = self.cell.borrow_mut();
+        if data.temp_bytes >= data.max_split_bytes {
             data.create_num += 1;
+            let current_file_path = format!("{}{}.log", data.dir_path.to_string(), data.create_num);
             let first_file_path = format!("{}{}.log", data.dir_path.to_string(), data.create_num);
             let create = OpenOptions::new()
                 .create(true)
                 .append(true)
                 .open(first_file_path.as_str());
             if create.is_ok() {
+                data.temp_bytes = 0;
                 data.file = create.unwrap();
                 write_last_num(&data.dir_path, data.create_num);
-                data.temp_log_num = 0;
                 if data.zip_compress {
                     //to zip
                     spawn_to_zip(&current_file_path);
@@ -85,9 +85,14 @@ impl LogAppender for FileSplitAppender {
                 data.create_num -= 1;
             }
         }
-        data.file.write(log_data.as_bytes());
+        let write_bytes=data.file.write(log_data.as_bytes());
         data.file.flush();
-        data.temp_log_num += 1;
+        match write_bytes{
+            Ok(size)=>{
+                data.temp_bytes += size;
+            }
+            _ => {}
+        }
     }
 }
 
@@ -145,9 +150,9 @@ fn to_zip(log_file_path: &str) {
     match log_file {
         Ok(_) => {
             //make zip
-            let date=Local::now();
-            let date=date.format("%Y_%m_%dT%H_%M_%S").to_string();
-            let zip_path = log_file_path.replace(".log", &format!("_{}.zip",date));
+            let date = Local::now();
+            let date = date.format("%Y_%m_%dT%H_%M_%S").to_string();
+            let zip_path = log_file_path.replace(".log", &format!("_{}.zip", date));
             let zip_file = std::fs::File::create(&zip_path);
             match zip_file {
                 Ok(zip_file) => {
@@ -158,19 +163,19 @@ fn to_zip(log_file_path: &str) {
                         Ok(f) => {
                             std::fs::remove_file(log_file_path);
                         }
-                        Err(e)  => {
+                        Err(e) => {
                             //nothing
-                            println!("[fast_log] try zip fail{:?}",e);
+                            println!("[fast_log] try zip fail{:?}", e);
                         }
                     }
                 }
                 Err(e) => {
-                    println!("[fast_log] create(&{}) fail:{}",zip_path,e);
+                    println!("[fast_log] create(&{}) fail:{}", zip_path, e);
                 }
             }
         }
         Err(e) => {
-            println!("[fast_log] give up compress log file. because: {}",e);
+            println!("[fast_log] give up compress log file. because: {}", e);
         }
     }
 }
