@@ -37,11 +37,7 @@ impl FileSplitAppender {
         if !dir_path.is_empty() {
             DirBuilder::new().create(dir_path);
         }
-        let mut last = open_last_num(dir_path).unwrap();
-        if allow_zip_compress {
-            spawn_to_zip(&format!("{}{}.log", dir_path.to_string(), last));
-        }
-        last = last + 1;
+        let last = open_last_num(dir_path).unwrap();
         let first_file_path = format!("{}{}.log", dir_path.to_string(), last);
         let file = OpenOptions::new()
             .create(true)
@@ -50,13 +46,21 @@ impl FileSplitAppender {
         if file.is_err() {
             panic!("[fast_log] open and create file fail:{}", file.err().unwrap());
         }
+        let file = file.unwrap();
+        let mut temp_bytes = 0;
+        match file.metadata() {
+            Ok(m) => {
+                temp_bytes = m.len() as usize;
+            }
+            _ => {}
+        }
         Self {
             cell: RefCell::new(FileSplitAppenderData {
                 max_split_bytes: max_temp_size.get_len(),
-                temp_bytes: 0,
+                temp_bytes: temp_bytes,
                 create_num: last,
                 dir_path: dir_path.to_string(),
-                file: file.unwrap(),
+                file: file,
                 zip_compress: allow_zip_compress,
             })
         }
