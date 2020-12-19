@@ -94,7 +94,10 @@ impl LogAppender for FileSplitAppender {
                     }
                     data.temp_data.clear();
                 }
-                _ => {}
+                _ => {
+                    data.temp_bytes = 0;
+                    data.temp_data.clear();
+                }
             }
         }
         let write_bytes = data.file.write(log_data.as_bytes());
