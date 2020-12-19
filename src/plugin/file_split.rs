@@ -124,8 +124,8 @@ impl LogAppender for FileSplitAppender {
                 let bytes = log_data.as_bytes();
                 for x in bytes {
                     match data.temp_data.as_mut() {
-                        Some(data) => {
-                            data.push(*x);
+                        Some(temp) => {
+                            temp.push(*x);
                         }
                         _ => {}
                     }
