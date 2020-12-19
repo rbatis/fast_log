@@ -26,7 +26,7 @@ pub struct ZipPack {
 pub struct FileSplitAppenderData {
     max_split_bytes: usize,
     temp_bytes: usize,
-    temp_data: Vec<u8>,
+    temp_data: Option<Vec<u8>>,
     create_num: u64,
     dir_path: String,
     file: File,
@@ -71,7 +71,7 @@ impl FileSplitAppender {
             cell: RefCell::new(FileSplitAppenderData {
                 max_split_bytes: max_temp_size.get_len(),
                 temp_bytes: temp_bytes,
-                temp_data: vec![],
+                temp_data: Some(vec![]),
                 create_num: last,
                 dir_path: dir_path.to_string(),
                 file: file,
@@ -95,25 +95,27 @@ impl LogAppender for FileSplitAppender {
                 .open(next_file_path.as_str());
             match next_file {
                 Ok(next_file) => {
-                    data.temp_bytes = 0;
                     data.create_num += 1;
                     data.file = next_file;
                     write_last_num(&data.dir_path, data.create_num);
                     if data.zip_compress {
                         //to zip
-                        data.sender.send(ZipPack {
-                            data: data.temp_data.clone(),
-                            log_file_name: current_file_path.to_string(),
-                        });
+                        match data.temp_data.take() {
+                            Some(temp) => {
+                                data.sender.send(ZipPack {
+                                    data: temp,
+                                    log_file_name: current_file_path.to_string(),
+                                });
+                            }
+                            _ => {}
+                        }
                     }
-                    data.temp_data.clear();
-                    data.temp_data.shrink_to_fit();
                 }
-                _ => {
-                    data.temp_bytes = 0;
-                    data.temp_data.clear();
-                }
+                _ => {}
             }
+            //reset data
+            data.temp_bytes = 0;
+            data.temp_data = Some(vec![]);
         }
         let write_bytes = data.file.write(log_data.as_bytes());
         data.file.flush();
@@ -121,7 +123,12 @@ impl LogAppender for FileSplitAppender {
             Ok(size) => {
                 let bytes = log_data.as_bytes();
                 for x in bytes {
-                    data.temp_data.push(*x);
+                    match data.temp_data.as_mut() {
+                        Some(data) => {
+                            data.push(*x);
+                        }
+                        _ => {}
+                    }
                 }
                 data.temp_bytes += size;
             }
