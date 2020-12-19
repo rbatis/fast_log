@@ -4,6 +4,7 @@ use std::io::{Read, Write};
 use std::path::Path;
 
 use chrono::Local;
+use crossbeam_channel::{Receiver, RecvError, Sender};
 use zip::write::FileOptions;
 
 use crate::appender::{FastLogRecord, LogAppender};
@@ -16,6 +17,11 @@ pub struct FileSplitAppender {
     cell: RefCell<FileSplitAppenderData>
 }
 
+pub struct ZipPack {
+    pub data: Vec<u8>,
+    pub log_file_name: String,
+}
+
 /// split log file allow zip compress log
 pub struct FileSplitAppenderData {
     max_split_bytes: usize,
@@ -25,7 +31,9 @@ pub struct FileSplitAppenderData {
     dir_path: String,
     file: File,
     zip_compress: bool,
+    sender: Sender<ZipPack>,
 }
+
 
 impl FileSplitAppender {
     ///split_log_bytes: log file data bytes(MB) splite
@@ -57,6 +65,8 @@ impl FileSplitAppender {
             }
             _ => {}
         }
+        let (s, r) = crossbeam_channel::bounded(100);
+        spawn_zip_thread(r);
         Self {
             cell: RefCell::new(FileSplitAppenderData {
                 max_split_bytes: max_temp_size.get_len(),
@@ -66,6 +76,7 @@ impl FileSplitAppender {
                 dir_path: dir_path.to_string(),
                 file: file,
                 zip_compress: allow_zip_compress,
+                sender: s,
             })
         }
     }
@@ -90,9 +101,13 @@ impl LogAppender for FileSplitAppender {
                     write_last_num(&data.dir_path, data.create_num);
                     if data.zip_compress {
                         //to zip
-                        spawn_to_zip(&current_file_path, data.temp_data.clone());
+                        data.sender.send(ZipPack {
+                            data: data.temp_data.clone(),
+                            log_file_name: current_file_path.to_string(),
+                        });
                     }
                     data.temp_data.clear();
+                    data.temp_data.shrink_to_fit();
                 }
                 _ => {
                     data.temp_bytes = 0;
@@ -148,14 +163,22 @@ fn write_last_num(dir_path: &str, last: u64) {
     config.flush();
 }
 
-fn spawn_to_zip(log_file: &str, data: Vec<u8>) {
-    let log_file = log_file.to_owned();
+
+fn spawn_zip_thread(r: Receiver<ZipPack>) {
     std::thread::spawn(move || {
-        do_zip(log_file.as_str(), data);
+        loop {
+            match r.recv() {
+                Ok(pack) => {
+                    do_zip(pack);
+                }
+                _ => {}
+            }
+        }
     });
 }
 
-fn do_zip(log_file_path: &str, data: Vec<u8>) {
+fn do_zip(pack: ZipPack) {
+    let log_file_path = pack.log_file_name.as_str();
     if log_file_path.is_empty() {
         return;
     }
@@ -176,7 +199,7 @@ fn do_zip(log_file_path: &str, data: Vec<u8>) {
                 Ok(zip_file) => {
                     let mut zip = zip::ZipWriter::new(zip_file);
                     zip.start_file(log_name, FileOptions::default());
-                    zip.write_all(data.as_slice());
+                    zip.write_all(pack.data.as_slice());
                     zip.flush();
                     let finish = zip.finish();
                     match finish {
