@@ -21,6 +21,9 @@ log data->    | main channel  |   ->
                                   ->    |Thread channel|  -> Thread  |  console  appender  |
                                         ----------------             ----------------------
                                         ----------------             ----------------------
+                                  ->    |Thread channel|  -> Thread  |   zip   appender  |
+                                        ----------------             ----------------------
+                                        ----------------             ----------------------
                                   ->    |Thread channel|  -> Thread  |   other   appender  |
                                         ----------------             ----------------------
 
