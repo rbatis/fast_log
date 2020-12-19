@@ -4,7 +4,7 @@ use std::io::{Read, Write};
 use std::path::Path;
 
 use chrono::Local;
-use crossbeam_channel::{Receiver, RecvError, Sender};
+use crossbeam_channel::{Receiver, Sender};
 use zip::write::FileOptions;
 
 use crate::appender::{FastLogRecord, LogAppender};
@@ -89,11 +89,11 @@ impl LogAppender for FileSplitAppender {
         if data.temp_bytes >= data.max_split_bytes {
             let current_file_path = format!("{}{}.log", data.dir_path.to_string(), data.create_num);
             let next_file_path = format!("{}{}.log", data.dir_path.to_string(), data.create_num + 1);
-            let create = OpenOptions::new()
+            let next_file = OpenOptions::new()
                 .create(true)
                 .append(true)
                 .open(next_file_path.as_str());
-            match create {
+            match next_file {
                 Ok(next_file) => {
                     data.temp_bytes = 0;
                     data.create_num += 1;
@@ -177,14 +177,16 @@ fn spawn_zip_thread(r: Receiver<ZipPack>) {
     });
 }
 
-fn do_zip(pack: ZipPack) {
+/// write an ZipPack
+pub fn do_zip(pack: ZipPack) {
     let log_file_path = pack.log_file_name.as_str();
-    if log_file_path.is_empty() {
+    if log_file_path.is_empty() || pack.data.is_empty() {
         return;
     }
     let log_names: Vec<&str> = log_file_path.split("/").collect();
     let log_name = log_names[log_names.len() - 1];
 
+    //check file exist
     let log_file = OpenOptions::new()
         .read(true)
         .open(Path::new(log_file_path));
