@@ -2,17 +2,17 @@ use std::ops::Deref;
 use std::sync::atomic::AtomicI32;
 use std::sync::RwLock;
 
-use chrono::{Local};
+use chrono::Local;
 use crossbeam_channel::{Receiver, SendError};
 use log::{Level, Metadata, Record};
 
+use crate::appender::{FastLogRecord, LogAppender};
+use crate::consts::LogSize;
 use crate::error::LogError;
 use crate::filter::{Filter, NoFilter};
 use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
 use crate::plugin::file_split::FileSplitAppender;
-use crate::appender::{FastLogRecord, LogAppender};
-use crate::consts::LogSize;
 
 lazy_static! {
    static ref LOG_SENDER:RwLock<Option<LoggerSender>>=RwLock::new(Option::None);
@@ -227,14 +227,14 @@ mod test {
     use std::thread::sleep;
     use std::time::{Duration, Instant};
 
-    use log::{info, Level,debug};
+    use log::{debug, info, Level};
     use log::error;
 
     use crate::{init_custom_log, init_log, init_split_log};
     use crate::bencher::QPS;
+    use crate::consts::LogSize;
     use crate::fast_log::{FastLogRecord, LogAppender};
     use crate::filter::NoFilter;
-    use crate::consts::LogSize;
 
     #[test]
     pub fn test_log() {
@@ -301,13 +301,26 @@ mod test {
         sleep(Duration::from_secs(1));
     }
 
+    #[test]
+    pub fn test_file_compation_zip_stable_test() {
+        init_split_log("target/logs/", 1000, LogSize::KB(500), true, log::Level::Info, None, true);
+        let now = std::time::Instant::now();
+        loop {
+            info!("Commencing yak shaving");
+            if now.elapsed() > Duration::from_secs(30) {
+                break;
+            }
+        }
+        sleep(Duration::from_secs(1));
+    }
+
 
     struct BenchRecvLog {}
 
     impl LogAppender for BenchRecvLog {
-        fn do_log(&self, record: &FastLogRecord) {
-        }
+        fn do_log(&self, record: &FastLogRecord) {}
     }
+
     //cargo test --release --color=always --package fast_log --lib fast_log::test::bench_recv --no-fail-fast -- --exact -Z unstable-options --show-output
     #[test]
     pub fn bench_recv() {

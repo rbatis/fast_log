@@ -20,6 +20,7 @@ pub struct FileSplitAppender {
 pub struct FileSplitAppenderData {
     max_split_bytes: usize,
     temp_bytes: usize,
+    temp_data: Vec<u8>,
     create_num: u64,
     dir_path: String,
     file: File,
@@ -60,6 +61,7 @@ impl FileSplitAppender {
             cell: RefCell::new(FileSplitAppenderData {
                 max_split_bytes: max_temp_size.get_len(),
                 temp_bytes: temp_bytes,
+                temp_data: vec![],
                 create_num: last,
                 dir_path: dir_path.to_string(),
                 file: file,
@@ -88,8 +90,9 @@ impl LogAppender for FileSplitAppender {
                     write_last_num(&data.dir_path, data.create_num);
                     if data.zip_compress {
                         //to zip
-                        spawn_to_zip(&current_file_path);
+                        spawn_to_zip(&current_file_path, data.temp_data.clone());
                     }
+                    data.temp_data.clear();
                 }
                 _ => {}
             }
@@ -98,6 +101,10 @@ impl LogAppender for FileSplitAppender {
         data.file.flush();
         match write_bytes {
             Ok(size) => {
+                let bytes = log_data.as_bytes();
+                for x in bytes {
+                    data.temp_data.push(*x);
+                }
                 data.temp_bytes += size;
             }
             _ => {}
@@ -138,20 +145,19 @@ fn write_last_num(dir_path: &str, last: u64) {
     config.flush();
 }
 
-fn spawn_to_zip(log_file: &str) {
+fn spawn_to_zip(log_file: &str, data: Vec<u8>) {
     let log_file = log_file.to_owned();
     std::thread::spawn(move || {
-        do_zip(log_file.as_str());
+        do_zip(log_file.as_str(), data);
     });
 }
 
-fn do_zip(log_file_path: &str) {
+fn do_zip(log_file_path: &str, data: Vec<u8>) {
     if log_file_path.is_empty() {
         return;
     }
     let log_names: Vec<&str> = log_file_path.split("/").collect();
     let log_name = log_names[log_names.len() - 1];
-
 
     let log_file = OpenOptions::new()
         .read(true)
@@ -167,6 +173,8 @@ fn do_zip(log_file_path: &str) {
                 Ok(zip_file) => {
                     let mut zip = zip::ZipWriter::new(zip_file);
                     zip.start_file(log_name, FileOptions::default());
+                    zip.write_all(data.as_slice());
+                    zip.flush();
                     let finish = zip.finish();
                     match finish {
                         Ok(f) => {
@@ -185,6 +193,38 @@ fn do_zip(log_file_path: &str) {
         }
         Err(e) => {
             println!("[fast_log] give up compress log file. because: {}", e);
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::io::Write;
+
+    use zip::write::FileOptions;
+
+    #[test]
+    fn test_zip() {
+        let zip_file = std::fs::File::create("F:/rust_project/fast_log/target/logs/0.zip");
+        match zip_file {
+            Ok(zip_file) => {
+                let mut zip = zip::ZipWriter::new(zip_file);
+                zip.start_file("0.log", FileOptions::default());
+                zip.write("sadfsadfsadf".as_bytes());
+                let finish = zip.finish();
+                match finish {
+                    Ok(f) => {
+                        //std::fs::remove_file("F:/rust_project/fast_log/target/logs/0.log");
+                    }
+                    Err(e) => {
+                        //nothing
+                        panic!(e)
+                    }
+                }
+            }
+            Err(e) => {
+                panic!(e)
+            }
         }
     }
 }
