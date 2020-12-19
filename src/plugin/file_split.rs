@@ -212,14 +212,11 @@ pub fn do_zip(pack: ZipPack) {
                     zip.write_all(pack.data.as_slice());
                     zip.flush();
                     let finish = zip.finish();
-                    match finish {
-                        Ok(f) => {
-                            std::fs::remove_file(log_file_path);
-                        }
-                        Err(e) => {
-                            //nothing
-                            println!("[fast_log] try zip fail{:?}", e);
-                        }
+                    if finish.is_err(){
+                        println!("[fast_log] try zip fail{:?}", finish.err());
+                    }else{
+                        //is ok,delete log.keep zip
+                        std::fs::remove_file(log_file_path);
                     }
                 }
                 Err(e) => {
