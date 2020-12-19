@@ -198,36 +198,31 @@ pub fn do_zip(pack: ZipPack) {
     let log_file = OpenOptions::new()
         .read(true)
         .open(Path::new(log_file_path));
-    match log_file {
-        Ok(_) => {
-            //make zip
-            let date = Local::now();
-            let date = date.format("%Y_%m_%dT%H_%M_%S").to_string();
-            let zip_path = log_file_path.replace(".log", &format!("_{}.zip", date));
-            let zip_file = std::fs::File::create(&zip_path);
-            match zip_file {
-                Ok(zip_file) => {
-                    let mut zip = zip::ZipWriter::new(zip_file);
-                    zip.start_file(log_name, FileOptions::default());
-                    zip.write_all(pack.data.as_slice());
-                    zip.flush();
-                    let finish = zip.finish();
-                    if finish.is_err(){
-                        println!("[fast_log] try zip fail{:?}", finish.err());
-                    }else{
-                        //is ok,delete log.keep zip
-                        std::fs::remove_file(log_file_path);
-                    }
-                }
-                Err(e) => {
-                    println!("[fast_log] create(&{}) fail:{}", zip_path, e);
-                }
-            }
-        }
-        Err(e) => {
-            println!("[fast_log] give up compress log file. because: {}", e);
-        }
+    if log_file.is_err() {
+        println!("[fast_log] log find fail:{:?},log_file_path:{}", log_file.err(), log_file_path);
+        return;
     }
+    //make zip
+    let zip_path = log_file_path.replace(".log", &format!("_{}.zip", Local::now().format("%Y_%m_%dT%H_%M_%S").to_string()));
+    let zip_file = std::fs::File::create(&zip_path);
+    if zip_file.is_err() {
+        println!("[fast_log] create(&{}) fail:{}", zip_path, zip_file.err().unwrap());
+        return;
+    }
+    let zip_file = zip_file.unwrap();
+
+    //write zip bytes data
+    let mut zip = zip::ZipWriter::new(zip_file);
+    zip.start_file(log_name, FileOptions::default());
+    zip.write_all(pack.data.as_slice());
+    zip.flush();
+    let finish = zip.finish();
+    if finish.is_err() {
+        println!("[fast_log] try zip fail{:?}", finish.err());
+        return;
+    }
+    //clean old log file
+    std::fs::remove_file(log_file_path);
 }
 
 #[cfg(test)]
