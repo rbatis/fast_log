@@ -25,13 +25,14 @@ pub struct ZipPack {
 /// split log file allow zip compress log
 pub struct FileSplitAppenderData {
     max_split_bytes: usize,
-    temp_bytes: usize,
-    temp_data: Option<Vec<u8>>,
-    create_num: u64,
+    current: u64,
     dir_path: String,
     file: File,
     zip_compress: bool,
     sender: Sender<ZipPack>,
+    //cache data
+    temp_bytes: usize,
+    temp_data: Option<Vec<u8>>,
 }
 
 
@@ -72,7 +73,7 @@ impl FileSplitAppender {
                 max_split_bytes: max_temp_size.get_len(),
                 temp_bytes: temp_bytes,
                 temp_data: Some(vec![]),
-                create_num: last,
+                current: last,
                 dir_path: dir_path.to_string(),
                 file: file,
                 zip_compress: allow_zip_compress,
@@ -87,17 +88,17 @@ impl LogAppender for FileSplitAppender {
         let log_data = record.formated.as_str();
         let mut data = self.cell.borrow_mut();
         if data.temp_bytes >= data.max_split_bytes {
-            let current_file_path = format!("{}{}.log", data.dir_path.to_string(), data.create_num);
-            let next_file_path = format!("{}{}.log", data.dir_path.to_string(), data.create_num + 1);
+            let current_file_path = format!("{}{}.log", data.dir_path.to_string(), data.current);
+            let next_file_path = format!("{}{}.log", data.dir_path.to_string(), data.current + 1);
             let next_file = OpenOptions::new()
                 .create(true)
                 .append(true)
                 .open(next_file_path.as_str());
             match next_file {
                 Ok(next_file) => {
-                    data.create_num += 1;
+                    data.current += 1;
                     data.file = next_file;
-                    write_last_num(&data.dir_path, data.create_num);
+                    write_last_num(&data.dir_path, data.current);
                     if data.zip_compress {
                         //to zip
                         match data.temp_data.take() {
