@@ -303,7 +303,7 @@ mod test {
 
     #[test]
     pub fn test_file_compation_zip_stable_test() {
-        init_log("requests.log", 1000, log::Level::Debug, None, true);
+        init_split_log("target/logs/", 1000, LogSize::MB(10), true, log::Level::Info, None, true);
         let now = std::time::Instant::now();
         loop {
             info!("Commencing yak shaving");
