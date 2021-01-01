@@ -69,7 +69,7 @@ impl FileSplitAppender {
         file.read_to_end(&mut temp_data);
         file.seek(SeekFrom::Start(temp_bytes as u64));
         let (s, r) = crossbeam_channel::bounded(100);
-        spawn_do_zip(r);
+        spawn_saver_thread(r);
         Self {
             cell: RefCell::new(FileSplitAppenderData {
                 max_split_bytes: max_temp_size.get_len(),
@@ -133,8 +133,8 @@ impl LogAppender for FileSplitAppender {
     }
 }
 
-
-fn spawn_do_zip(r: Receiver<LogPack>) {
+///spawn an saver thread to save log file or zip file
+fn spawn_saver_thread(r: Receiver<LogPack>) {
     std::thread::spawn(move || {
         loop {
             match r.recv() {
