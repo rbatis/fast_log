@@ -307,12 +307,11 @@ mod test {
         let now = std::time::Instant::now();
         loop {
             info!("Commencing yak shaving");
-            if now.elapsed() > Duration::from_secs(30000000) {
+            if now.elapsed() > Duration::from_secs(30) {
                 break;
             }
         }
-        println!("done =====================================sleep 30s");
-        sleep(Duration::from_secs(30));
+        println!("done");
     }
 
 
