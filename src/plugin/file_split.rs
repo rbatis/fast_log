@@ -89,11 +89,11 @@ impl LogAppender for FileSplitAppender {
         let log_data = record.formated.as_str();
         let mut data = self.cell.borrow_mut();
         if data.temp_bytes >= data.max_split_bytes {
+            let log_name = format!("{}{}{}.log", data.dir_path, "temp", format!("{:29}", Local::now().format("%Y_%m_%dT%H_%M_%S%.f")).replace(" ", "_"));
             if data.zip_compress {
                 //to zip
                 match data.temp_data.take() {
                     Some(temp) => {
-                        let log_name = format!("{}{}{}.log", data.dir_path, "temp", format!("{:29}", Local::now().format("%Y_%m_%dT%H_%M_%S%.f")).replace(" ", "_"));
                         data.sender.send(LogPack {
                             info: "zip".to_string(),
                             data: temp,
@@ -103,7 +103,6 @@ impl LogAppender for FileSplitAppender {
                     _ => {}
                 }
             } else {
-                let log_name = format!("{}{}{}.log", data.dir_path, "temp", format!("{:29}", Local::now().format("%Y_%m_%dT%H_%M_%S%.f")).replace(" ", "_"));
                 //send data
                 let log_data = data.temp_data.take().unwrap();
                 data.sender.send(LogPack {
