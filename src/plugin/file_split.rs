@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::fs::{DirBuilder, File, OpenOptions};
-use std::io::{Read, Write, Seek, SeekFrom};
+use std::io::{Read, Write, Seek, SeekFrom, Error};
 
 use chrono::Local;
 use crossbeam_channel::{Receiver, Sender};
@@ -18,7 +18,6 @@ pub struct FileSplitAppender {
 ///log data pack
 pub struct LogPack {
     pub info: String,
-    pub data: Vec<u8>,
     pub new_log_name: String,
 }
 
@@ -36,28 +35,19 @@ pub struct FileSplitAppenderData {
 
 impl FileSplitAppenderData {
     pub fn send_pack(&mut self) {
-        let mut log_data = vec![];
         let first_file_path = format!("{}{}.log", self.dir_path, "temp");
-        let file = OpenOptions::new()
-            .read(true)
-            .open(first_file_path.as_str());
-        if file.is_err() {
-            return;
-        }
-        file.unwrap().read_to_end(&mut log_data);
         let new_log_name = format!("{}{}{}.log", self.dir_path, "temp", format!("{:29}", Local::now().format("%Y_%m_%dT%H_%M_%S%.f")).replace(" ", "_"));
+        std::fs::copy(&first_file_path, &new_log_name);
         if self.zip_compress {
             //to zip
             self.sender.send(LogPack {
                 info: "zip".to_string(),
-                data: log_data,
                 new_log_name: new_log_name,
             });
         } else {
             //send data
             self.sender.send(LogPack {
                 info: "log".to_string(),
-                data: log_data,
                 new_log_name: new_log_name,
             });
         }
@@ -146,10 +136,12 @@ fn spawn_saver_thread(r: Receiver<LogPack>) {
                 Ok(pack) => {
                     match pack.info.as_str() {
                         "zip" => {
+                            let zipnow = std::time::Instant::now();
                             do_zip(pack);
+                            println!("zip:{:?}", zipnow.elapsed());
                         }
                         "log" => {
-                            do_log(pack);
+                            //nothing to do
                         }
                         _ => {}
                     }
@@ -160,27 +152,21 @@ fn spawn_saver_thread(r: Receiver<LogPack>) {
     });
 }
 
-///write an ZipPack to log file
-pub fn do_log(pack: LogPack) {
-    let f = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(pack.new_log_name);
-    match f {
-        Ok(mut f) => {
-            f.write_all(&pack.data);
-            f.flush();
-        }
-        _ => {}
-    }
-}
 
 /// write an ZipPack to zip file
 pub fn do_zip(pack: LogPack) {
     let log_file_path = pack.new_log_name.as_str();
-    if log_file_path.is_empty() || pack.data.is_empty() {
+    if log_file_path.is_empty() {
         return;
     }
+    let log_file = OpenOptions::new()
+        .read(true)
+        .open(log_file_path);
+    if log_file.is_err() {
+        return;
+    }
+    let mut log_file = log_file.unwrap();
+
     let mut log_name = log_file_path.replace("\\", "/").to_string();
     match log_file_path.rfind("/") {
         Some(v) => {
@@ -199,7 +185,11 @@ pub fn do_zip(pack: LogPack) {
     //write zip bytes data
     let mut zip = zip::ZipWriter::new(zip_file);
     zip.start_file(log_name, FileOptions::default());
-    zip.write_all(pack.data.as_slice());
+
+    let mut buf =vec![];
+    log_file.read_to_end(&mut buf);
+    zip.write_all(&buf);
+
     zip.flush();
     let finish = zip.finish();
     if finish.is_err() {
