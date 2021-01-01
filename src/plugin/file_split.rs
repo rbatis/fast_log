@@ -23,6 +23,7 @@ pub struct LogPack {
 }
 
 /// split log file allow zip compress log
+/// Memory space swop running time , reduces the number of repeated queries for IO
 pub struct FileSplitAppenderData {
     max_split_bytes: usize,
     dir_path: String,
