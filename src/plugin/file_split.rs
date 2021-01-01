@@ -14,7 +14,10 @@ pub struct FileSplitAppender {
     cell: RefCell<FileSplitAppenderData>
 }
 
-pub struct ZipPack {
+
+///log data pack
+pub struct LogPack {
+    pub info: String,
     pub data: Vec<u8>,
     pub log_file_name: String,
 }
@@ -25,7 +28,7 @@ pub struct FileSplitAppenderData {
     dir_path: String,
     file: File,
     zip_compress: bool,
-    sender: Sender<ZipPack>,
+    sender: Sender<LogPack>,
     //cache data
     temp_bytes: usize,
     temp_data: Option<Vec<u8>>,
@@ -90,7 +93,8 @@ impl LogAppender for FileSplitAppender {
                 //to zip
                 match data.temp_data.take() {
                     Some(temp) => {
-                        data.sender.send(ZipPack {
+                        data.sender.send(LogPack {
+                            info: "zip".to_string(),
                             data: temp,
                             log_file_name: format!("{}{}.log", data.dir_path, "temp"),
                         });
@@ -101,18 +105,13 @@ impl LogAppender for FileSplitAppender {
                 let log_name = format!("{}{}{}.log", data.dir_path, "temp", format!("{:36}", Local::now())
                     .replace(":", "_")
                     .replace(" ", "_"));
-                let lanme = log_name.as_str();
-                let f = OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(log_name);
-                match f {
-                    Ok(mut f) => {
-                        f.write_all(&data.temp_data.take().unwrap());
-                        f.flush();
-                    }
-                    _ => {}
-                }
+                //send data
+                let log_data=data.temp_data.take().unwrap();
+                data.sender.send(LogPack {
+                    info: "log".to_string(),
+                    data: log_data,
+                    log_file_name: log_name,
+                });
             }
             //reset data
             data.file.set_len(0);
@@ -136,12 +135,20 @@ impl LogAppender for FileSplitAppender {
 }
 
 
-fn spawn_do_zip(r: Receiver<ZipPack>) {
+fn spawn_do_zip(r: Receiver<LogPack>) {
     std::thread::spawn(move || {
         loop {
             match r.recv() {
                 Ok(pack) => {
-                    do_zip(pack);
+                    match pack.info.as_str() {
+                        "zip" => {
+                            do_zip(pack);
+                        }
+                        "log" => {
+                            do_log(pack);
+                        }
+                        _ => {}
+                    }
                 }
                 _ => {}
             }
@@ -149,8 +156,23 @@ fn spawn_do_zip(r: Receiver<ZipPack>) {
     });
 }
 
-/// write an ZipPack
-pub fn do_zip(pack: ZipPack) {
+///write an ZipPack to log file
+pub fn do_log(pack: LogPack) {
+    let f = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(pack.log_file_name);
+    match f {
+        Ok(mut f) => {
+            f.write_all(&pack.data);
+            f.flush();
+        }
+        _ => {}
+    }
+}
+
+/// write an ZipPack to zip file
+pub fn do_zip(pack: LogPack) {
     let log_file_path = pack.log_file_name.as_str();
     if log_file_path.is_empty() || pack.data.is_empty() {
         return;
