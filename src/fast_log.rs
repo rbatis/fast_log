@@ -298,12 +298,12 @@ mod test {
         for _ in 0..20000 {
             info!("Commencing yak shaving");
         }
-        sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(10));
     }
 
     #[test]
     pub fn test_file_compation_zip_stable_test() {
-        init_split_log("target/logs/", 1000, LogSize::MB(10), true, log::Level::Info, None, true);
+        init_split_log("target/logs/", 1000, LogSize::MB(100), true, log::Level::Info, None, true);
         let now = std::time::Instant::now();
         loop {
             info!("Commencing yak shaving");
@@ -311,7 +311,8 @@ mod test {
                 break;
             }
         }
-        println!("done");
+        info!("done");
+        sleep(Duration::from_secs(100));
     }
 
 
