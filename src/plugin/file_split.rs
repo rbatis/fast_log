@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::fs::{DirBuilder, File, OpenOptions};
-use std::io::{Read, Write, Error, Seek, SeekFrom};
+use std::io::{Read, Write, Seek, SeekFrom};
 
 use chrono::Local;
 use crossbeam_channel::{Receiver, Sender};
@@ -176,6 +176,17 @@ pub fn do_zip(pack: LogPack) {
     if log_file_path.is_empty() || pack.data.is_empty() {
         return;
     }
+
+
+    let mut log_name = log_file_path.replace("\\", "/").to_string();
+    let bn = log_name.as_str();
+    match log_file_path.rfind("/") {
+        Some(v) => {
+            log_name = log_name[(v + 1)..log_name.len()].to_string();
+        }
+        _ => {}
+    }
+    let af = log_name.as_str();
     //make zip
     let zip_path = log_file_path.replace(".log", ".zip");
     let zip_file = std::fs::File::create(&zip_path);
@@ -186,7 +197,7 @@ pub fn do_zip(pack: LogPack) {
     let zip_file = zip_file.unwrap();
     //write zip bytes data
     let mut zip = zip::ZipWriter::new(zip_file);
-    zip.start_file(log_file_path, FileOptions::default());
+    zip.start_file(log_name, FileOptions::default());
     zip.write_all(pack.data.as_slice());
     zip.flush();
     let finish = zip.finish();
