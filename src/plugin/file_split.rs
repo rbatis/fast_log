@@ -35,7 +35,6 @@ pub struct FileSplitAppenderData {
 }
 
 impl FileSplitAppenderData {
-
     pub fn send_pack(&mut self) {
         let log_name = format!("{}{}{}.log", self.dir_path, "temp", format!("{:29}", Local::now().format("%Y_%m_%dT%H_%M_%S%.f")).replace(" ", "_"));
         if self.zip_compress {
@@ -62,7 +61,7 @@ impl FileSplitAppenderData {
         self.truncate();
     }
 
-    pub fn truncate(&mut self){
+    pub fn truncate(&mut self) {
         //reset data
         self.file.set_len(0);
         self.file.seek(SeekFrom::Start(0));
@@ -73,9 +72,10 @@ impl FileSplitAppenderData {
 
 
 impl FileSplitAppender {
-    ///split_log_bytes: log file data bytes(MB) splite
-    ///dir_path the dir
-    pub fn new(dir_path: &str, max_temp_size: LogSize, allow_zip_compress: bool) -> FileSplitAppender {
+    ///split_log_bytes:  log file data bytes(MB) splite
+    ///dir_path:         the log dir
+    ///log_pack_cap:     zip or log Waiting cap
+    pub fn new(dir_path: &str, max_temp_size: LogSize, allow_zip_compress: bool, log_pack_cap: usize) -> FileSplitAppender {
         if !dir_path.is_empty() && dir_path.ends_with(".log") {
             panic!("FileCompactionAppender only support new from path,for example: 'logs/xx/'");
         }
@@ -105,7 +105,7 @@ impl FileSplitAppender {
         let mut temp_data = vec![];
         file.read_to_end(&mut temp_data);
         file.seek(SeekFrom::Start(temp_bytes as u64));
-        let (s, r) = crossbeam_channel::bounded(100);
+        let (s, r) = crossbeam_channel::bounded(log_pack_cap);
         spawn_saver_thread(r);
         Self {
             cell: RefCell::new(FileSplitAppenderData {

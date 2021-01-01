@@ -145,7 +145,7 @@ pub fn init_log(log_file_path: &str, channel_cup: usize, level: log::Level, mut 
 /// filter: log filter
 pub fn init_split_log(log_dir_path: &str, channel_log_cup: usize, max_temp_size: LogSize, allow_zip_compress: bool, level: log::Level, mut filter: Option<Box<dyn Filter>>, debug_mode: bool) -> Result<(), Box<dyn std::error::Error + Send>> {
     let mut appenders: Vec<Box<dyn LogAppender>> = vec![
-        Box::new(FileSplitAppender::new(log_dir_path, max_temp_size, allow_zip_compress))
+        Box::new(FileSplitAppender::new(log_dir_path, max_temp_size, allow_zip_compress,1))
     ];
     if debug_mode {
         appenders.push(Box::new(ConsoleAppender {}));
@@ -307,7 +307,7 @@ mod test {
         let now = std::time::Instant::now();
         loop {
             info!("Commencing yak shaving");
-            if now.elapsed() > Duration::from_secs(30) {
+            if now.elapsed() > Duration::from_secs(30000000) {
                 break;
             }
         }
