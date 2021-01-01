@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 use std::fs::{DirBuilder, File, OpenOptions};
-use std::io::{Read, Write};
-use std::path::Path;
+use std::io::{Read, Write, Error, Seek, SeekFrom};
 
 use chrono::Local;
 use crossbeam_channel::{Receiver, Sender};
@@ -9,8 +8,6 @@ use zip::write::FileOptions;
 
 use crate::appender::{FastLogRecord, LogAppender};
 use crate::consts::LogSize;
-
-const SPLITE_CONFIG_NAME: &str = ".fast_log_split_appender";
 
 /// split log file allow zip compress log
 pub struct FileSplitAppender {
@@ -25,7 +22,6 @@ pub struct ZipPack {
 /// split log file allow zip compress log
 pub struct FileSplitAppenderData {
     max_split_bytes: usize,
-    current: u64,
     dir_path: String,
     file: File,
     zip_compress: bool,
@@ -49,16 +45,16 @@ impl FileSplitAppender {
         if !dir_path.is_empty() {
             DirBuilder::new().create(dir_path);
         }
-        let last = open_last_num(dir_path).unwrap();
-        let first_file_path = format!("{}{}.log", dir_path.to_string(), last);
+        let first_file_path = format!("{}{}.log", dir_path, "temp");
         let file = OpenOptions::new()
             .create(true)
-            .append(true)
+            .read(true)
+            .write(true)
             .open(first_file_path.as_str());
         if file.is_err() {
             panic!("[fast_log] open and create file fail:{}", file.err().unwrap());
         }
-        let file = file.unwrap();
+        let mut file = file.unwrap();
         let mut temp_bytes = 0;
         match file.metadata() {
             Ok(m) => {
@@ -66,14 +62,16 @@ impl FileSplitAppender {
             }
             _ => {}
         }
+        let mut temp_data = vec![];
+        file.read_to_end(&mut temp_data);
+        file.seek(SeekFrom::Start(temp_bytes as u64));
         let (s, r) = crossbeam_channel::bounded(100);
-        spawn_zip_thread(r);
+        spawn_do_zip(r);
         Self {
             cell: RefCell::new(FileSplitAppenderData {
                 max_split_bytes: max_temp_size.get_len(),
                 temp_bytes: temp_bytes,
-                temp_data: Some(vec![]),
-                current: last,
+                temp_data: Some(temp_data),
                 dir_path: dir_path.to_string(),
                 file: file,
                 zip_compress: allow_zip_compress,
@@ -88,33 +86,37 @@ impl LogAppender for FileSplitAppender {
         let log_data = record.formated.as_str();
         let mut data = self.cell.borrow_mut();
         if data.temp_bytes >= data.max_split_bytes {
-            let current_file_path = format!("{}{}.log", data.dir_path.to_string(), data.current);
-            let next_file_path = format!("{}{}.log", data.dir_path.to_string(), data.current + 1);
-            let next_file = OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(next_file_path.as_str());
-            match next_file {
-                Ok(next_file) => {
-                    data.current += 1;
-                    data.file = next_file;
-                    write_last_num(&data.dir_path, data.current);
-                    if data.zip_compress {
-                        //to zip
-                        match data.temp_data.take() {
-                            Some(temp) => {
-                                data.sender.send(ZipPack {
-                                    data: temp,
-                                    log_file_name: current_file_path.to_string(),
-                                });
-                            }
-                            _ => {}
-                        }
+            if data.zip_compress {
+                //to zip
+                match data.temp_data.take() {
+                    Some(temp) => {
+                        data.sender.send(ZipPack {
+                            data: temp,
+                            log_file_name: format!("{}{}.log", data.dir_path, "temp"),
+                        });
                     }
+                    _ => {}
                 }
-                _ => {}
+            } else {
+                let log_name = format!("{}{}{}.log", data.dir_path, "temp", format!("{:36}", Local::now())
+                    .replace(":", "_")
+                    .replace(" ", "_"));
+                let lanme = log_name.as_str();
+                let f = OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(log_name);
+                match f {
+                    Ok(mut f) => {
+                        f.write_all(&data.temp_data.take().unwrap());
+                        f.flush();
+                    }
+                    _ => {}
+                }
             }
             //reset data
+            data.file.set_len(0);
+            data.file.seek(SeekFrom::Start(0));
             data.temp_bytes = 0;
             data.temp_data = Some(vec![]);
         }
@@ -124,12 +126,7 @@ impl LogAppender for FileSplitAppender {
             Ok(size) => {
                 let bytes = log_data.as_bytes();
                 for x in bytes {
-                    match data.temp_data.as_mut() {
-                        Some(temp) => {
-                            temp.push(*x);
-                        }
-                        _ => {}
-                    }
+                    data.temp_data.as_mut().unwrap().push(*x);
                 }
                 data.temp_bytes += size;
             }
@@ -138,41 +135,8 @@ impl LogAppender for FileSplitAppender {
     }
 }
 
-fn open_last_num(dir_path: &str) -> Result<u64, String> {
-    let mut config = OpenOptions::new()
-        .read(true)
-        .open(Path::new(format!("{}{}", dir_path, SPLITE_CONFIG_NAME).as_str()));
-    if config.is_err() {
-        config = File::create(Path::new(format!("{}{}", dir_path, SPLITE_CONFIG_NAME).as_str()));
-    }
-    match config {
-        Ok(mut ok) => {
-            let mut data = String::new();
-            ok.read_to_string(&mut data);
-            println!("data:{}", &data);
-            let mut last = 0;
-            if !data.is_empty() {
-                last = data.parse::<u64>().unwrap();
-            }
-            Ok(last)
-        }
-        e => {
-            return Err(e.err().unwrap().to_string());
-        }
-    }
-}
 
-fn write_last_num(dir_path: &str, last: u64) {
-    let mut config = OpenOptions::new()
-        .write(true)
-        .open(Path::new(format!("{}{}", dir_path, SPLITE_CONFIG_NAME).as_str()))
-        .unwrap();
-    config.write(last.to_string().as_bytes());
-    config.flush();
-}
-
-
-fn spawn_zip_thread(r: Receiver<ZipPack>) {
+fn spawn_do_zip(r: Receiver<ZipPack>) {
     std::thread::spawn(move || {
         loop {
             match r.recv() {
@@ -194,14 +158,6 @@ pub fn do_zip(pack: ZipPack) {
     let log_names: Vec<&str> = log_file_path.split("/").collect();
     let log_name = log_names[log_names.len() - 1];
 
-    //check file exist
-    let log_file = OpenOptions::new()
-        .read(true)
-        .open(Path::new(log_file_path));
-    if log_file.is_err() {
-        println!("[fast_log] log find fail:{:?},log_file_path:{}", log_file.err(), log_file_path);
-        return;
-    }
     //make zip
     let zip_path = log_file_path.replace(".log", &format!("_{}.zip", Local::now().format("%Y_%m_%dT%H_%M_%S").to_string()));
     let zip_file = std::fs::File::create(&zip_path);
@@ -221,8 +177,6 @@ pub fn do_zip(pack: ZipPack) {
         println!("[fast_log] try zip fail{:?}", finish.err());
         return;
     }
-    //clean old log file
-    std::fs::remove_file(log_file_path);
 }
 
 #[cfg(test)]
