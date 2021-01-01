@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::fs::{DirBuilder, File, OpenOptions};
-use std::io::{Read, Write, Seek, SeekFrom, Error};
+use std::io::{Read, Write, Seek, SeekFrom};
 
 use chrono::Local;
 use crossbeam_channel::{Receiver, Sender};
@@ -196,6 +196,7 @@ pub fn do_zip(pack: LogPack) {
         println!("[fast_log] try zip fail{:?}", finish.err());
         return;
     }
+    std::fs::remove_file(log_file_path);
 }
 
 #[cfg(test)]
