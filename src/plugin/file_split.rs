@@ -133,9 +133,7 @@ impl LogAppender for FileSplitAppender {
         match write_bytes {
             Ok(size) => {
                 let bytes = log_data.as_bytes();
-                for x in bytes {
-                    data.temp_data.as_mut().unwrap().push(*x);
-                }
+                data.temp_data.as_mut().unwrap().write_all(bytes);
                 data.temp_bytes += size;
             }
             _ => {}
