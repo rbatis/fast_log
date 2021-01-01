@@ -34,6 +34,43 @@ pub struct FileSplitAppenderData {
     temp_data: Option<Vec<u8>>,
 }
 
+impl FileSplitAppenderData {
+
+    pub fn send_pack(&mut self) {
+        let log_name = format!("{}{}{}.log", self.dir_path, "temp", format!("{:29}", Local::now().format("%Y_%m_%dT%H_%M_%S%.f")).replace(" ", "_"));
+        if self.zip_compress {
+            //to zip
+            match self.temp_data.take() {
+                Some(temp) => {
+                    self.sender.send(LogPack {
+                        info: "zip".to_string(),
+                        data: temp,
+                        log_file_name: log_name,
+                    });
+                }
+                _ => {}
+            }
+        } else {
+            //send data
+            let log_data = self.temp_data.take().unwrap();
+            self.sender.send(LogPack {
+                info: "log".to_string(),
+                data: log_data,
+                log_file_name: log_name,
+            });
+        }
+        self.truncate();
+    }
+
+    pub fn truncate(&mut self){
+        //reset data
+        self.file.set_len(0);
+        self.file.seek(SeekFrom::Start(0));
+        self.temp_bytes = 0;
+        self.temp_data = Some(vec![]);
+    }
+}
+
 
 impl FileSplitAppender {
     ///split_log_bytes: log file data bytes(MB) splite
@@ -89,33 +126,7 @@ impl LogAppender for FileSplitAppender {
         let log_data = record.formated.as_str();
         let mut data = self.cell.borrow_mut();
         if data.temp_bytes >= data.max_split_bytes {
-            let log_name = format!("{}{}{}.log", data.dir_path, "temp", format!("{:29}", Local::now().format("%Y_%m_%dT%H_%M_%S%.f")).replace(" ", "_"));
-            if data.zip_compress {
-                //to zip
-                match data.temp_data.take() {
-                    Some(temp) => {
-                        data.sender.send(LogPack {
-                            info: "zip".to_string(),
-                            data: temp,
-                            log_file_name: log_name,
-                        });
-                    }
-                    _ => {}
-                }
-            } else {
-                //send data
-                let log_data = data.temp_data.take().unwrap();
-                data.sender.send(LogPack {
-                    info: "log".to_string(),
-                    data: log_data,
-                    log_file_name: log_name,
-                });
-            }
-            //reset data
-            data.file.set_len(0);
-            data.file.seek(SeekFrom::Start(0));
-            data.temp_bytes = 0;
-            data.temp_data = Some(vec![]);
+            data.send_pack();
         }
         let write_bytes = data.file.write(log_data.as_bytes());
         data.file.flush();
