@@ -93,20 +93,19 @@ impl LogAppender for FileSplitAppender {
                 //to zip
                 match data.temp_data.take() {
                     Some(temp) => {
+                        let log_name = format!("{}{}{}.log", data.dir_path, "temp", format!("{:29}", Local::now().format("%Y_%m_%dT%H_%M_%S%.f")).replace(" ", "_"));
                         data.sender.send(LogPack {
                             info: "zip".to_string(),
                             data: temp,
-                            log_file_name: format!("{}{}.log", data.dir_path, "temp"),
+                            log_file_name: log_name,
                         });
                     }
                     _ => {}
                 }
             } else {
-                let log_name = format!("{}{}{}.log", data.dir_path, "temp", format!("{:36}", Local::now())
-                    .replace(":", "_")
-                    .replace(" ", "_"));
+                let log_name = format!("{}{}{}.log", data.dir_path, "temp", format!("{:29}", Local::now().format("%Y_%m_%dT%H_%M_%S%.f")).replace(" ", "_"));
                 //send data
-                let log_data=data.temp_data.take().unwrap();
+                let log_data = data.temp_data.take().unwrap();
                 data.sender.send(LogPack {
                     info: "log".to_string(),
                     data: log_data,
@@ -177,21 +176,17 @@ pub fn do_zip(pack: LogPack) {
     if log_file_path.is_empty() || pack.data.is_empty() {
         return;
     }
-    let log_names: Vec<&str> = log_file_path.split("/").collect();
-    let log_name = log_names[log_names.len() - 1];
-
     //make zip
-    let zip_path = log_file_path.replace(".log", &format!("_{}.zip", Local::now().format("%Y_%m_%dT%H_%M_%S").to_string()));
+    let zip_path = log_file_path.replace(".log", ".zip");
     let zip_file = std::fs::File::create(&zip_path);
     if zip_file.is_err() {
         println!("[fast_log] create(&{}) fail:{}", zip_path, zip_file.err().unwrap());
         return;
     }
     let zip_file = zip_file.unwrap();
-
     //write zip bytes data
     let mut zip = zip::ZipWriter::new(zip_file);
-    zip.start_file(log_name, FileOptions::default());
+    zip.start_file(log_file_path, FileOptions::default());
     zip.write_all(pack.data.as_slice());
     zip.flush();
     let finish = zip.finish();
