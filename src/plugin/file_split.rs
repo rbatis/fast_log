@@ -44,8 +44,8 @@ impl RollingType {
                     match path {
                         Ok(path) => {
                             if let Some(v) = path.file_name().to_str() {
-                                //filter temp.log
-                                if v.ends_with("temp.log") {
+                                //filter temp.log and not start with temp
+                                if v.ends_with("temp.log") || !v.starts_with("temp") {
                                     continue;
                                 }
                             }
