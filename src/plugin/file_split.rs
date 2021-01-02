@@ -21,20 +21,20 @@ pub struct FileSplitAppender {
 pub struct LogPack {
     pub info: String,
     pub dir: String,
-    pub rolling: RollingKeepType,
+    pub rolling: RollingType,
     pub new_log_name: String,
 }
 
 
 ///rolling keep type
 #[derive(Copy, Clone, Debug)]
-pub enum RollingKeepType {
+pub enum RollingType {
     All,
     KeepTime(Duration),
     KeepNum(i64),
 }
 
-impl RollingKeepType {
+impl RollingType {
     fn read_paths(&self, dir: &str) -> Vec<DirEntry> {
         let paths = std::fs::read_dir(dir);
         match paths {
@@ -58,7 +58,7 @@ impl RollingKeepType {
 
     pub fn do_rolling(&self, dir: &str) {
         match self {
-            RollingKeepType::KeepNum(n) => {
+            RollingType::KeepNum(n) => {
                 let paths_vec = self.read_paths(dir);
                 for index in 0..paths_vec.len() {
                     if index == 0 {
@@ -70,7 +70,7 @@ impl RollingKeepType {
                     }
                 }
             }
-            RollingKeepType::KeepTime(t) => {
+            RollingType::KeepTime(t) => {
                 let paths_vec = self.read_paths(dir);
                 let duration = chrono::Duration::from_std(t.clone());
                 if duration.is_err() {
@@ -126,7 +126,7 @@ pub struct FileSplitAppenderData {
     file: File,
     zip_compress: bool,
     sender: Sender<LogPack>,
-    rolling_type: RollingKeepType,
+    rolling_type: RollingType,
     //cache data
     temp_bytes: usize,
 }
@@ -169,7 +169,7 @@ impl FileSplitAppender {
     ///split_log_bytes:  log file data bytes(MB) splite
     ///dir_path:         the log dir
     ///log_pack_cap:     zip or log Waiting cap
-    pub fn new(dir_path: &str, max_temp_size: LogSize, rolling_type: RollingKeepType, allow_zip_compress: bool, log_pack_cap: usize) -> FileSplitAppender {
+    pub fn new(dir_path: &str, max_temp_size: LogSize, rolling_type: RollingType, allow_zip_compress: bool, log_pack_cap: usize) -> FileSplitAppender {
         if !dir_path.is_empty() && dir_path.ends_with(".log") {
             panic!("FileCompactionAppender only support new from path,for example: 'logs/xx/'");
         }
@@ -314,7 +314,7 @@ mod test {
 
     use zip::write::FileOptions;
     use std::fs::{OpenOptions};
-    use crate::plugin::file_split::RollingKeepType;
+    use crate::plugin::file_split::RollingType;
 
 
     #[test]
@@ -363,7 +363,7 @@ mod test {
 
     #[test]
     fn test_rolling() {
-        let r = RollingKeepType::KeepTime(std::time::Duration::from_secs(5));
+        let r = RollingType::KeepTime(std::time::Duration::from_secs(5));
         r.do_rolling("target/logs/");
     }
 }
