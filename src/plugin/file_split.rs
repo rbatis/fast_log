@@ -1,8 +1,8 @@
 use std::cell::RefCell;
-use std::fs::{DirBuilder, File, OpenOptions};
-use std::io::{Write, Seek, SeekFrom, BufReader, BufRead};
+use std::fs::{DirBuilder, File, OpenOptions, ReadDir};
+use std::io::{Write, Seek, SeekFrom, BufReader, BufRead, Error};
 
-use chrono::Local;
+use chrono::{Local, Duration};
 use crossbeam_channel::{Receiver, Sender};
 use zip::write::FileOptions;
 
@@ -21,6 +21,30 @@ pub struct LogPack {
     pub new_log_name: String,
 }
 
+
+///rolling keep type
+pub enum RollingKeepType {
+    All,
+    KeepTime(Duration),
+    KeepNum(i64),
+}
+
+impl RollingKeepType {
+    //TODO RollingKeep
+    pub fn do_rolling(&self, dir: &str) {
+        let paths = std::fs::read_dir(dir);
+        match paths {
+            Ok(paths) => {
+                for path in paths {
+                    println!("Name: {}", path.unwrap().path().display())
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+
 /// split log file allow zip compress log
 /// Memory space swop running time , reduces the number of repeated queries for IO
 pub struct FileSplitAppenderData {
@@ -29,6 +53,7 @@ pub struct FileSplitAppenderData {
     file: File,
     zip_compress: bool,
     sender: Sender<LogPack>,
+    rolling_keep_num: RollingKeepType,
     //cache data
     temp_bytes: usize,
 }
@@ -105,6 +130,7 @@ impl FileSplitAppender {
                 file: file,
                 zip_compress: allow_zip_compress,
                 sender: s,
+                rolling_keep_num: RollingKeepType::All,
             })
         }
     }
@@ -127,6 +153,7 @@ impl LogAppender for FileSplitAppender {
         }
     }
 }
+
 
 ///spawn an saver thread to save log file or zip file
 fn spawn_saver_thread(r: Receiver<LogPack>) {
@@ -207,6 +234,7 @@ mod test {
 
     use zip::write::FileOptions;
     use std::fs::{OpenOptions};
+    use crate::plugin::file_split::RollingKeepType;
 
     #[test]
     fn test_zip() {
@@ -250,5 +278,11 @@ mod test {
             print!("{}", buf);
             buf.clear();
         }
+    }
+
+    #[test]
+    fn test_rolling() {
+        let r = RollingKeepType::KeepNum(10);
+        r.do_rolling("target/logs/");
     }
 }
