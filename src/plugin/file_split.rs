@@ -1,13 +1,14 @@
 use std::cell::RefCell;
-use std::fs::{DirBuilder, File, OpenOptions};
+use std::fs::{DirBuilder, File, OpenOptions, DirEntry};
 use std::io::{Write, Seek, SeekFrom, BufReader, BufRead};
 
-use chrono::{Local};
+use chrono::{Local, NaiveDateTime};
 use crossbeam_channel::{Receiver, Sender};
 use zip::write::FileOptions;
 
 use crate::appender::{FastLogRecord, LogAppender};
 use crate::consts::LogSize;
+use std::ops::Sub;
 use std::time::Duration;
 
 /// split log file allow zip compress log
@@ -19,11 +20,14 @@ pub struct FileSplitAppender {
 ///log data pack
 pub struct LogPack {
     pub info: String,
+    pub dir: String,
+    pub rolling: RollingKeepType,
     pub new_log_name: String,
 }
 
 
 ///rolling keep type
+#[derive(Copy, Clone, Debug)]
 pub enum RollingKeepType {
     All,
     KeepTime(Duration),
@@ -31,17 +35,85 @@ pub enum RollingKeepType {
 }
 
 impl RollingKeepType {
-    //TODO RollingKeep
-    pub fn do_rolling(&self, dir: &str) {
+    fn read_paths(&self, dir: &str) -> Vec<DirEntry> {
         let paths = std::fs::read_dir(dir);
         match paths {
             Ok(paths) => {
+                let mut paths_vec = vec![];
                 for path in paths {
-                    println!("Name: {}", path.unwrap().path().display())
+                    match path {
+                        Ok(path) => {
+                            paths_vec.push(path);
+                        }
+                        _ => {}
+                    }
+                }
+                paths_vec.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
+                return paths_vec;
+            }
+            _ => {}
+        }
+        return vec![];
+    }
+
+    pub fn do_rolling(&self, dir: &str) {
+        match self {
+            RollingKeepType::KeepNum(n) => {
+                let paths_vec = self.read_paths(dir);
+                for index in 0..paths_vec.len() {
+                    if index == 0 {
+                        continue;
+                    }
+                    if index >= (*n+1) as usize {
+                        let item = &paths_vec[index];
+                        std::fs::remove_file(item.path());
+                    }
+                }
+            }
+            RollingKeepType::KeepTime(t) => {
+                let paths_vec = self.read_paths(dir);
+                let duration = chrono::Duration::from_std(t.clone());
+                if duration.is_err() {
+                    return;
+                }
+                let duration = duration.unwrap();
+                let now = Local::now().naive_local();
+                for index in 0..paths_vec.len() {
+                    if index == 0 {
+                        continue;
+                    }
+                    let item = &paths_vec[index];
+                    let file_name = item.file_name();
+                    let name = file_name.to_str().unwrap_or("").to_string();
+                    match self.file_name_parse_time(&name) {
+                        Some(time) => {
+                            if now.sub(time) > duration {
+                                std::fs::remove_file(item.path());
+                            }
+                        }
+                        _ => {}
+                    }
                 }
             }
             _ => {}
         }
+    }
+
+    fn file_name_parse_time(&self, name: &str) -> Option<NaiveDateTime> {
+        if name.starts_with("temp") {
+            let mut time_str = name.replace("temp", "");
+            if let Some(v) = time_str.find(".") {
+                time_str = time_str[0..v].to_string();
+            }
+            let time = chrono::NaiveDateTime::parse_from_str(&time_str, "%Y_%m_%dT%H_%M_%S");
+            match time {
+                Ok(time) => {
+                    return Some(time);
+                }
+                _ => {}
+            }
+        }
+        return None;
     }
 }
 
@@ -68,12 +140,16 @@ impl FileSplitAppenderData {
             //to zip
             self.sender.send(LogPack {
                 info: "zip".to_string(),
+                dir: self.dir_path.clone(),
+                rolling: self.rolling_type.clone(),
                 new_log_name: new_log_name,
             });
         } else {
             //send data
             self.sender.send(LogPack {
                 info: "log".to_string(),
+                dir: self.dir_path.clone(),
+                rolling: self.rolling_type.clone(),
                 new_log_name: new_log_name,
             });
         }
@@ -93,7 +169,7 @@ impl FileSplitAppender {
     ///split_log_bytes:  log file data bytes(MB) splite
     ///dir_path:         the log dir
     ///log_pack_cap:     zip or log Waiting cap
-    pub fn new(dir_path: &str, max_temp_size: LogSize, allow_zip_compress: bool, log_pack_cap: usize) -> FileSplitAppender {
+    pub fn new(dir_path: &str, max_temp_size: LogSize, rolling_type: RollingKeepType, allow_zip_compress: bool, log_pack_cap: usize) -> FileSplitAppender {
         if !dir_path.is_empty() && dir_path.ends_with(".log") {
             panic!("FileCompactionAppender only support new from path,for example: 'logs/xx/'");
         }
@@ -131,7 +207,7 @@ impl FileSplitAppender {
                 file: file,
                 zip_compress: allow_zip_compress,
                 sender: s,
-                rolling_type: RollingKeepType::All,
+                rolling_type: rolling_type,
             })
         }
     }
@@ -162,6 +238,9 @@ fn spawn_saver_thread(r: Receiver<LogPack>) {
         loop {
             match r.recv() {
                 Ok(pack) => {
+                    //do rolling
+                    pack.rolling.do_rolling(&pack.dir);
+                    //do save pack
                     match pack.info.as_str() {
                         "zip" => {
                             do_zip(pack);
@@ -237,6 +316,7 @@ mod test {
     use std::fs::{OpenOptions};
     use crate::plugin::file_split::RollingKeepType;
 
+
     #[test]
     fn test_zip() {
         let zip_file = std::fs::File::create("F:/rust_project/fast_log/target/logs/0.zip");
@@ -283,7 +363,7 @@ mod test {
 
     #[test]
     fn test_rolling() {
-        let r = RollingKeepType::KeepNum(10);
+        let r = RollingKeepType::KeepTime(std::time::Duration::from_secs(5));
         r.do_rolling("target/logs/");
     }
 }

@@ -12,7 +12,7 @@ use crate::error::LogError;
 use crate::filter::{Filter, NoFilter};
 use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
-use crate::plugin::file_split::FileSplitAppender;
+use crate::plugin::file_split::{FileSplitAppender, RollingKeepType};
 
 lazy_static! {
    static ref LOG_SENDER:RwLock<Option<LoggerSender>>=RwLock::new(Option::None);
@@ -143,9 +143,9 @@ pub fn init_log(log_file_path: &str, channel_cup: usize, level: log::Level, mut 
 /// max_temp_size: do zip if temp log full
 /// allow_zip_compress: zip compress log file
 /// filter: log filter
-pub fn init_split_log(log_dir_path: &str, channel_log_cup: usize, max_temp_size: LogSize, allow_zip_compress: bool, level: log::Level, mut filter: Option<Box<dyn Filter>>, debug_mode: bool) -> Result<(), Box<dyn std::error::Error + Send>> {
+pub fn init_split_log(log_dir_path: &str, channel_log_cup: usize, max_temp_size: LogSize, allow_zip_compress: bool,rolling_type:RollingKeepType, level: log::Level, mut filter: Option<Box<dyn Filter>>, debug_mode: bool) -> Result<(), Box<dyn std::error::Error + Send>> {
     let mut appenders: Vec<Box<dyn LogAppender>> = vec![
-        Box::new(FileSplitAppender::new(log_dir_path, max_temp_size, allow_zip_compress,1))
+        Box::new(FileSplitAppender::new(log_dir_path, max_temp_size, rolling_type,allow_zip_compress,1))
     ];
     if debug_mode {
         appenders.push(Box::new(ConsoleAppender {}));
@@ -235,6 +235,7 @@ mod test {
     use crate::consts::LogSize;
     use crate::fast_log::{FastLogRecord, LogAppender};
     use crate::filter::NoFilter;
+    use crate::plugin::file_split::RollingKeepType;
 
     #[test]
     pub fn test_log() {
@@ -285,7 +286,7 @@ mod test {
 
     #[test]
     pub fn test_file_compation() {
-        init_split_log("target/logs/", 1000, LogSize::MB(1), false, log::Level::Info, None, true);
+        init_split_log("target/logs/", 1000, LogSize::MB(1), false, RollingKeepType::All,log::Level::Info, None, true);
         for _ in 0..20000 {
             info!("Commencing yak shaving");
         }
@@ -294,7 +295,7 @@ mod test {
 
     #[test]
     pub fn test_file_compation_zip() {
-        init_split_log("target/logs/", 1000, LogSize::KB(500), true, log::Level::Info, None, true);
+        init_split_log("target/logs/", 1000, LogSize::KB(50), true, RollingKeepType::KeepNum(5),log::Level::Info, None, true);
         for _ in 0..20000 {
             info!("Commencing yak shaving");
         }
@@ -303,7 +304,7 @@ mod test {
 
     #[test]
     pub fn test_file_compation_zip_stable_test() {
-        init_split_log("target/logs/", 1000, LogSize::MB(100), true, log::Level::Info, None, false);
+        init_split_log("target/logs/", 1000, LogSize::MB(100), true, RollingKeepType::All,log::Level::Info, None, false);
         let now = std::time::Instant::now();
         loop {
             info!("Commencing yak shaving");
