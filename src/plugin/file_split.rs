@@ -43,12 +43,18 @@ impl RollingType {
                 for path in paths {
                     match path {
                         Ok(path) => {
+                            if let Some(v) = path.file_name().to_str() {
+                                //filter temp.log
+                                if v.ends_with("temp.log") {
+                                    continue;
+                                }
+                            }
                             paths_vec.push(path);
                         }
                         _ => {}
                     }
                 }
-                paths_vec.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
+                paths_vec.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
                 return paths_vec;
             }
             _ => {}
@@ -61,10 +67,7 @@ impl RollingType {
             RollingType::KeepNum(n) => {
                 let paths_vec = self.read_paths(dir);
                 for index in 0..paths_vec.len() {
-                    if index == 0 {
-                        continue;
-                    }
-                    if index >= (*n+1) as usize {
+                    if index >= *n as usize {
                         let item = &paths_vec[index];
                         std::fs::remove_file(item.path());
                     }
@@ -79,9 +82,6 @@ impl RollingType {
                 let duration = duration.unwrap();
                 let now = Local::now().naive_local();
                 for index in 0..paths_vec.len() {
-                    if index == 0 {
-                        continue;
-                    }
                     let item = &paths_vec[index];
                     let file_name = item.file_name();
                     let name = file_name.to_str().unwrap_or("").to_string();
@@ -363,7 +363,7 @@ mod test {
 
     #[test]
     fn test_rolling() {
-        let r = RollingType::KeepTime(std::time::Duration::from_secs(5));
+        let r = RollingType::KeepNum(5);
         r.do_rolling("target/logs/");
     }
 }
