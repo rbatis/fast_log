@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::fs::{DirBuilder, File, OpenOptions};
-use std::io::{Read, Write, Seek, SeekFrom};
+use std::io::{Write, Seek, SeekFrom, BufReader, BufRead};
 
 use chrono::Local;
 use crossbeam_channel::{Receiver, Sender};
@@ -136,9 +136,7 @@ fn spawn_saver_thread(r: Receiver<LogPack>) {
                 Ok(pack) => {
                     match pack.info.as_str() {
                         "zip" => {
-                            let zipnow = std::time::Instant::now();
                             do_zip(pack);
-                            println!("zip:{:?}", zipnow.elapsed());
                         }
                         "log" => {
                             //nothing to do
@@ -165,8 +163,7 @@ pub fn do_zip(pack: LogPack) {
     if log_file.is_err() {
         return;
     }
-    let mut log_file = log_file.unwrap();
-
+    let log_file = log_file.unwrap();
     let mut log_name = log_file_path.replace("\\", "/").to_string();
     match log_file_path.rfind("/") {
         Some(v) => {
@@ -185,11 +182,16 @@ pub fn do_zip(pack: LogPack) {
     //write zip bytes data
     let mut zip = zip::ZipWriter::new(zip_file);
     zip.start_file(log_name, FileOptions::default());
-
-    let mut buf =vec![];
-    log_file.read_to_end(&mut buf);
-    zip.write_all(&buf);
-
+    //buf reader
+    let mut r = BufReader::new(log_file);
+    let mut buf = String::new();
+    while let Ok(l) = r.read_line(&mut buf) {
+        if l == 0 {
+            break;
+        }
+        zip.write(buf.as_bytes());
+        buf.clear();
+    }
     zip.flush();
     let finish = zip.finish();
     if finish.is_err() {
@@ -201,9 +203,10 @@ pub fn do_zip(pack: LogPack) {
 
 #[cfg(test)]
 mod test {
-    use std::io::Write;
+    use std::io::{Write, BufReader, BufRead};
 
     use zip::write::FileOptions;
+    use std::fs::{OpenOptions};
 
     #[test]
     fn test_zip() {
@@ -227,6 +230,25 @@ mod test {
             Err(e) => {
                 panic!(e)
             }
+        }
+    }
+
+    #[test]
+    fn test_buf() {
+        let log_file = OpenOptions::new()
+            .create(true)
+            .read(true)
+            .write(true)
+            .open("target/logs/test.log").unwrap();
+        //buf reader
+        let mut r = BufReader::new(log_file);
+        let mut buf = String::new();
+        while let Ok(l) = r.read_line(&mut buf) {
+            if l == 0 {
+                break;
+            }
+            print!("{}", buf);
+            buf.clear();
         }
     }
 }
