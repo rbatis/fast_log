@@ -1,13 +1,14 @@
 use std::cell::RefCell;
-use std::fs::{DirBuilder, File, OpenOptions, ReadDir};
-use std::io::{Write, Seek, SeekFrom, BufReader, BufRead, Error};
+use std::fs::{DirBuilder, File, OpenOptions};
+use std::io::{Write, Seek, SeekFrom, BufReader, BufRead};
 
-use chrono::{Local, Duration};
+use chrono::{Local};
 use crossbeam_channel::{Receiver, Sender};
 use zip::write::FileOptions;
 
 use crate::appender::{FastLogRecord, LogAppender};
 use crate::consts::LogSize;
+use std::time::Duration;
 
 /// split log file allow zip compress log
 pub struct FileSplitAppender {
@@ -53,7 +54,7 @@ pub struct FileSplitAppenderData {
     file: File,
     zip_compress: bool,
     sender: Sender<LogPack>,
-    rolling_keep_num: RollingKeepType,
+    rolling_type: RollingKeepType,
     //cache data
     temp_bytes: usize,
 }
@@ -130,7 +131,7 @@ impl FileSplitAppender {
                 file: file,
                 zip_compress: allow_zip_compress,
                 sender: s,
-                rolling_keep_num: RollingKeepType::All,
+                rolling_type: RollingKeepType::All,
             })
         }
     }
