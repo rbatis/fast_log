@@ -99,7 +99,7 @@ mod test {
         fn do_log(&self, record: &FastLogRecord) {}
     }
 
-    //cargo test --release --color=always --package fast_log --lib fast_log::test::bench_recv --no-fail-fast -- --exact -Z unstable-options --show-output
+    //cargo test --release --package fast_log --lib example::fast_log_test::test::bench_recv --no-fail-fast -- --exact -Z unstable-options --show-output
     #[test]
     pub fn bench_recv() {
         init_custom_log(vec![Box::new(BenchRecvLog {})], 1000, log::Level::Info, Box::new(NoFilter {}),Box::new(FastLogFormatRecord{}));
