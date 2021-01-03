@@ -30,17 +30,27 @@ impl FastLogRecord {
             (file, line) => format!("({}:{})", file, line),
         }
     }
-    pub fn set_formated(&mut self) {
+}
+
+/// format record data
+pub trait RecordFormat: Send {
+    fn do_format(&self, arg: &mut FastLogRecord);
+}
+
+pub struct FastLogFormatRecord {}
+
+impl RecordFormat for FastLogFormatRecord {
+    fn do_format(&self, arg: &mut FastLogRecord) {
         let data;
-        let now = format!("{:36}",self.now.to_string());
-        match self.level {
+        let now = format!("{:36}", arg.now.to_string());
+        match arg.level {
             Level::Warn | Level::Error => {
-                data = format!("{} {} {} - {}  {}\n", &now, self.level, self.module_path, self.args, self.format_line());
+                data = format!("{} {} {} - {}  {}\n", &now, arg.level, arg.module_path, arg.args, arg.format_line());
             }
             _ => {
-                data = format!("{} {} {} - {}\n", &now, self.level, self.module_path, self.args);
+                data = format!("{} {} {} - {}\n", &now, arg.level, arg.module_path, arg.args);
             }
         }
-        self.formated = data;
+        arg.formated = data;
     }
 }

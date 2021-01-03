@@ -18,3 +18,7 @@ pub mod consts;
 pub use fast_log::init_log as init_log;
 pub use fast_log::init_split_log as init_split_log;
 pub use fast_log::init_custom_log as init_custom_log;
+
+
+///test
+mod example;

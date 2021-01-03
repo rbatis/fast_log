@@ -6,7 +6,7 @@ use chrono::Local;
 use crossbeam_channel::{Receiver, SendError};
 use log::{Level, Metadata, Record};
 
-use crate::appender::{FastLogRecord, LogAppender};
+use crate::appender::{FastLogRecord, LogAppender, RecordFormat, FastLogFormatRecord};
 use crate::consts::LogSize;
 use crate::error::LogError;
 use crate::filter::{Filter, NoFilter};
@@ -93,7 +93,7 @@ impl log::Log for Logger {
                     match lock.deref() {
                         Some(sender) => {
                             if !sender.filter.filter(record) {
-                                let mut fast_log_record = FastLogRecord {
+                                let fast_log_record = FastLogRecord {
                                     level,
                                     target: record.metadata().target().to_string(),
                                     args: record.args().to_string(),
@@ -103,7 +103,6 @@ impl log::Log for Logger {
                                     now: Local::now(),
                                     formated: "".to_string(),
                                 };
-                                fast_log_record.set_formated();
                                 sender.send(fast_log_record);
                             }
                         }
@@ -134,7 +133,7 @@ pub fn init_log(log_file_path: &str, channel_cup: usize, level: log::Level, mut 
     if filter.is_some() {
         log_filter = filter.take().unwrap();
     }
-    return init_custom_log(appenders, channel_cup, level, log_filter);
+    return init_custom_log(appenders, channel_cup, level, log_filter,Box::new(FastLogFormatRecord{}));
 }
 
 /// initializes the log file path
@@ -145,7 +144,7 @@ pub fn init_log(log_file_path: &str, channel_cup: usize, level: log::Level, mut 
 /// filter: log filter
 pub fn init_split_log(log_dir_path: &str, channel_log_cup: usize, max_temp_size: LogSize, allow_zip_compress: bool, rolling_type: RollingType, level: log::Level, mut filter: Option<Box<dyn Filter>>, debug_mode: bool) -> Result<(), Box<dyn std::error::Error + Send>> {
     let mut appenders: Vec<Box<dyn LogAppender>> = vec![
-        Box::new(FileSplitAppender::new(log_dir_path, max_temp_size, rolling_type,allow_zip_compress,1))
+        Box::new(FileSplitAppender::new(log_dir_path, max_temp_size, rolling_type, allow_zip_compress, 1))
     ];
     if debug_mode {
         appenders.push(Box::new(ConsoleAppender {}));
@@ -154,10 +153,10 @@ pub fn init_split_log(log_dir_path: &str, channel_log_cup: usize, max_temp_size:
     if filter.is_some() {
         log_filter = filter.take().unwrap();
     }
-    return init_custom_log(appenders, channel_log_cup, level, log_filter);
+    return init_custom_log(appenders, channel_log_cup, level, log_filter,Box::new(FastLogFormatRecord{}));
 }
 
-pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, level: log::Level, filter: Box<dyn Filter>) -> Result<(), Box<dyn std::error::Error + Send>> {
+pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, level: log::Level, filter: Box<dyn Filter>, format: Box<dyn RecordFormat>) -> Result<(), Box<dyn std::error::Error + Send>> {
     if appenders.is_empty() {
         return Err(Box::new(LogError::from("[fast_log] appenders can not be empty!")));
     }
@@ -168,7 +167,8 @@ pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, lev
             loop {
                 let data = main_recv.recv();
                 if data.is_ok() {
-                    let s: FastLogRecord = data.unwrap();
+                    let mut s: FastLogRecord = data.unwrap();
+                    format.do_format(&mut s);
                     for x in &appenders {
                         x.do_log(&s);
                     }
@@ -188,7 +188,8 @@ pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, lev
             loop {
                 let data = main_recv.recv();
                 if data.is_ok() {
-                    let s: FastLogRecord = data.unwrap();
+                    let mut s: FastLogRecord = data.unwrap();
+                    format.do_format(&mut s);
                     for x in &sends {
                         x.send(s.clone());
                     }
@@ -219,122 +220,5 @@ pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, lev
         return Err(Box::new(r.err().unwrap()));
     } else {
         return Ok(());
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use std::thread::sleep;
-    use std::time::{Duration, Instant};
-
-    use log::{debug, info, Level};
-    use log::error;
-
-    use crate::{init_custom_log, init_log, init_split_log};
-    use crate::bencher::QPS;
-    use crate::consts::LogSize;
-    use crate::fast_log::{FastLogRecord, LogAppender};
-    use crate::filter::NoFilter;
-    use crate::plugin::file_split::RollingType;
-
-    #[test]
-    pub fn test_log() {
-        init_log("requests.log", 1000, log::Level::Debug, None, true);
-        debug!("Commencing yak shaving{}", 0);
-        sleep(Duration::from_secs(1));
-    }
-
-    //cargo test --release --color=always --package fast_log --lib fast_log::test::bench_log --no-fail-fast -- --exact -Z unstable-options --show-output
-    #[test]
-    pub fn bench_log() {
-        init_log("requests.log", 1000, log::Level::Info, None, false);
-        let total = 10000;
-        let now = Instant::now();
-        for index in 0..total {
-            //sleep(Duration::from_secs(1));
-            info!("Commencing yak shaving{}", index);
-        }
-        now.time(total);
-        now.qps(total);
-        sleep(Duration::from_secs(1));
-    }
-
-    struct CustomLog {}
-
-    impl LogAppender for CustomLog {
-        fn do_log(&self, record: &FastLogRecord) {
-            let data;
-            match record.level {
-                Level::Warn | Level::Error => {
-                    data = format!("{} {} {} - {}  {}\n", &record.now, record.level, record.module_path, record.args, record.format_line());
-                }
-                _ => {
-                    data = format!("{} {} {} - {}\n", &record.now, record.level, record.module_path, record.args);
-                }
-            }
-            print!("{}", data);
-        }
-    }
-
-    #[test]
-    pub fn test_custom() {
-        init_custom_log(vec![Box::new(CustomLog {})], 1000, log::Level::Info, Box::new(NoFilter {}));
-        info!("Commencing yak shaving");
-        error!("Commencing error");
-        sleep(Duration::from_secs(1));
-    }
-
-    #[test]
-    pub fn test_file_compation() {
-        init_split_log("target/logs/", 1000, LogSize::MB(1), false, RollingType::All, log::Level::Info, None, true);
-        for _ in 0..20000 {
-            info!("Commencing yak shaving");
-        }
-        sleep(Duration::from_secs(1));
-    }
-
-    #[test]
-    pub fn test_file_compation_zip() {
-        init_split_log("target/logs/", 1000, LogSize::KB(50), true, RollingType::KeepNum(5), log::Level::Info, None, true);
-        for _ in 0..20000 {
-            info!("Commencing yak shaving");
-        }
-        sleep(Duration::from_secs(10));
-    }
-
-    #[test]
-    pub fn test_file_compation_zip_stable_test() {
-        init_split_log("target/logs/", 1000, LogSize::MB(100), true, RollingType::All, log::Level::Info, None, false);
-        let now = std::time::Instant::now();
-        loop {
-            info!("Commencing yak shaving");
-            if now.elapsed() > Duration::from_secs(30) {
-                break;
-            }
-        }
-        info!("done");
-        sleep(Duration::from_secs(100));
-    }
-
-
-    struct BenchRecvLog {}
-
-    impl LogAppender for BenchRecvLog {
-        fn do_log(&self, record: &FastLogRecord) {}
-    }
-
-    //cargo test --release --color=always --package fast_log --lib fast_log::test::bench_recv --no-fail-fast -- --exact -Z unstable-options --show-output
-    #[test]
-    pub fn bench_recv() {
-        init_custom_log(vec![Box::new(BenchRecvLog {})], 1000, log::Level::Info, Box::new(NoFilter {}));
-        let total = 10000;
-        let now = Instant::now();
-        for index in 0..total {
-            //sleep(Duration::from_secs(1));
-            info!("Commencing yak shaving{}", index);
-        }
-        now.time(total);
-        now.qps(total);
-        sleep(Duration::from_secs(1));
     }
 }
