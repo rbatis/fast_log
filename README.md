@@ -39,10 +39,12 @@ log data->    | main channel  |   ->
 > 有多快？
 
 //win10(PC 6核心,机械硬盘)
-* use QPS: 525892 条/s
+* use Time: 13.7386ms ,each:1373 ns/op
+* use QPS: 726638 QPS/s
+
 
 //win10(PC 6核心,固态硬盘)
-* use QPS: 508215 条/s
+* use QPS: 708215 条/s
 
 > support Future mode,async await based on mpsc channel, tokio or async_std
 > support log split,zip_compress
