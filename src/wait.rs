@@ -20,4 +20,9 @@ impl FastLogWaitGroup {
         crate::fast_log::exit();
         self.inner.wait();
     }
+
+    ///send exit msg
+    pub fn exit(self) {
+        crate::fast_log::exit();
+    }
 }
