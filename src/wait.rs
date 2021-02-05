@@ -12,7 +12,7 @@ impl FastLogWaitGroup {
         }
     }
     /// wait call fast_log::exit();
-    pub fn wait_exit(self) {
+    pub fn wait(self) {
         self.inner.wait();
     }
     /// exit and wait log empty
