@@ -13,6 +13,7 @@ pub mod plugin;
 pub mod filter;
 pub mod appender;
 pub mod consts;
+pub mod wait;
 
 ///init log
 pub use fast_log::init_log as init_log;

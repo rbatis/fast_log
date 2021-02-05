@@ -107,15 +107,14 @@ mod test {
     }
 
     #[test]
-    pub fn test_wait_exit() {
+    pub fn test_wait_log_exit() {
         let wait_group = init_log("requests.log", 1000, log::Level::Info, None, false).unwrap();
-        std::thread::spawn(move || {
-            sleep(Duration::from_secs(5));
-            exit().unwrap();
-        });
-        let now=std::time::Instant::now();
+        for index in 0..10000 {
+            info!("index:{}", index);
+        }
+        let now = std::time::Instant::now();
         wait_group.wait();
-        println!("wait:{:?}",now.elapsed());
+        println!("wait:{:?}", now.elapsed());
     }
 
 

@@ -4,7 +4,6 @@ use std::sync::RwLock;
 
 use chrono::Local;
 use crossbeam_channel::{Receiver, SendError};
-use crossbeam_utils::sync::WaitGroup;
 use log::{Level, Log, Metadata, Record};
 
 use crate::appender::{Command, FastLogFormatRecord, FastLogRecord, LogAppender, RecordFormat};
@@ -14,6 +13,7 @@ use crate::filter::{Filter, NoFilter};
 use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
 use crate::plugin::file_split::{FileSplitAppender, RollingType};
+use crate::wait::FastLogWaitGroup;
 
 lazy_static! {
    static ref LOG_SENDER:RwLock<Option<LoggerSender>>=RwLock::new(Option::None);
@@ -124,7 +124,7 @@ static LOGGER: Logger = Logger { level: AtomicI32::new(1) };
 /// initializes the log file path
 /// log_file_path:  example->  "test.log"
 /// channel_cup: example -> 1000
-pub fn init_log(log_file_path: &str, channel_cup: usize, level: log::Level, mut filter: Option<Box<dyn Filter>>, debug_mode: bool) -> Result<WaitGroup, Box<dyn std::error::Error + Send>> {
+pub fn init_log(log_file_path: &str, channel_cup: usize, level: log::Level, mut filter: Option<Box<dyn Filter>>, debug_mode: bool) -> Result<FastLogWaitGroup, Box<dyn std::error::Error + Send>> {
     let mut appenders: Vec<Box<dyn LogAppender>> = vec![
         Box::new(FileAppender::new(log_file_path))
     ];
@@ -144,7 +144,7 @@ pub fn init_log(log_file_path: &str, channel_cup: usize, level: log::Level, mut 
 /// max_temp_size: do zip if temp log full
 /// allow_zip_compress: zip compress log file
 /// filter: log filter
-pub fn init_split_log(log_dir_path: &str, channel_log_cup: usize, max_temp_size: LogSize, allow_zip_compress: bool, rolling_type: RollingType, level: log::Level, mut filter: Option<Box<dyn Filter>>, debug_mode: bool) -> Result<WaitGroup, Box<dyn std::error::Error + Send>> {
+pub fn init_split_log(log_dir_path: &str, channel_log_cup: usize, max_temp_size: LogSize, allow_zip_compress: bool, rolling_type: RollingType, level: log::Level, mut filter: Option<Box<dyn Filter>>, debug_mode: bool) -> Result<FastLogWaitGroup, Box<dyn std::error::Error + Send>> {
     let mut appenders: Vec<Box<dyn LogAppender>> = vec![
         Box::new(FileSplitAppender::new(log_dir_path, max_temp_size, rolling_type, allow_zip_compress, 1))
     ];
@@ -158,11 +158,11 @@ pub fn init_split_log(log_dir_path: &str, channel_log_cup: usize, max_temp_size:
     return init_custom_log(appenders, channel_log_cup, level, log_filter, Box::new(FastLogFormatRecord {}));
 }
 
-pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, level: log::Level, filter: Box<dyn Filter>, format: Box<dyn RecordFormat>) -> Result<WaitGroup, Box<dyn std::error::Error + Send>> {
+pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, level: log::Level, filter: Box<dyn Filter>, format: Box<dyn RecordFormat>) -> Result<FastLogWaitGroup, Box<dyn std::error::Error + Send>> {
     if appenders.is_empty() {
         return Err(Box::new(LogError::from("[fast_log] appenders can not be empty!")));
     }
-    let wait_group = WaitGroup::new();
+    let wait_group = FastLogWaitGroup::new();
     let main_recv = set_log(RuntimeType::Std, log_cup, level, filter);
     if appenders.len() == 1 {
         //main recv data
@@ -203,7 +203,7 @@ pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, lev
                 let data = main_recv.recv();
                 if data.is_ok() {
                     let mut s: FastLogRecord = data.unwrap();
-                    if s.command.eq(&Command::CommandExit){
+                    if s.command.eq(&Command::CommandExit) {
                         do_exit = true;
                         break;
                     }
@@ -232,7 +232,7 @@ pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, lev
                     if data.is_ok() {
                         let s: FastLogRecord = data.unwrap();
                         item.do_log(&s);
-                        if s.command.eq(&Command::CommandExit){
+                        if s.command.eq(&Command::CommandExit) {
                             do_exit = true;
                             break;
                         }
@@ -255,7 +255,7 @@ pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, lev
     }
 }
 
-pub fn exit() -> Result<(),LogError>{
+pub fn exit() -> Result<(), LogError> {
     match LOG_SENDER.read() {
         Ok(lock) => {
             match lock.deref() {
@@ -264,16 +264,16 @@ pub fn exit() -> Result<(),LogError>{
                         command: Command::CommandExit,
                         level: log::Level::Info,
                         target: String::new(),
-                        args: String::new(),
+                        args: "exit".to_string(),
                         module_path: String::new(),
                         file: String::new(),
                         line: None,
                         now: Local::now(),
-                        formated: String::new(),
+                        formated: "exit".to_string(),
                     };
-                    let result=sender.send(fast_log_record);
-                    match result{
-                        Ok(())=>{
+                    let result = sender.send(fast_log_record);
+                    match result {
+                        Ok(()) => {
                             return Ok(());
                         }
                         _ => {}
