@@ -16,7 +16,7 @@ impl FastLogWaitGroup {
         self.inner.wait();
     }
     /// exit and wait log empty
-    pub fn exit_wait(self) {
+    pub fn exit_and_wait(self) {
         crate::fast_log::exit();
         self.inner.wait();
     }
