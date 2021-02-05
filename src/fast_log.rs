@@ -124,7 +124,7 @@ static LOGGER: Logger = Logger { level: AtomicI32::new(1) };
 /// initializes the log file path
 /// log_file_path:  example->  "test.log"
 /// channel_cup: example -> 1000
-pub fn init_log(log_file_path: &str, channel_cup: usize, level: log::Level, mut filter: Option<Box<dyn Filter>>, debug_mode: bool) -> Result<FastLogWaitGroup, Box<dyn std::error::Error + Send>> {
+pub fn init_log(log_file_path: &str, channel_cup: usize, level: log::Level, mut filter: Option<Box<dyn Filter>>, debug_mode: bool) -> Result<FastLogWaitGroup, LogError> {
     let mut appenders: Vec<Box<dyn LogAppender>> = vec![
         Box::new(FileAppender::new(log_file_path))
     ];
@@ -144,7 +144,7 @@ pub fn init_log(log_file_path: &str, channel_cup: usize, level: log::Level, mut 
 /// max_temp_size: do zip if temp log full
 /// allow_zip_compress: zip compress log file
 /// filter: log filter
-pub fn init_split_log(log_dir_path: &str, channel_log_cup: usize, max_temp_size: LogSize, allow_zip_compress: bool, rolling_type: RollingType, level: log::Level, mut filter: Option<Box<dyn Filter>>, debug_mode: bool) -> Result<FastLogWaitGroup, Box<dyn std::error::Error + Send>> {
+pub fn init_split_log(log_dir_path: &str, channel_log_cup: usize, max_temp_size: LogSize, allow_zip_compress: bool, rolling_type: RollingType, level: log::Level, mut filter: Option<Box<dyn Filter>>, debug_mode: bool) -> Result<FastLogWaitGroup, LogError> {
     let mut appenders: Vec<Box<dyn LogAppender>> = vec![
         Box::new(FileSplitAppender::new(log_dir_path, max_temp_size, rolling_type, allow_zip_compress, 1))
     ];
@@ -158,9 +158,9 @@ pub fn init_split_log(log_dir_path: &str, channel_log_cup: usize, max_temp_size:
     return init_custom_log(appenders, channel_log_cup, level, log_filter, Box::new(FastLogFormatRecord {}));
 }
 
-pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, level: log::Level, filter: Box<dyn Filter>, format: Box<dyn RecordFormat>) -> Result<FastLogWaitGroup, Box<dyn std::error::Error + Send>> {
+pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, level: log::Level, filter: Box<dyn Filter>, format: Box<dyn RecordFormat>) -> Result<FastLogWaitGroup, LogError> {
     if appenders.is_empty() {
-        return Err(Box::new(LogError::from("[fast_log] appenders can not be empty!")));
+        return Err(LogError::from("[fast_log] appenders can not be empty!"));
     }
     let wait_group = FastLogWaitGroup::new();
     let main_recv = set_log(RuntimeType::Std, log_cup, level, filter);
@@ -249,7 +249,7 @@ pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, lev
 
     let r = log::set_logger(&LOGGER).map(|()| log::set_max_level(level.to_level_filter()));
     if r.is_err() {
-        return Err(Box::new(r.err().unwrap()));
+        return Err(LogError::from(r.err().unwrap()));
     } else {
         return Ok(wait_group);
     }

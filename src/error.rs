@@ -3,6 +3,7 @@ use std::error::Error;
 use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
+use log::SetLoggerError;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum LogError {
@@ -18,6 +19,12 @@ impl From<&str> for LogError {
 impl From<std::string::String> for LogError {
     fn from(arg: String) -> Self {
         return LogError::E(arg);
+    }
+}
+
+impl From<SetLoggerError> for LogError{
+    fn from(arg: SetLoggerError) -> Self {
+        LogError::E(arg.to_string())
     }
 }
 
