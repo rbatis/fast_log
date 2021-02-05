@@ -26,33 +26,23 @@ pub struct LoggerSender {
 }
 
 impl LoggerSender {
-    pub fn new(runtime_type: RuntimeType, cap: usize, filter: Box<dyn Filter>) -> (Self, Receiver<FastLogRecord>) {
-        return match runtime_type {
-            _ => {
-                let (s, r) = crossbeam_channel::bounded(cap);
-                (Self {
-                    inner: s,
-                    filter,
-                }, r)
-            }
-        };
+    pub fn new(cap: usize, filter: Box<dyn Filter>) -> (Self, Receiver<FastLogRecord>) {
+        let (s, r) = crossbeam_channel::bounded(cap);
+        (Self {
+            inner: s,
+            filter,
+        }, r)
     }
     pub fn send(&self, data: FastLogRecord) -> Result<(), SendError<FastLogRecord>> {
         self.inner.send(data)
     }
 }
 
-///runtime Type
-#[derive(Clone, Debug)]
-pub enum RuntimeType {
-    Std
-}
 
-
-fn set_log(runtime_type: RuntimeType, cup: usize, level: log::Level, filter: Box<dyn Filter>) -> Receiver<FastLogRecord> {
+fn set_log(cup: usize, level: log::Level, filter: Box<dyn Filter>) -> Receiver<FastLogRecord> {
     LOGGER.set_level(level);
     let mut w = LOG_SENDER.write().unwrap();
-    let (log, recv) = LoggerSender::new(runtime_type, cup, filter);
+    let (log, recv) = LoggerSender::new( cup, filter);
     *w = Some(log);
     return recv;
 }
@@ -163,7 +153,7 @@ pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, lev
         return Err(LogError::from("[fast_log] appenders can not be empty!"));
     }
     let wait_group = FastLogWaitGroup::new();
-    let main_recv = set_log(RuntimeType::Std, log_cup, level, filter);
+    let main_recv = set_log(log_cup, level, filter);
     if appenders.len() == 1 {
         //main recv data
         let wait_group1 = wait_group.clone();
