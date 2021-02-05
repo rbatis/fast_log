@@ -11,7 +11,12 @@ impl FastLogWaitGroup {
             inner: WaitGroup::new()
         }
     }
-    pub fn wait(self) {
+    /// wait call fast_log::exit();
+    pub fn wait_exit(self) {
+        self.inner.wait();
+    }
+    /// exit and wait log empty
+    pub fn exit_wait(self) {
         crate::fast_log::exit();
         self.inner.wait();
     }

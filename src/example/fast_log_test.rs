@@ -113,7 +113,7 @@ mod test {
             info!("index:{}", index);
         }
         let now = std::time::Instant::now();
-        wait_group.wait();
+        wait_group.exit_wait();
         println!("wait:{:?}", now.elapsed());
     }
 
