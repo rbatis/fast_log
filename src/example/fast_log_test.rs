@@ -111,7 +111,7 @@ mod test {
         let wait_group = init_log("requests.log", 1000, log::Level::Info, None, false).unwrap();
         std::thread::spawn(move || {
             sleep(Duration::from_secs(5));
-            exit();
+            exit().unwrap();
         });
         let now=std::time::Instant::now();
         wait_group.wait();

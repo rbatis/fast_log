@@ -168,17 +168,21 @@ pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, lev
         //main recv data
         let wait_group1 = wait_group.clone();
         std::thread::spawn(move || {
+            let mut do_exit = false;
             loop {
                 let data = main_recv.recv();
                 if data.is_ok() {
                     let mut s: FastLogRecord = data.unwrap();
                     if s.command.eq(&Command::CommandExit) {
-                        drop(wait_group1);
-                        break;
+                        do_exit = true;
                     }
                     format.do_format(&mut s);
                     for x in &appenders {
                         x.do_log(&s);
+                    }
+                    if do_exit && main_recv.is_empty() {
+                        drop(wait_group1);
+                        break;
                     }
                 }
             }
@@ -194,17 +198,22 @@ pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, lev
         //main recv data
         let wait_group1 = wait_group.clone();
         std::thread::spawn(move || {
+            let mut do_exit = false;
             loop {
                 let data = main_recv.recv();
                 if data.is_ok() {
                     let mut s: FastLogRecord = data.unwrap();
-                    if s.command.eq(&Command::CommandExit) {
-                        drop(wait_group1);
+                    if s.command.eq(&Command::CommandExit){
+                        do_exit = true;
                         break;
                     }
                     format.do_format(&mut s);
                     for x in &sends {
                         x.send(s.clone());
+                    }
+                    if do_exit && main_recv.is_empty() {
+                        drop(wait_group1);
+                        break;
                     }
                 }
             }
@@ -216,16 +225,21 @@ pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, lev
             let wait_group_clone = wait_group.clone();
             let recv = recvs[index].to_owned();
             std::thread::spawn(move || {
+                let mut do_exit = false;
                 loop {
                     //recv
                     let data = recv.recv();
                     if data.is_ok() {
                         let s: FastLogRecord = data.unwrap();
-                        if s.command.eq(&Command::CommandExit) {
+                        item.do_log(&s);
+                        if s.command.eq(&Command::CommandExit){
+                            do_exit = true;
+                            break;
+                        }
+                        if do_exit && recv.is_empty() {
                             drop(wait_group_clone);
                             break;
                         }
-                        item.do_log(&s);
                     }
                 }
             });
@@ -241,7 +255,7 @@ pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, lev
     }
 }
 
-pub fn exit() {
+pub fn exit() -> Result<(),LogError>{
     match LOG_SENDER.read() {
         Ok(lock) => {
             match lock.deref() {
@@ -257,11 +271,18 @@ pub fn exit() {
                         now: Local::now(),
                         formated: String::new(),
                     };
-                    sender.send(fast_log_record);
+                    let result=sender.send(fast_log_record);
+                    match result{
+                        Ok(())=>{
+                            return Ok(());
+                        }
+                        _ => {}
+                    }
                 }
                 _ => {}
             }
         }
         _ => {}
     }
+    return Err(LogError::E("[fast_log] exit fail!".to_string()));
 }
