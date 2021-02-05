@@ -11,6 +11,7 @@ mod test {
     use crate::appender::{FastLogFormatRecord, FastLogRecord, LogAppender};
     use crate::bencher::QPS;
     use crate::consts::LogSize;
+    use crate::fast_log::exit;
     use crate::filter::NoFilter;
     use crate::plugin::file_split::RollingType;
 
@@ -96,13 +97,25 @@ mod test {
     #[test]
     pub fn test_wait() {
         let wg = WaitGroup::new();
-        let wg1=wg.clone();
+        let wg1 = wg.clone();
         std::thread::spawn(move || {
             // Do some work.
             // Drop the reference to the wait group.
             drop(wg1);
         });
         wg.wait()
+    }
+
+    #[test]
+    pub fn test_wait_exit() {
+        let wait_group = init_log("requests.log", 1000, log::Level::Info, None, false).unwrap();
+        std::thread::spawn(move || {
+            sleep(Duration::from_secs(5));
+            exit();
+        });
+        let now=std::time::Instant::now();
+        wait_group.wait();
+        println!("wait:{:?}",now.elapsed());
     }
 
 

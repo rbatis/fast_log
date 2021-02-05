@@ -12,8 +12,15 @@ pub trait LogAppender: Send {
 }
 
 
+#[derive(Clone, Debug,Eq, PartialEq)]
+pub enum Command {
+    CommandRecord,
+    CommandExit
+}
+
 #[derive(Clone, Debug)]
 pub struct FastLogRecord {
+    pub command: Command,
     pub level: log::Level,
     pub target: String,
     pub args: String,
