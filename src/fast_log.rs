@@ -205,7 +205,6 @@ pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, lev
                     let mut s: FastLogRecord = data.unwrap();
                     if s.command.eq(&Command::CommandExit) {
                         do_exit = true;
-                        break;
                     }
                     format.do_format(&mut s);
                     for x in &sends {
@@ -234,7 +233,6 @@ pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, lev
                         item.do_log(&s);
                         if s.command.eq(&Command::CommandExit) {
                             do_exit = true;
-                            break;
                         }
                         if do_exit && recv.is_empty() {
                             drop(wait_group_clone);
