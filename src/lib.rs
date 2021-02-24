@@ -6,20 +6,19 @@
 #[macro_use]
 extern crate lazy_static;
 
-mod bencher;
-pub mod fast_log;
-pub mod error;
-pub mod plugin;
-pub mod filter;
 pub mod appender;
+mod bencher;
 pub mod consts;
+pub mod error;
+pub mod fast_log;
+pub mod filter;
+pub mod plugin;
 pub mod wait;
 
+pub use fast_log::init_custom_log;
 ///init log
-pub use fast_log::init_log as init_log;
-pub use fast_log::init_split_log as init_split_log;
-pub use fast_log::init_custom_log as init_custom_log;
-
+pub use fast_log::init_log;
+pub use fast_log::init_split_log;
 
 ///test
 mod example;

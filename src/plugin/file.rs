@@ -1,22 +1,23 @@
+use crate::appender::{FastLogRecord, LogAppender};
 use std::cell::RefCell;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
-use crate::appender::{FastLogRecord, LogAppender};
-
 
 /// only write append into file
 pub struct FileAppender {
-    file: RefCell<File>
+    file: RefCell<File>,
 }
 
 impl FileAppender {
     pub fn new(log_file_path: &str) -> FileAppender {
         Self {
-            file: RefCell::new(OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(log_file_path)
-                .unwrap())
+            file: RefCell::new(
+                OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(log_file_path)
+                    .unwrap(),
+            ),
         }
     }
 }

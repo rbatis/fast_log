@@ -1,10 +1,9 @@
-use std::ops::Deref;
 use std::sync::atomic::AtomicI32;
-use std::sync::RwLock;
 
 use chrono::Local;
 use crossbeam_channel::{Receiver, SendError};
-use log::{Level, Log, Metadata, Record};
+use log::{Level, Metadata, Record};
+use parking_lot::RwLock;
 
 use crate::appender::{Command, FastLogFormatRecord, FastLogRecord, LogAppender, RecordFormat};
 use crate::consts::LogSize;
@@ -16,9 +15,8 @@ use crate::plugin::file_split::{FileSplitAppender, RollingType};
 use crate::wait::FastLogWaitGroup;
 
 lazy_static! {
-   static ref LOG_SENDER:RwLock<Option<LoggerSender>>=RwLock::new(Option::None);
+    static ref LOG_SENDER: RwLock<Option<LoggerSender>> = RwLock::new(Option::None);
 }
-
 
 pub struct LoggerSender {
     pub filter: Box<dyn Filter>,
@@ -28,21 +26,17 @@ pub struct LoggerSender {
 impl LoggerSender {
     pub fn new(cap: usize, filter: Box<dyn Filter>) -> (Self, Receiver<FastLogRecord>) {
         let (s, r) = crossbeam_channel::bounded(cap);
-        (Self {
-            inner: s,
-            filter,
-        }, r)
+        (Self { inner: s, filter }, r)
     }
     pub fn send(&self, data: FastLogRecord) -> Result<(), SendError<FastLogRecord>> {
         self.inner.send(data)
     }
 }
 
-
 fn set_log(cup: usize, level: log::Level, filter: Box<dyn Filter>) -> Receiver<FastLogRecord> {
     LOGGER.set_level(level);
-    let mut w = LOG_SENDER.write().unwrap();
-    let (log, recv) = LoggerSender::new( cup, filter);
+    let mut w = LOG_SENDER.write();
+    let (log, recv) = LoggerSender::new(cup, filter);
     *w = Some(log);
     return recv;
 }
@@ -53,7 +47,8 @@ pub struct Logger {
 
 impl Logger {
     pub fn set_level(&self, level: log::Level) {
-        self.level.swap(level as i32, std::sync::atomic::Ordering::Relaxed);
+        self.level
+            .swap(level as i32, std::sync::atomic::Ordering::Relaxed);
     }
 
     pub fn get_level(&self) -> log::Level {
@@ -63,7 +58,7 @@ impl Logger {
             3 => Level::Info,
             4 => Level::Debug,
             5 => Level::Trace,
-            _ => panic!("error log level!")
+            _ => panic!("error log level!"),
         }
     }
 }
@@ -79,26 +74,23 @@ impl log::Log for Logger {
                 return;
             }
             //send
-            match LOG_SENDER.read() {
-                Ok(lock) => {
-                    match lock.deref() {
-                        Some(sender) => {
-                            if !sender.filter.filter(record) {
-                                let fast_log_record = FastLogRecord {
-                                    command: Command::CommandRecord,
-                                    level,
-                                    target: record.metadata().target().to_string(),
-                                    args: record.args().to_string(),
-                                    module_path: record.module_path().unwrap_or("").to_string(),
-                                    file: record.file().unwrap_or("").to_string(),
-                                    line: record.line().clone(),
-                                    now: Local::now(),
-                                    formated: "".to_string(),
-                                };
-                                sender.send(fast_log_record);
-                            }
-                        }
-                        _ => {}
+            let r = LOG_SENDER.read();
+            let sender = r.as_ref();
+            match sender {
+                Some(sender) => {
+                    if !sender.filter.filter(record) {
+                        let fast_log_record = FastLogRecord {
+                            command: Command::CommandRecord,
+                            level,
+                            target: record.metadata().target().to_string(),
+                            args: record.args().to_string(),
+                            module_path: record.module_path().unwrap_or("").to_string(),
+                            file: record.file().unwrap_or("").to_string(),
+                            line: record.line().clone(),
+                            now: Local::now(),
+                            formated: "".to_string(),
+                        };
+                        sender.send(fast_log_record);
                     }
                 }
                 _ => {}
@@ -108,16 +100,21 @@ impl log::Log for Logger {
     fn flush(&self) {}
 }
 
-static LOGGER: Logger = Logger { level: AtomicI32::new(1) };
-
+static LOGGER: Logger = Logger {
+    level: AtomicI32::new(1),
+};
 
 /// initializes the log file path
 /// log_file_path:  example->  "test.log"
 /// channel_cup: example -> 1000
-pub fn init_log(log_file_path: &str, channel_cup: usize, level: log::Level, mut filter: Option<Box<dyn Filter>>, debug_mode: bool) -> Result<FastLogWaitGroup, LogError> {
-    let mut appenders: Vec<Box<dyn LogAppender>> = vec![
-        Box::new(FileAppender::new(log_file_path))
-    ];
+pub fn init_log(
+    log_file_path: &str,
+    channel_cup: usize,
+    level: log::Level,
+    mut filter: Option<Box<dyn Filter>>,
+    debug_mode: bool,
+) -> Result<FastLogWaitGroup, LogError> {
+    let mut appenders: Vec<Box<dyn LogAppender>> = vec![Box::new(FileAppender::new(log_file_path))];
     if debug_mode {
         appenders.push(Box::new(ConsoleAppender {}));
     }
@@ -125,7 +122,13 @@ pub fn init_log(log_file_path: &str, channel_cup: usize, level: log::Level, mut 
     if filter.is_some() {
         log_filter = filter.take().unwrap();
     }
-    return init_custom_log(appenders, channel_cup, level, log_filter, Box::new(FastLogFormatRecord {}));
+    return init_custom_log(
+        appenders,
+        channel_cup,
+        level,
+        log_filter,
+        Box::new(FastLogFormatRecord {}),
+    );
 }
 
 /// initializes the log file path
@@ -134,10 +137,23 @@ pub fn init_log(log_file_path: &str, channel_cup: usize, level: log::Level, mut 
 /// max_temp_size: do zip if temp log full
 /// allow_zip_compress: zip compress log file
 /// filter: log filter
-pub fn init_split_log(log_dir_path: &str, channel_log_cup: usize, max_temp_size: LogSize, allow_zip_compress: bool, rolling_type: RollingType, level: log::Level, mut filter: Option<Box<dyn Filter>>, debug_mode: bool) -> Result<FastLogWaitGroup, LogError> {
-    let mut appenders: Vec<Box<dyn LogAppender>> = vec![
-        Box::new(FileSplitAppender::new(log_dir_path, max_temp_size, rolling_type, allow_zip_compress, 1))
-    ];
+pub fn init_split_log(
+    log_dir_path: &str,
+    channel_log_cup: usize,
+    max_temp_size: LogSize,
+    allow_zip_compress: bool,
+    rolling_type: RollingType,
+    level: log::Level,
+    mut filter: Option<Box<dyn Filter>>,
+    debug_mode: bool,
+) -> Result<FastLogWaitGroup, LogError> {
+    let mut appenders: Vec<Box<dyn LogAppender>> = vec![Box::new(FileSplitAppender::new(
+        log_dir_path,
+        max_temp_size,
+        rolling_type,
+        allow_zip_compress,
+        1,
+    ))];
     if debug_mode {
         appenders.push(Box::new(ConsoleAppender {}));
     }
@@ -145,10 +161,22 @@ pub fn init_split_log(log_dir_path: &str, channel_log_cup: usize, max_temp_size:
     if filter.is_some() {
         log_filter = filter.take().unwrap();
     }
-    return init_custom_log(appenders, channel_log_cup, level, log_filter, Box::new(FastLogFormatRecord {}));
+    return init_custom_log(
+        appenders,
+        channel_log_cup,
+        level,
+        log_filter,
+        Box::new(FastLogFormatRecord {}),
+    );
 }
 
-pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, level: log::Level, filter: Box<dyn Filter>, format: Box<dyn RecordFormat>) -> Result<FastLogWaitGroup, LogError> {
+pub fn init_custom_log(
+    appenders: Vec<Box<dyn LogAppender>>,
+    log_cup: usize,
+    level: log::Level,
+    filter: Box<dyn Filter>,
+    format: Box<dyn RecordFormat>,
+) -> Result<FastLogWaitGroup, LogError> {
     if appenders.is_empty() {
         return Err(LogError::from("[fast_log] appenders can not be empty!"));
     }
@@ -244,33 +272,28 @@ pub fn init_custom_log(appenders: Vec<Box<dyn LogAppender>>, log_cup: usize, lev
 }
 
 pub fn exit() -> Result<(), LogError> {
-    match LOG_SENDER.read() {
-        Ok(lock) => {
-            match lock.deref() {
-                Some(sender) => {
-                    let fast_log_record = FastLogRecord {
-                        command: Command::CommandExit,
-                        level: log::Level::Info,
-                        target: String::new(),
-                        args: "exit".to_string(),
-                        module_path: String::new(),
-                        file: String::new(),
-                        line: None,
-                        now: Local::now(),
-                        formated: "exit".to_string(),
-                    };
-                    let result = sender.send(fast_log_record);
-                    match result {
-                        Ok(()) => {
-                            return Ok(());
-                        }
-                        _ => {}
-                    }
-                }
-                _ => {}
+    let sender = LOG_SENDER.read();
+    if sender.is_some() {
+        let sender = sender.as_ref().unwrap();
+        let fast_log_record = FastLogRecord {
+            command: Command::CommandExit,
+            level: log::Level::Info,
+            target: String::new(),
+            args: "exit".to_string(),
+            module_path: String::new(),
+            file: String::new(),
+            line: None,
+            now: Local::now(),
+            formated: "exit".to_string(),
+        };
+        let result = sender.send(fast_log_record);
+        match result {
+            Ok(()) => {
+                return Ok(());
             }
+            _ => {}
         }
-        _ => {}
     }
+
     return Err(LogError::E("[fast_log] exit fail!".to_string()));
 }

@@ -11,11 +11,10 @@ pub trait LogAppender: Send {
     }
 }
 
-
-#[derive(Clone, Debug,Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Command {
     CommandRecord,
-    CommandExit
+    CommandExit,
 }
 
 #[derive(Clone, Debug)]
@@ -52,10 +51,20 @@ impl RecordFormat for FastLogFormatRecord {
         let now = format!("{:36}", arg.now.to_string());
         match arg.level {
             Level::Warn | Level::Error => {
-                data = format!("{} {} {} - {}  {}\n", &now, arg.level, arg.module_path, arg.args, arg.format_line());
+                data = format!(
+                    "{} {} {} - {}  {}\n",
+                    &now,
+                    arg.level,
+                    arg.module_path,
+                    arg.args,
+                    arg.format_line()
+                );
             }
             _ => {
-                data = format!("{} {} {} - {}\n", &now, arg.level, arg.module_path, arg.args);
+                data = format!(
+                    "{} {} {} - {}\n",
+                    &now, arg.level, arg.module_path, arg.args
+                );
             }
         }
         arg.formated = data;

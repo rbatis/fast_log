@@ -7,9 +7,9 @@ pub struct FastLogWaitGroup {
 }
 
 impl FastLogWaitGroup {
-    pub fn new()->Self{
-        Self{
-            inner: WaitGroup::new()
+    pub fn new() -> Self {
+        Self {
+            inner: WaitGroup::new(),
         }
     }
     /// wait call fast_log::exit();

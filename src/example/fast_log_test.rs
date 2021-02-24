@@ -4,16 +4,15 @@ mod test {
     use std::time::{Duration, Instant};
 
     use crossbeam_utils::sync::WaitGroup;
-    use log::{debug, info, Level};
     use log::error;
+    use log::{debug, info, Level};
 
-    use crate::{init_custom_log, init_log, init_split_log};
     use crate::appender::{FastLogFormatRecord, FastLogRecord, LogAppender};
     use crate::bencher::QPS;
     use crate::consts::LogSize;
-    use crate::fast_log::exit;
     use crate::filter::NoFilter;
     use crate::plugin::file_split::RollingType;
+    use crate::{init_custom_log, init_log, init_split_log};
 
     #[test]
     pub fn test_log() {
@@ -44,10 +43,20 @@ mod test {
             let data;
             match record.level {
                 Level::Warn | Level::Error => {
-                    data = format!("{} {} {} - {}  {}\n", &record.now, record.level, record.module_path, record.args, record.format_line());
+                    data = format!(
+                        "{} {} {} - {}  {}\n",
+                        &record.now,
+                        record.level,
+                        record.module_path,
+                        record.args,
+                        record.format_line()
+                    );
                 }
                 _ => {
-                    data = format!("{} {} {} - {}\n", &record.now, record.level, record.module_path, record.args);
+                    data = format!(
+                        "{} {} {} - {}\n",
+                        &record.now, record.level, record.module_path, record.args
+                    );
                 }
             }
             print!("{}", data);
@@ -56,7 +65,13 @@ mod test {
 
     #[test]
     pub fn test_custom() {
-        init_custom_log(vec![Box::new(CustomLog {})], 1000, log::Level::Info, Box::new(NoFilter {}), Box::new(FastLogFormatRecord {}));
+        init_custom_log(
+            vec![Box::new(CustomLog {})],
+            1000,
+            log::Level::Info,
+            Box::new(NoFilter {}),
+            Box::new(FastLogFormatRecord {}),
+        );
         info!("Commencing yak shaving");
         error!("Commencing error");
         sleep(Duration::from_secs(1));
@@ -64,7 +79,16 @@ mod test {
 
     #[test]
     pub fn test_file_compation() {
-        init_split_log("target/logs/", 1000, LogSize::MB(1), false, RollingType::All, log::Level::Info, None, true);
+        init_split_log(
+            "target/logs/",
+            1000,
+            LogSize::MB(1),
+            false,
+            RollingType::All,
+            log::Level::Info,
+            None,
+            true,
+        );
         for _ in 0..20000 {
             info!("Commencing yak shaving");
         }
@@ -73,7 +97,16 @@ mod test {
 
     #[test]
     pub fn test_file_compation_zip() {
-        init_split_log("target/logs/", 1000, LogSize::KB(50), true, RollingType::KeepNum(5), log::Level::Info, None, true);
+        init_split_log(
+            "target/logs/",
+            1000,
+            LogSize::KB(50),
+            true,
+            RollingType::KeepNum(5),
+            log::Level::Info,
+            None,
+            true,
+        );
         for _ in 0..20000 {
             info!("Commencing yak shaving");
         }
@@ -82,7 +115,16 @@ mod test {
 
     #[test]
     pub fn test_file_compation_zip_stable_test() {
-        init_split_log("target/logs/", 1000, LogSize::MB(100), true, RollingType::All, log::Level::Info, None, false);
+        init_split_log(
+            "target/logs/",
+            1000,
+            LogSize::MB(100),
+            true,
+            RollingType::All,
+            log::Level::Info,
+            None,
+            false,
+        );
         let now = std::time::Instant::now();
         loop {
             info!("Commencing yak shaving");
@@ -117,7 +159,6 @@ mod test {
         println!("wait:{:?}", now.elapsed());
     }
 
-
     struct BenchRecvLog {}
 
     impl LogAppender for BenchRecvLog {
@@ -127,7 +168,13 @@ mod test {
     //cargo test --release --package fast_log --lib example::fast_log_test::test::bench_recv --no-fail-fast -- --exact -Z unstable-options --show-output
     #[test]
     pub fn bench_recv() {
-        init_custom_log(vec![Box::new(BenchRecvLog {})], 1000, log::Level::Info, Box::new(NoFilter {}), Box::new(FastLogFormatRecord {}));
+        init_custom_log(
+            vec![Box::new(BenchRecvLog {})],
+            1000,
+            log::Level::Info,
+            Box::new(NoFilter {}),
+            Box::new(FastLogFormatRecord {}),
+        );
         let total = 10000;
         let now = Instant::now();
         for index in 0..total {

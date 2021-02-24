@@ -33,10 +33,7 @@ impl ModuleFilter {
         }
     }
     pub fn new(include: Option<Vec<String>>, exclude: Option<Vec<String>>) -> Self {
-        Self {
-            include,
-            exclude,
-        }
+        Self { include, exclude }
     }
 }
 

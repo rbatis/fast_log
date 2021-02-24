@@ -1,13 +1,13 @@
-use std::{fmt};
 use std::error::Error;
+use std::fmt;
 use std::fmt::Display;
 
-use serde::{Deserialize, Serialize};
 use log::SetLoggerError;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum LogError {
-    E(String)
+    E(String),
 }
 
 impl From<&str> for LogError {
@@ -22,7 +22,7 @@ impl From<std::string::String> for LogError {
     }
 }
 
-impl From<SetLoggerError> for LogError{
+impl From<SetLoggerError> for LogError {
     fn from(arg: SetLoggerError) -> Self {
         LogError::E(arg.to_string())
     }
@@ -41,31 +41,29 @@ impl Display for LogError {
 impl Error for LogError {
     fn description(&self) -> &str {
         return match self {
-            LogError::E(data) => {
-                data.as_str()
-            }
+            LogError::E(data) => data.as_str(),
         };
     }
 }
 
-
-pub trait AsStdResult<T> where T: Clone {
+pub trait AsStdResult<T>
+where
+    T: Clone,
+{
     fn as_std_result(&self) -> Result<T, Box<dyn std::error::Error>>;
 }
 
-impl<T> AsStdResult<T> for Result<T, LogError> where T: Clone {
+impl<T> AsStdResult<T> for Result<T, LogError>
+where
+    T: Clone,
+{
     fn as_std_result(&self) -> Result<T, Box<dyn std::error::Error>> {
         return match self {
-            Err(e) => {
-                Err(Box::new(e.clone()))
-            }
-            Ok(o) => {
-                Ok(o.clone())
-            }
+            Err(e) => Err(Box::new(e.clone())),
+            Ok(o) => Ok(o.clone()),
         };
     }
 }
-
 
 #[test]
 pub fn test_error() {

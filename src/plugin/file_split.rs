@@ -1,6 +1,6 @@
 use std::cell::RefCell;
-use std::fs::{DirBuilder, File, OpenOptions, DirEntry};
-use std::io::{Write, Seek, SeekFrom, BufReader, BufRead};
+use std::fs::{DirBuilder, DirEntry, File, OpenOptions};
+use std::io::{BufRead, BufReader, Seek, SeekFrom, Write};
 
 use chrono::{Local, NaiveDateTime};
 use crossbeam_channel::{Receiver, Sender};
@@ -13,9 +13,8 @@ use std::time::Duration;
 
 /// split log file allow zip compress log
 pub struct FileSplitAppender {
-    cell: RefCell<FileSplitAppenderData>
+    cell: RefCell<FileSplitAppenderData>,
 }
-
 
 ///log data pack
 pub struct LogPack {
@@ -24,7 +23,6 @@ pub struct LogPack {
     pub rolling: RollingType,
     pub new_log_name: String,
 }
-
 
 ///rolling keep type
 #[derive(Copy, Clone, Debug)]
@@ -117,7 +115,6 @@ impl RollingType {
     }
 }
 
-
 /// split log file allow zip compress log
 /// Memory space swop running time , reduces the number of repeated queries for IO
 pub struct FileSplitAppenderData {
@@ -134,7 +131,12 @@ pub struct FileSplitAppenderData {
 impl FileSplitAppenderData {
     pub fn send_pack(&mut self) {
         let first_file_path = format!("{}{}.log", self.dir_path, "temp");
-        let new_log_name = format!("{}{}{}.log", self.dir_path, "temp", format!("{:29}", Local::now().format("%Y_%m_%dT%H_%M_%S%.f")).replace(" ", "_"));
+        let new_log_name = format!(
+            "{}{}{}.log",
+            self.dir_path,
+            "temp",
+            format!("{:29}", Local::now().format("%Y_%m_%dT%H_%M_%S%.f")).replace(" ", "_")
+        );
         std::fs::copy(&first_file_path, &new_log_name);
         if self.zip_compress {
             //to zip
@@ -164,12 +166,17 @@ impl FileSplitAppenderData {
     }
 }
 
-
 impl FileSplitAppender {
     ///split_log_bytes:  log file data bytes(MB) splite
     ///dir_path:         the log dir
     ///log_pack_cap:     zip or log Waiting cap
-    pub fn new(dir_path: &str, max_temp_size: LogSize, rolling_type: RollingType, allow_zip_compress: bool, log_pack_cap: usize) -> FileSplitAppender {
+    pub fn new(
+        dir_path: &str,
+        max_temp_size: LogSize,
+        rolling_type: RollingType,
+        allow_zip_compress: bool,
+        log_pack_cap: usize,
+    ) -> FileSplitAppender {
         if !dir_path.is_empty() && dir_path.ends_with(".log") {
             panic!("FileCompactionAppender only support new from path,for example: 'logs/xx/'");
         }
@@ -186,7 +193,10 @@ impl FileSplitAppender {
             .write(true)
             .open(first_file_path.as_str());
         if file.is_err() {
-            panic!("[fast_log] open and create file fail:{}", file.err().unwrap());
+            panic!(
+                "[fast_log] open and create file fail:{}",
+                file.err().unwrap()
+            );
         }
         let mut file = file.unwrap();
         let mut temp_bytes = 0;
@@ -208,7 +218,7 @@ impl FileSplitAppender {
                 zip_compress: allow_zip_compress,
                 sender: s,
                 rolling_type: rolling_type,
-            })
+            }),
         }
     }
 }
@@ -230,7 +240,6 @@ impl LogAppender for FileSplitAppender {
         }
     }
 }
-
 
 ///spawn an saver thread to save log file or zip file
 fn spawn_saver_thread(r: Receiver<LogPack>) {
@@ -257,16 +266,13 @@ fn spawn_saver_thread(r: Receiver<LogPack>) {
     });
 }
 
-
 /// write an ZipPack to zip file
 pub fn do_zip(pack: LogPack) {
     let log_file_path = pack.new_log_name.as_str();
     if log_file_path.is_empty() {
         return;
     }
-    let log_file = OpenOptions::new()
-        .read(true)
-        .open(log_file_path);
+    let log_file = OpenOptions::new().read(true).open(log_file_path);
     if log_file.is_err() {
         return;
     }
@@ -282,7 +288,11 @@ pub fn do_zip(pack: LogPack) {
     let zip_path = log_file_path.replace(".log", ".zip");
     let zip_file = std::fs::File::create(&zip_path);
     if zip_file.is_err() {
-        println!("[fast_log] create(&{}) fail:{}", zip_path, zip_file.err().unwrap());
+        println!(
+            "[fast_log] create(&{}) fail:{}",
+            zip_path,
+            zip_file.err().unwrap()
+        );
         return;
     }
     let zip_file = zip_file.unwrap();
@@ -310,12 +320,11 @@ pub fn do_zip(pack: LogPack) {
 
 #[cfg(test)]
 mod test {
-    use std::io::{Write, BufReader, BufRead};
+    use std::io::{BufRead, BufReader, Write};
 
-    use zip::write::FileOptions;
-    use std::fs::{OpenOptions};
     use crate::plugin::file_split::RollingType;
-
+    use std::fs::OpenOptions;
+    use zip::write::FileOptions;
 
     #[test]
     fn test_zip() {
@@ -348,7 +357,8 @@ mod test {
             .create(true)
             .read(true)
             .write(true)
-            .open("target/logs/test.log").unwrap();
+            .open("target/logs/test.log")
+            .unwrap();
         //buf reader
         let mut r = BufReader::new(log_file);
         let mut buf = String::new();
