@@ -83,11 +83,11 @@ impl log::Log for Logger {
                             level,
                             target: record.metadata().target().to_string(),
                             args: record.args().to_string(),
-                            module_path: record.module_path().unwrap_or("").to_string(),
-                            file: record.file().unwrap_or("").to_string(),
+                            module_path: record.module_path().unwrap_or_default().to_string(),
+                            file: record.file().unwrap_or_default().to_string(),
                             line: record.line().clone(),
                             now: Local::now(),
-                            formated: "".to_string(),
+                            formated: String::new(),
                         };
                         sender.send(fast_log_record);
                     }
