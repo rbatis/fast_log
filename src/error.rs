@@ -70,7 +70,3 @@ pub fn test_error() {
     let e = e().err().unwrap();
     println!("{}", e);
 }
-
-fn e() -> Result<String, LogError> {
-    return Err(LogError::from("e"));
-}
