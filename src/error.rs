@@ -64,9 +64,3 @@ where
         };
     }
 }
-
-#[test]
-pub fn test_error() {
-    let e = e().err().unwrap();
-    println!("{}", e);
-}
