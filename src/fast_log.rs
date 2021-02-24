@@ -74,9 +74,8 @@ impl log::Log for Logger {
                 return;
             }
             //send
-            let r = LOG_SENDER.read();
-            let sender = r.as_ref();
-            match sender {
+            let guard = LOG_SENDER.read();
+            match guard.as_ref() {
                 Some(sender) => {
                     if !sender.filter.filter(record) {
                         let fast_log_record = FastLogRecord {
