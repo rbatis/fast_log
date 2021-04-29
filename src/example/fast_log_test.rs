@@ -16,9 +16,9 @@ mod test {
 
     #[test]
     pub fn test_log() {
-        init_log("requests.log", 1000, log::Level::Debug, None, true);
+        let wait=init_log("requests.log", 1000, log::Level::Debug, None, true).unwrap();
         debug!("Commencing yak shaving{}", 0);
-        sleep(Duration::from_secs(1));
+        wait.wait();
     }
 
     //cargo test --release --color=always --package fast_log --lib fast_log::test::bench_log --no-fail-fast -- --exact -Z unstable-options --show-output
@@ -155,7 +155,7 @@ mod test {
             info!("index:{}", index);
         }
         let now = std::time::Instant::now();
-        wait_group.exit_and_wait();
+        wait_group.wait();
         println!("wait:{:?}", now.elapsed());
     }
 
