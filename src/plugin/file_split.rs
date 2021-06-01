@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::fs::{DirBuilder, DirEntry, File, OpenOptions};
-use std::io::{BufRead, BufReader, Seek, SeekFrom, Write};
+use std::io::{BufRead, BufReader, Seek, SeekFrom, Write, Error};
 
 use chrono::{Local, NaiveDateTime};
 use crossbeam_channel::{Receiver, Sender};
@@ -224,20 +224,24 @@ impl FileSplitAppender {
 }
 
 impl LogAppender for FileSplitAppender {
-    fn do_log(&self, record: &FastLogRecord) {
-        let log_data = record.formated.as_str();
+    fn do_log(&self, records: &[&FastLogRecord]) {
         let mut data = self.cell.borrow_mut();
         if data.temp_bytes >= data.max_split_bytes {
             data.send_pack();
         }
-        let write_bytes = data.file.write(log_data.as_bytes());
-        data.file.flush();
-        match write_bytes {
-            Ok(size) => {
-                data.temp_bytes += size;
+        let mut write_bytes = 0;
+        for record in records {
+            let w= data.file.write(record.formated.as_bytes());
+            match w{
+                Ok(w)=>{
+                    write_bytes = write_bytes+w;
+                }
+                _ => {}
             }
-            _ => {}
         }
+
+        data.file.flush();
+        data.temp_bytes += write_bytes;
     }
 }
 

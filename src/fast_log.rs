@@ -195,7 +195,7 @@ pub fn init_custom_log(
                     }
                     format.do_format(&mut s);
                     for x in &appenders {
-                        x.do_log(&s);
+                        x.do_log(&[&s]);
                     }
                     if do_exit && main_recv.is_empty() {
                         drop(wait_group1);
@@ -247,7 +247,7 @@ pub fn init_custom_log(
                     let data = recv.recv();
                     if data.is_ok() {
                         let s: FastLogRecord = data.unwrap();
-                        item.do_log(&s);
+                        item.do_log(&[&s]);
                         if s.command.eq(&Command::CommandExit) {
                             do_exit = true;
                         }

@@ -39,27 +39,29 @@ mod test {
     struct CustomLog {}
 
     impl LogAppender for CustomLog {
-        fn do_log(&self, record: &FastLogRecord) {
-            let data;
-            match record.level {
-                Level::Warn | Level::Error => {
-                    data = format!(
-                        "{} {} {} - {}  {}\n",
-                        &record.now,
-                        record.level,
-                        record.module_path,
-                        record.args,
-                        record.format_line()
-                    );
+        fn do_log(&self, records: &[&FastLogRecord]) {
+            for record in records {
+                let data;
+                match record.level {
+                    Level::Warn | Level::Error => {
+                        data = format!(
+                            "{} {} {} - {}  {}\n",
+                            &record.now,
+                            record.level,
+                            record.module_path,
+                            record.args,
+                            record.format_line()
+                        );
+                    }
+                    _ => {
+                        data = format!(
+                            "{} {} {} - {}\n",
+                            &record.now, record.level, record.module_path, record.args
+                        );
+                    }
                 }
-                _ => {
-                    data = format!(
-                        "{} {} {} - {}\n",
-                        &record.now, record.level, record.module_path, record.args
-                    );
-                }
+                print!("{}", data);
             }
-            print!("{}", data);
         }
     }
 
@@ -162,7 +164,7 @@ mod test {
     struct BenchRecvLog {}
 
     impl LogAppender for BenchRecvLog {
-        fn do_log(&self, record: &FastLogRecord) {}
+        fn do_log(&self, record: &[&FastLogRecord]) {}
     }
 
     //cargo test --release --package fast_log --lib example::fast_log_test::test::bench_recv --no-fail-fast -- --exact -Z unstable-options --show-output

@@ -23,9 +23,11 @@ impl FileAppender {
 }
 
 impl LogAppender for FileAppender {
-    fn do_log(&self, record: &FastLogRecord) {
+    fn do_log(&self, records: &[&FastLogRecord]) {
         let mut log_file = self.file.borrow_mut();
-        log_file.write(record.formated.as_bytes());
+        for record in records {
+            log_file.write(record.formated.as_bytes());
+        }
         log_file.flush();
     }
 }
