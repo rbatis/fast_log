@@ -16,7 +16,7 @@ mod test {
 
     #[test]
     pub fn test_log() {
-        let wait=init_log("requests.log", 1000, log::Level::Debug, None, true).unwrap();
+        let wait = init_log("requests.log", 1000, log::Level::Debug, None, true).unwrap();
         debug!("Commencing yak shaving{}", 0);
         wait.wait();
     }
@@ -24,8 +24,8 @@ mod test {
     //cargo test --release --color=always --package fast_log --lib fast_log::test::bench_log --no-fail-fast -- --exact -Z unstable-options --show-output
     #[test]
     pub fn bench_log() {
-        init_log("requests.log", 1000, log::Level::Info, None, false);
-        let total = 10000;
+        init_log("requests.log", 10000, log::Level::Info, None, false);
+        let total = 100000;
         let now = Instant::now();
         for index in 0..total {
             //sleep(Duration::from_secs(1));
@@ -39,7 +39,7 @@ mod test {
     struct CustomLog {}
 
     impl LogAppender for CustomLog {
-        fn do_log(&self, records: &[&FastLogRecord]) {
+        fn do_log(&self, records: &[FastLogRecord]) {
             for record in records {
                 let data;
                 match record.level {
@@ -164,7 +164,7 @@ mod test {
     struct BenchRecvLog {}
 
     impl LogAppender for BenchRecvLog {
-        fn do_log(&self, record: &[&FastLogRecord]) {}
+        fn do_log(&self, record: &[FastLogRecord]) {}
     }
 
     //cargo test --release --package fast_log --lib example::fast_log_test::test::bench_recv --no-fail-fast -- --exact -Z unstable-options --show-output

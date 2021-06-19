@@ -1,7 +1,7 @@
 use std::sync::atomic::AtomicI32;
 
 use chrono::Local;
-use crossbeam_channel::{Receiver, SendError};
+use crossbeam_channel::{Receiver, SendError, RecvError};
 use log::{Level, Metadata, Record};
 use parking_lot::RwLock;
 
@@ -189,13 +189,30 @@ pub fn init_custom_log(
             loop {
                 let data = main_recv.recv();
                 if data.is_ok() {
-                    let mut s: FastLogRecord = data.unwrap();
-                    if s.command.eq(&Command::CommandExit) {
-                        do_exit = true;
+                    let mut others = vec![data.unwrap()];
+                    loop {
+                        if main_recv.len() > 0 {
+                            match main_recv.try_recv() {
+                                Ok(ok) => {
+                                    others.push(ok);
+                                }
+                                Err(_) => {}
+                            }
+                        } else {
+                            break;
+                        }
                     }
-                    format.do_format(&mut s);
+                    for mut s in &mut others {
+                        if s.command.eq(&Command::CommandExit) {
+                            do_exit = true;
+                        }
+                        format.do_format(&mut s);
+                    }
+                    // if others.len() > 1 {
+                    //     println!("len:{}", others.len());
+                    // }
                     for x in &appenders {
-                        x.do_log(&[&s]);
+                        x.do_log(&others);
                     }
                     if do_exit && main_recv.is_empty() {
                         drop(wait_group1);
@@ -246,10 +263,12 @@ pub fn init_custom_log(
                     //recv
                     let data = recv.recv();
                     if data.is_ok() {
-                        let s: FastLogRecord = data.unwrap();
-                        item.do_log(&[&s]);
-                        if s.command.eq(&Command::CommandExit) {
-                            do_exit = true;
+                        let arr= vec![data.unwrap()];
+                        item.do_log(&arr);
+                        for s in &arr {
+                            if s.command.eq(&Command::CommandExit) {
+                                do_exit = true;
+                            }
                         }
                         if do_exit && recv.is_empty() {
                             drop(wait_group_clone);

@@ -224,7 +224,7 @@ impl FileSplitAppender {
 }
 
 impl LogAppender for FileSplitAppender {
-    fn do_log(&self, records: &[&FastLogRecord]) {
+    fn do_log(&self, records: &[FastLogRecord]) {
         let mut data = self.cell.borrow_mut();
         if data.temp_bytes >= data.max_split_bytes {
             data.send_pack();
