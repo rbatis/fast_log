@@ -208,9 +208,6 @@ pub fn init_custom_log(
                         }
                         format.do_format(&mut s);
                     }
-                    // if others.len() > 1 {
-                    //     println!("len:{}", others.len());
-                    // }
                     for x in &appenders {
                         x.do_log(&others);
                     }
