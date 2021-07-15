@@ -184,7 +184,7 @@ impl FileSplitAppender {
             panic!("FileCompactionAppender only support new from path,for example: 'logs/xx/'");
         }
         if !dir_path.is_empty() {
-            DirBuilder::new().create(dir_path);
+            std::fs::create_dir_all(dir_path);
         }
         let first_file_path = format!("{}{}.log", dir_path, "temp");
         let file = OpenOptions::new()
@@ -231,10 +231,10 @@ impl LogAppender for FileSplitAppender {
         }
         let mut write_bytes = 0;
         for record in records {
-            let w= data.file.write(record.formated.as_bytes());
-            match w{
-                Ok(w)=>{
-                    write_bytes = write_bytes+w;
+            let w = data.file.write(record.formated.as_bytes());
+            match w {
+                Ok(w) => {
+                    write_bytes = write_bytes + w;
                 }
                 _ => {}
             }
