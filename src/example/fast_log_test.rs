@@ -187,4 +187,18 @@ mod test {
         now.qps(total);
         sleep(Duration::from_secs(1));
     }
+
+
+
+    use std::io::prelude::*;
+    use flate2::Compression;
+    use flate2::write::ZlibEncoder;
+
+    #[test]
+    pub fn test_flate2() {
+        let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
+        e.write_all(b"foo");
+        e.write_all(b"bar");
+        let compressed_bytes = e.finish();
+    }
 }
