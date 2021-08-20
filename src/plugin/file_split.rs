@@ -10,6 +10,14 @@ use crate::appender::{FastLogRecord, LogAppender};
 use crate::consts::LogSize;
 use std::ops::Sub;
 use std::time::Duration;
+use zip::result::ZipResult;
+use crate::error::LogError;
+
+/// .zip or .lz4 or any one packer
+pub trait Packer: Send {
+    fn pack_name(&self) -> &'static str;
+    fn do_pack(&self, log_file: File, log_file_path: &str) -> Result<(), LogError>;
+}
 
 /// split log file allow zip compress log
 pub struct FileSplitAppender {
@@ -18,7 +26,7 @@ pub struct FileSplitAppender {
 
 ///log data pack
 pub struct LogPack {
-    pub info: String,
+    pub pack_name: String,
     pub dir: String,
     pub rolling: RollingType,
     pub new_log_name: String,
@@ -126,6 +134,8 @@ pub struct FileSplitAppenderData {
     rolling_type: RollingType,
     //cache data
     temp_bytes: usize,
+
+    pack_name: &'static str,
 }
 
 impl FileSplitAppenderData {
@@ -141,7 +151,7 @@ impl FileSplitAppenderData {
         if self.zip_compress {
             //to zip
             self.sender.send(LogPack {
-                info: "zip".to_string(),
+                pack_name: self.pack_name.to_string(),
                 dir: self.dir_path.clone(),
                 rolling: self.rolling_type.clone(),
                 new_log_name: new_log_name,
@@ -149,7 +159,7 @@ impl FileSplitAppenderData {
         } else {
             //send data
             self.sender.send(LogPack {
-                info: "log".to_string(),
+                pack_name: "log".to_string(),
                 dir: self.dir_path.clone(),
                 rolling: self.rolling_type.clone(),
                 new_log_name: new_log_name,
@@ -169,13 +179,15 @@ impl FileSplitAppenderData {
 impl FileSplitAppender {
     ///split_log_bytes:  log file data bytes(MB) splite
     ///dir_path:         the log dir
-    ///log_pack_cap:     zip or log Waiting cap
+    ///log_pack_cap:     pack(zip,lz4 or more...) or log Waiting cap
+    /// packer: default is zip packer
     pub fn new(
         dir_path: &str,
         max_temp_size: LogSize,
         rolling_type: RollingType,
         allow_zip_compress: bool,
         log_pack_cap: usize,
+        packer: Box<dyn Packer>,
     ) -> FileSplitAppender {
         if !dir_path.is_empty() && dir_path.ends_with(".log") {
             panic!("FileCompactionAppender only support new from path,for example: 'logs/xx/'");
@@ -207,8 +219,9 @@ impl FileSplitAppender {
             _ => {}
         }
         file.seek(SeekFrom::Start(temp_bytes as u64));
-        let (s, r) = crossbeam_channel::bounded(log_pack_cap);
-        spawn_saver_thread(r);
+        let (sender, receiver) = crossbeam_channel::bounded(log_pack_cap);
+        let pack_name = packer.pack_name();
+        spawn_saver_thread(receiver, packer);
         Self {
             cell: RefCell::new(FileSplitAppenderData {
                 max_split_bytes: max_temp_size.get_len(),
@@ -216,8 +229,9 @@ impl FileSplitAppender {
                 dir_path: dir_path.to_string(),
                 file: file,
                 zip_compress: allow_zip_compress,
-                sender: s,
+                sender: sender,
                 rolling_type: rolling_type,
+                pack_name: pack_name,
             }),
         }
     }
@@ -246,17 +260,18 @@ impl LogAppender for FileSplitAppender {
 }
 
 ///spawn an saver thread to save log file or zip file
-fn spawn_saver_thread(r: Receiver<LogPack>) {
+fn spawn_saver_thread(r: Receiver<LogPack>, packer: Box<dyn Packer>) {
     std::thread::spawn(move || {
         loop {
             match r.recv() {
                 Ok(pack) => {
                     //do rolling
                     pack.rolling.do_rolling(&pack.dir);
+                    let p_name = packer.pack_name();
                     //do save pack
-                    match pack.info.as_str() {
-                        "zip" => {
-                            do_zip(pack);
+                    match pack.pack_name.as_str() {
+                        p_name => {
+                            do_zip(&packer, pack);
                         }
                         "log" => {
                             //nothing to do
@@ -271,7 +286,7 @@ fn spawn_saver_thread(r: Receiver<LogPack>) {
 }
 
 /// write an ZipPack to zip file
-pub fn do_zip(pack: LogPack) {
+pub fn do_zip(packer: &Box<dyn Packer>, pack: LogPack) {
     let log_file_path = pack.new_log_name.as_str();
     if log_file_path.is_empty() {
         return;
@@ -281,88 +296,42 @@ pub fn do_zip(pack: LogPack) {
         return;
     }
     let log_file = log_file.unwrap();
-    let mut log_name = log_file_path.replace("\\", "/").to_string();
-    match log_file_path.rfind("/") {
-        Some(v) => {
-            log_name = log_name[(v + 1)..log_name.len()].to_string();
-        }
-        _ => {}
-    }
     //make zip
-    let zip_path = log_file_path.replace(".log", ".zip");
-    let zip_file = std::fs::File::create(&zip_path);
-    if zip_file.is_err() {
-        println!(
-            "[fast_log] create(&{}) fail:{}",
-            zip_path,
-            zip_file.err().unwrap()
-        );
-        return;
-    }
-    let zip_file = zip_file.unwrap();
-    //write zip bytes data
-    let mut zip = zip::ZipWriter::new(zip_file);
-    zip.start_file(log_name, FileOptions::default());
-    //buf reader
-    let mut r = BufReader::new(log_file);
-    let mut buf = String::new();
-    while let Ok(l) = r.read_line(&mut buf) {
-        if l == 0 {
-            break;
-        }
-        zip.write(buf.as_bytes());
-        buf.clear();
-    }
-    zip.flush();
-    let finish = zip.finish();
-    if finish.is_err() {
-        println!("[fast_log] try zip fail{:?}", finish.err());
-        return;
-    }
+    packer.do_pack(log_file, log_file_path);
     std::fs::remove_file(log_file_path);
 }
 
-#[cfg(test)]
-mod test {
-    use std::io::{BufRead, BufReader, Write};
 
-    use crate::plugin::file_split::RollingType;
-    use std::fs::OpenOptions;
-    use zip::write::FileOptions;
 
-    #[test]
-    fn test_zip() {
-        let zip_file = std::fs::File::create("F:/rust_project/fast_log/target/logs/0.zip");
-        match zip_file {
-            Ok(zip_file) => {
-                let mut zip = zip::ZipWriter::new(zip_file);
-                zip.start_file("0.log", FileOptions::default());
-                zip.write("sadfsadfsadf".as_bytes());
-                let finish = zip.finish();
-                match finish {
-                    Ok(f) => {
-                        //std::fs::remove_file("F:/rust_project/fast_log/target/logs/0.log");
-                    }
-                    Err(e) => {
-                        //nothing
-                        panic!(e)
-                    }
-                }
-            }
-            Err(e) => {
-                panic!(e)
-            }
-        }
+/// the zip compress
+pub struct ZipPacker {}
+
+impl Packer for ZipPacker {
+    fn pack_name(&self) -> &'static str {
+        "zip"
     }
 
-    #[test]
-    fn test_buf() {
-        let log_file = OpenOptions::new()
-            .create(true)
-            .read(true)
-            .write(true)
-            .open("target/logs/test.log")
-            .unwrap();
+    fn do_pack(&self, log_file: File, log_file_path: &str) -> Result<(), LogError> {
+        let mut log_name = log_file_path.replace("\\", "/").to_string();
+        match log_file_path.rfind("/") {
+            Some(v) => {
+                log_name = log_name[(v + 1)..log_name.len()].to_string();
+            }
+            _ => {}
+        }
+        let zip_path = log_file_path.replace(".log", ".zip");
+        let zip_file = std::fs::File::create(&zip_path);
+        if zip_file.is_err() {
+            return Err(LogError::from(format!(
+                "[fast_log] create(&{}) fail:{}",
+                zip_path,
+                zip_file.err().unwrap()
+            )));
+        }
+        let zip_file = zip_file.unwrap();
+        //write zip bytes data
+        let mut zip = zip::ZipWriter::new(zip_file);
+        zip.start_file(log_name, FileOptions::default());
         //buf reader
         let mut r = BufReader::new(log_file);
         let mut buf = String::new();
@@ -370,14 +339,15 @@ mod test {
             if l == 0 {
                 break;
             }
-            print!("{}", buf);
+            zip.write(buf.as_bytes());
             buf.clear();
         }
-    }
-
-    #[test]
-    fn test_rolling() {
-        let r = RollingType::KeepNum(5);
-        r.do_rolling("target/logs/");
+        zip.flush();
+        let finish: ZipResult<File> = zip.finish();
+        if finish.is_err() {
+            //println!("[fast_log] try zip fail{:?}", finish.err());
+            return Err(LogError::from(format!("[fast_log] try zip fail{:?}", finish.err())));
+        }
+        return Ok(());
     }
 }

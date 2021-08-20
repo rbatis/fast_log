@@ -11,7 +11,7 @@ use crate::error::LogError;
 use crate::filter::{Filter, NoFilter};
 use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
-use crate::plugin::file_split::{FileSplitAppender, RollingType};
+use crate::plugin::file_split::{FileSplitAppender, RollingType, ZipPacker};
 use crate::wait::FastLogWaitGroup;
 
 lazy_static! {
@@ -152,6 +152,7 @@ pub fn init_split_log(
         rolling_type,
         allow_zip_compress,
         1,
+        Box::new(ZipPacker{})
     ))];
     if debug_mode {
         appenders.push(Box::new(ConsoleAppender {}));
