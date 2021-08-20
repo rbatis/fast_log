@@ -22,3 +22,4 @@ crossbeam = "0.8"
 parking_lot = "0.11"
 
 zip = "0.5"
+lz4 = "1.23"

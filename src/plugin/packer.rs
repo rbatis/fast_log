@@ -2,7 +2,7 @@ use crate::plugin::file_split::Packer;
 use std::fs::File;
 use crate::error::LogError;
 use zip::write::FileOptions;
-use std::io::{BufReader, Write, BufRead};
+use std::io::{BufReader, Write, BufRead, Error};
 use zip::result::ZipResult;
 
 /// the zip compress
@@ -49,6 +49,66 @@ impl Packer for ZipPacker {
         if finish.is_err() {
             //println!("[fast_log] try zip fail{:?}", finish.err());
             return Err(LogError::from(format!("[fast_log] try zip fail{:?}", finish.err())));
+        }
+        return Ok(());
+    }
+}
+
+
+
+
+use lz4::EncoderBuilder;
+impl From<std::io::Error> for LogError{
+    fn from(arg: std::io::Error) -> Self {
+        LogError::E(arg.to_string())
+    }
+}
+/// the zip compress
+pub struct LZ4Packer {}
+
+impl Packer for LZ4Packer {
+    fn pack_name(&self) -> &'static str {
+        "lz4"
+    }
+
+    fn do_pack(&self, log_file: File, log_file_path: &str) -> Result<(), LogError> {
+
+        let mut log_name = log_file_path.replace("\\", "/").to_string();
+        match log_file_path.rfind("/") {
+            Some(v) => {
+                log_name = log_name[(v + 1)..log_name.len()].to_string();
+            }
+            _ => {}
+        }
+        let lz4_path = log_file_path.replace(".log", ".lz4");
+        let lz4_file = std::fs::File::create(&lz4_path);
+        if lz4_file.is_err() {
+            return Err(LogError::from(format!(
+                "[fast_log] create(&{}) fail:{}",
+                lz4_path,
+                lz4_file.err().unwrap()
+            )));
+        }
+        let mut lz4_file = lz4_file.unwrap();
+        //write lz4 bytes data
+
+        let mut encoder = EncoderBuilder::new()
+            .level(0)
+            .build(lz4_file)?;
+       // io::copy(&mut lz4_file, &mut encoder)?;
+        //buf reader
+        let mut r = BufReader::new(log_file);
+        let mut buf = String::new();
+        while let Ok(l) = r.read_line(&mut buf) {
+            if l == 0 {
+                break;
+            }
+            encoder.write(buf.as_bytes());
+            buf.clear();
+        }
+        let (_output, result) = encoder.finish();
+        if result.is_err() {
+            return Err(LogError::from(format!("[fast_log] try zip fail{:?}", result.err())));
         }
         return Ok(());
     }

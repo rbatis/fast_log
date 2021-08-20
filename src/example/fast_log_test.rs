@@ -13,7 +13,7 @@ mod test {
     use crate::filter::NoFilter;
     use crate::plugin::file_split::{RollingType};
     use crate::{init_custom_log, init_log, init_split_log};
-    use crate::plugin::packer::ZipPacker;
+    use crate::plugin::packer::{ZipPacker, LZ4Packer};
 
     #[test]
     pub fn test_log() {
@@ -128,7 +128,7 @@ mod test {
             RollingType::All,
             log::Level::Info,
             None,
-            Box::new(ZipPacker{}),
+            Box::new(LZ4Packer{}),
             false,
         );
         let now = std::time::Instant::now();
@@ -138,7 +138,7 @@ mod test {
                 break;
             }
         }
-        info!("done >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+        info!("done >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>{:?}",now.elapsed());
         sleep(Duration::from_secs(10));
     }
 
