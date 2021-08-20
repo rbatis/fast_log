@@ -11,8 +11,9 @@ mod test {
     use crate::bencher::QPS;
     use crate::consts::LogSize;
     use crate::filter::NoFilter;
-    use crate::plugin::file_split::RollingType;
+    use crate::plugin::file_split::{RollingType};
     use crate::{init_custom_log, init_log, init_split_log};
+    use crate::plugin::packer::ZipPacker;
 
     #[test]
     pub fn test_log() {
@@ -89,6 +90,7 @@ mod test {
             RollingType::All,
             log::Level::Info,
             None,
+                 Box::new(ZipPacker{}),
             true,
         );
         for _ in 0..20000 {
@@ -107,6 +109,7 @@ mod test {
             RollingType::KeepNum(5),
             log::Level::Info,
             None,
+            Box::new(ZipPacker{}),
             true,
         );
         for _ in 0..20000 {
@@ -125,6 +128,7 @@ mod test {
             RollingType::All,
             log::Level::Info,
             None,
+            Box::new(ZipPacker{}),
             false,
         );
         let now = std::time::Instant::now();

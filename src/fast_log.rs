@@ -11,7 +11,7 @@ use crate::error::LogError;
 use crate::filter::{Filter, NoFilter};
 use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
-use crate::plugin::file_split::{FileSplitAppender, RollingType, ZipPacker};
+use crate::plugin::file_split::{FileSplitAppender, RollingType, Packer};
 use crate::wait::FastLogWaitGroup;
 
 lazy_static! {
@@ -136,6 +136,7 @@ pub fn init_log(
 /// max_temp_size: do zip if temp log full
 /// allow_zip_compress: zip compress log file
 /// filter: log filter
+/// packer: you can use ZipPacker
 pub fn init_split_log(
     log_dir_path: &str,
     channel_log_cup: usize,
@@ -144,7 +145,8 @@ pub fn init_split_log(
     rolling_type: RollingType,
     level: log::Level,
     mut filter: Option<Box<dyn Filter>>,
-    debug_mode: bool,
+    packer: Box<dyn Packer>,
+    allow_console_log: bool,
 ) -> Result<FastLogWaitGroup, LogError> {
     let mut appenders: Vec<Box<dyn LogAppender>> = vec![Box::new(FileSplitAppender::new(
         log_dir_path,
@@ -152,9 +154,9 @@ pub fn init_split_log(
         rolling_type,
         allow_zip_compress,
         1,
-        Box::new(ZipPacker{})
+        packer
     ))];
-    if debug_mode {
+    if allow_console_log {
         appenders.push(Box::new(ConsoleAppender {}));
     }
     let mut log_filter: Box<dyn Filter> = Box::new(NoFilter {});
