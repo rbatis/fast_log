@@ -19,7 +19,7 @@ pub trait Packer: Send {
     fn do_pack(&self, log_file: File, log_file_path: &str) -> Result<(), LogError>;
 }
 
-/// split log file allow zip compress log
+/// split log file allow compress log
 pub struct FileSplitAppender {
     cell: RefCell<FileSplitAppenderData>,
 }
@@ -123,13 +123,13 @@ impl RollingType {
     }
 }
 
-/// split log file allow zip compress log
+/// split log file allow pack compress log
 /// Memory space swop running time , reduces the number of repeated queries for IO
 pub struct FileSplitAppenderData {
     max_split_bytes: usize,
     dir_path: String,
     file: File,
-    zip_compress: bool,
+    is_compress: bool,
     sender: Sender<LogPack>,
     rolling_type: RollingType,
     //cache data
@@ -148,7 +148,7 @@ impl FileSplitAppenderData {
             format!("{:29}", Local::now().format("%Y_%m_%dT%H_%M_%S%.f")).replace(" ", "_")
         );
         std::fs::copy(&first_file_path, &new_log_name);
-        if self.zip_compress {
+        if self.is_compress {
             //to zip
             self.sender.send(LogPack {
                 pack_name: self.pack_name.to_string(),
@@ -185,7 +185,7 @@ impl FileSplitAppender {
         dir_path: &str,
         max_temp_size: LogSize,
         rolling_type: RollingType,
-        allow_zip_compress: bool,
+        allow_pack_compress: bool,
         log_pack_cap: usize,
         packer: Box<dyn Packer>,
     ) -> FileSplitAppender {
@@ -228,7 +228,7 @@ impl FileSplitAppender {
                 temp_bytes: temp_bytes,
                 dir_path: dir_path.to_string(),
                 file: file,
-                zip_compress: allow_zip_compress,
+                is_compress: allow_pack_compress,
                 sender: sender,
                 rolling_type: rolling_type,
                 pack_name: pack_name,
@@ -271,7 +271,7 @@ fn spawn_saver_thread(r: Receiver<LogPack>, packer: Box<dyn Packer>) {
                     //do save pack
                     match pack.pack_name.as_str() {
                         p_name => {
-                            do_zip(&packer, pack);
+                            do_pack(&packer, pack);
                         }
                         "log" => {
                             //nothing to do
@@ -285,8 +285,8 @@ fn spawn_saver_thread(r: Receiver<LogPack>, packer: Box<dyn Packer>) {
     });
 }
 
-/// write an ZipPack to zip file
-pub fn do_zip(packer: &Box<dyn Packer>, pack: LogPack) {
+/// write an Pack to zip file
+pub fn do_pack(packer: &Box<dyn Packer>, pack: LogPack) {
     let log_file_path = pack.new_log_name.as_str();
     if log_file_path.is_empty() {
         return;
@@ -296,7 +296,7 @@ pub fn do_zip(packer: &Box<dyn Packer>, pack: LogPack) {
         return;
     }
     let log_file = log_file.unwrap();
-    //make zip
+    //make
     packer.do_pack(log_file, log_file_path);
     std::fs::remove_file(log_file_path);
 }

@@ -134,8 +134,8 @@ mod test {
                 break;
             }
         }
-        info!("done");
-        sleep(Duration::from_secs(100));
+        info!("done >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+        sleep(Duration::from_secs(10));
     }
 
     #[test]
