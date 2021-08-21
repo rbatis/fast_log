@@ -128,7 +128,7 @@ pub fn init_log(
 /// max_temp_size: do zip if temp log full
 /// allow_zip_compress: zip compress log file
 /// filter: log filter
-/// packer: you can use ZipPacker
+/// packer: you can use ZipPacker or LZ4Packer or custom your Packer
 pub fn init_split_log(
     log_dir_path: &str,
     channel_log_cup: usize,

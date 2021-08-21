@@ -1,19 +1,21 @@
+
 #[cfg(test)]
 mod test {
     use std::thread::sleep;
     use std::time::{Duration, Instant};
 
     use crossbeam_utils::sync::WaitGroup;
-    use log::error;
-    use log::{debug, info, Level};
+    use log::{debug, info, Level,error};
 
-    use crate::appender::{FastLogFormatRecord, FastLogRecord, LogAppender};
-    use crate::bencher::QPS;
-    use crate::consts::LogSize;
-    use crate::filter::NoFilter;
-    use crate::plugin::file_split::{RollingType};
-    use crate::{init_custom_log, init_log, init_split_log};
-    use crate::plugin::packer::{ZipPacker, LZ4Packer};
+    use fast_log::appender::{FastLogFormatRecord, FastLogRecord, LogAppender};
+    use fast_log::bencher::QPS;
+    use fast_log::consts::LogSize;
+    use fast_log::filter::NoFilter;
+    use fast_log::plugin::file_split::{RollingType};
+    use fast_log::{init_custom_log, init_log, init_split_log};
+    use fast_log::plugin::packer::{ZipPacker, LZ4Packer};
+
+
 
     #[test]
     pub fn test_log() {
@@ -90,7 +92,7 @@ mod test {
             RollingType::All,
             log::Level::Info,
             None,
-                 Box::new(ZipPacker{}),
+            Box::new(ZipPacker{}),
             true,
         );
         for _ in 0..20000 {
@@ -191,4 +193,8 @@ mod test {
         now.qps(total);
         sleep(Duration::from_secs(1));
     }
+}
+
+fn main(){
+
 }

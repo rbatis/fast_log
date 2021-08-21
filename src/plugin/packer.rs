@@ -1,13 +1,19 @@
 use crate::plugin::file_split::Packer;
 use std::fs::File;
 use crate::error::LogError;
-use zip::write::FileOptions;
 use std::io::{BufReader, Write, BufRead, Error};
+
+#[cfg(feature = "zip")]
+use zip::write::FileOptions;
+#[cfg(feature = "zip")]
 use zip::result::ZipResult;
 
+/// you need enable fast_log = { ... ,features=["zip"]}
 /// the zip compress
+#[cfg(feature = "zip")]
 pub struct ZipPacker {}
 
+#[cfg(feature = "zip")]
 impl Packer for ZipPacker {
     fn pack_name(&self) -> &'static str {
         "zip"
@@ -55,17 +61,20 @@ impl Packer for ZipPacker {
 }
 
 
-
-
+/// you need enable fast_log = { ... ,features=["lz4"]}
+#[cfg(feature = "lz4")]
 use lz4::EncoderBuilder;
+#[cfg(feature = "lz4")]
 impl From<std::io::Error> for LogError{
     fn from(arg: std::io::Error) -> Self {
         LogError::E(arg.to_string())
     }
 }
 /// the zip compress
+#[cfg(feature = "lz4")]
 pub struct LZ4Packer {}
 
+#[cfg(feature = "lz4")]
 impl Packer for LZ4Packer {
     fn pack_name(&self) -> &'static str {
         "lz4"

@@ -7,7 +7,7 @@
 extern crate lazy_static;
 
 pub mod appender;
-mod bencher;
+pub mod bencher;
 pub mod consts;
 pub mod error;
 pub mod fast_log;
@@ -19,6 +19,3 @@ pub use fast_log::init_custom_log;
 ///init log
 pub use fast_log::init_log;
 pub use fast_log::init_split_log;
-
-///test
-mod example;
