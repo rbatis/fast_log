@@ -74,26 +74,23 @@ impl log::Log for Logger {
                 return;
             }
             //send
-            let guard = LOG_SENDER.read();
-            match guard.as_ref() {
-                Some(sender) => {
-                    if !sender.filter.filter(record) {
-                        let fast_log_record = FastLogRecord {
-                            command: Command::CommandRecord,
-                            level,
-                            target: record.metadata().target().to_string(),
-                            args: record.args().to_string(),
-                            module_path: record.module_path().unwrap_or_default().to_string(),
-                            file: record.file().unwrap_or_default().to_string(),
-                            line: record.line().clone(),
-                            now: Local::now(),
-                            formated: String::new(),
-                        };
-                        sender.send(fast_log_record);
-                    }
+            if let Some(sender) = LOG_SENDER.read().as_ref(){
+                if !sender.filter.filter(record) {
+                    let fast_log_record = FastLogRecord {
+                        command: Command::CommandRecord,
+                        level,
+                        target: record.metadata().target().to_string(),
+                        args: record.args().to_string(),
+                        module_path: record.module_path().unwrap_or_default().to_string(),
+                        file: record.file().unwrap_or_default().to_string(),
+                        line: record.line().clone(),
+                        now: Local::now(),
+                        formated: String::new(),
+                    };
+                    sender.send(fast_log_record);
                 }
-                _ => {}
             }
+
         }
     }
     fn flush(&self) {}
