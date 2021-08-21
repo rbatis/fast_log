@@ -74,11 +74,11 @@ impl log::Log for Logger {
                 return;
             }
             //send
-            if let Some(sender) = LOG_SENDER.read().as_ref(){
+            if let Some(sender) = LOG_SENDER.read().as_ref() {
                 if !sender.filter.filter(record) {
                     let fast_log_record = FastLogRecord {
                         command: Command::CommandRecord,
-                        level,
+                        level: level,
                         target: record.metadata().target().to_string(),
                         args: record.args().to_string(),
                         module_path: record.module_path().unwrap_or_default().to_string(),
@@ -90,7 +90,6 @@ impl log::Log for Logger {
                     sender.send(fast_log_record);
                 }
             }
-
         }
     }
     fn flush(&self) {}
@@ -151,7 +150,7 @@ pub fn init_split_log(
         rolling_type,
         allow_zip_compress,
         1,
-        packer
+        packer,
     ))];
     if allow_console_log {
         appenders.push(Box::new(ConsoleAppender {}));
