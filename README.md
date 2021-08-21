@@ -16,6 +16,7 @@ A log implementation for extreme speed, using Crossbeam to double the efficiency
 
 * Built-in filtering configuration support, can be customized to filter out other library printed logs
 
+* Support custom compression algorithms, such as ZIP and LZ4
 
 
 
