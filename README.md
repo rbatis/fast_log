@@ -97,7 +97,7 @@ fn  main(){
 ```rust
 #[test]
 pub fn test_file_compation() {
-    init_split_log("target/logs/", 1000, LogSize::MB(1), false, log::Level::Info, None, true);
+    init_split_log("target/logs/", 1000, LogSize::MB(1), false, log::Level::Info, None, Box::new(ZipPacker{}), true);// or Box::new(LZ4Packer{})
     for _ in 0..200000 {
         info!("Commencing yak shaving");
     }
