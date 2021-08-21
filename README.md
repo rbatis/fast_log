@@ -61,9 +61,17 @@ log data->    | main channel  |   ->
 > support log split,zip_compress
 
 * how to use?
+
 ```toml
 log = "0.4"
-fast_log="1.3"
+#default is enable zip packer
+fast_log = {version = "1.3"}
+```
+or
+```toml
+log = "0.4"
+#default is enable zip packer,this is allow lz4 packer(this is vary faster)
+fast_log = {version = "1.3" , features = ["lz4"]}
 ```
 
 
