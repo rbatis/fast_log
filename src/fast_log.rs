@@ -69,16 +69,12 @@ impl log::Log for Logger {
     }
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
-            let level = record.level();
-            if self.get_level() < level {
-                return;
-            }
             //send
             if let Some(sender) = LOG_SENDER.read().as_ref() {
                 if !sender.filter.filter(record) {
                     let fast_log_record = FastLogRecord {
                         command: Command::CommandRecord,
-                        level: level,
+                        level: record.level(),
                         target: record.metadata().target().to_string(),
                         args: record.args().to_string(),
                         module_path: record.module_path().unwrap_or_default().to_string(),
