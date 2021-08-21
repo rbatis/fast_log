@@ -4,7 +4,7 @@ use crate::appender::{FastLogRecord, LogAppender};
 pub struct ConsoleAppender {}
 
 impl LogAppender for ConsoleAppender {
-    fn do_log(&self, records: &[FastLogRecord]) {
+    fn do_log(&self, records: &mut [FastLogRecord]) {
         for record in records {
             print!("{}", record.formated);
         }

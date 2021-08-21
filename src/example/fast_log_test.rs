@@ -40,7 +40,7 @@ mod test {
     struct CustomLog {}
 
     impl LogAppender for CustomLog {
-        fn do_log(&self, records: &[FastLogRecord]) {
+        fn do_log(&self, records: &mut [FastLogRecord]) {
             for record in records {
                 let data;
                 match record.level {
@@ -168,7 +168,7 @@ mod test {
     struct BenchRecvLog {}
 
     impl LogAppender for BenchRecvLog {
-        fn do_log(&self, record: &[FastLogRecord]) {}
+        fn do_log(&self, record: &mut [FastLogRecord]) {}
     }
 
     //cargo test --release --package fast_log --lib example::fast_log_test::test::bench_recv --no-fail-fast -- --exact -Z unstable-options --show-output

@@ -212,7 +212,7 @@ pub fn init_custom_log(
                         format.do_format(&mut s);
                     }
                     for x in &appenders {
-                        x.do_log(&others);
+                        x.do_log(&mut others);
                     }
                     if do_exit && main_recv.is_empty() {
                         drop(wait_group1);
@@ -263,8 +263,8 @@ pub fn init_custom_log(
                     //recv
                     let data = recv.recv();
                     if data.is_ok() {
-                        let arr= vec![data.unwrap()];
-                        item.do_log(&arr);
+                        let mut arr = vec![data.unwrap()];
+                        item.do_log(&mut arr);
                         for s in &arr {
                             if s.command.eq(&Command::CommandExit) {
                                 do_exit = true;
