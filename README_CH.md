@@ -1,5 +1,9 @@
 # log
 the fast log  . This crate uses #![forbid(unsafe_code)] to ensure everything is implemented in 100% Safe Rust.
+
+[![Build Status](https://app.travis-ci.com/rbatis/fast_log.svg?branch=master)](https://app.travis-ci.com/rbatis/fast_log)
+
+
 一款追求极致速度的日志实现，使用crossbeam 无锁channel提高一倍效率(相对于标准库的mpsc)，使用channel异步写日志。完全使用safe 代码实现，无不安全代码
 
 * 高性能，使用无锁消息队列,日志先存于队列中，后续flush磁盘。不阻塞调用方
