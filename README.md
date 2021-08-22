@@ -2,9 +2,8 @@
 #[中文](README_CH.md)
 
 [![Build Status](https://app.travis-ci.com/rbatis/fast_log.svg?branch=master)](https://app.travis-ci.com/rbatis/fast_log)
+[![GitHub release](https://img.shields.io/github/v/release/rbatis/fast_log)](https://github.com/rbatis/fast_log/releases)
 
-
-[![GitHub release](https://img.shields.io/github/v/release/rbatis/fast_log)](https://github.com/rbatis/fast_log/releases)+
 
 the fast log . This crate uses #! [forbid(unsafe_code)] to ensure everything is implemented in 100% Safe Rust.
 
