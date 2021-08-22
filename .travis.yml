@@ -1,0 +1,7 @@
+language: rust
+rust:
+  - stable
+matrix:
+  allow_failures:
+    - rust: stable
+  fast_finish: true
