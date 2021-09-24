@@ -1,6 +1,6 @@
 use std::sync::atomic::AtomicI32;
 
-use chrono::Local;
+use chrono::{Local, Timelike};
 use crossbeam_channel::{Receiver, SendError, RecvError};
 use log::{Level, Metadata, Record};
 use parking_lot::RwLock;
@@ -14,6 +14,8 @@ use crate::plugin::file::FileAppender;
 use crate::plugin::file_split::{FileSplitAppender, RollingType, Packer};
 use crate::wait::FastLogWaitGroup;
 use std::result::Result::Ok;
+use std::time::SystemTime;
+use std::sync::Arc;
 
 lazy_static! {
     static ref LOG_SENDER: RwLock<Option<LoggerSender>> = RwLock::new(Option::None);
@@ -81,7 +83,7 @@ impl log::Log for Logger {
                         module_path: record.module_path().unwrap_or_default().to_string(),
                         file: record.file().unwrap_or_default().to_string(),
                         line: record.line().clone(),
-                        now: Local::now(),
+                        now: SystemTime::now(),
                         formated: String::new(),
                     };
                     sender.send(fast_log_record);
@@ -114,12 +116,17 @@ pub fn init_log(
     if filter.is_some() {
         log_filter = filter.take().unwrap();
     }
+
+    let utc = chrono::Utc::now();
+    let tz = chrono::Local::now();
     return init_custom_log(
         appenders,
         channel_cup,
         level,
         log_filter,
-        Box::new(FastLogFormatRecord {}),
+        Box::new(FastLogFormatRecord {
+            hour: tz.hour() - utc.hour()
+        }),
     );
 }
 
@@ -154,12 +161,16 @@ pub fn init_split_log(
     if filter.is_some() {
         log_filter = filter.take().unwrap();
     }
+    let utc = chrono::Utc::now();
+    let tz = chrono::Local::now();
     return init_custom_log(
         appenders,
         channel_log_cup,
         level,
         log_filter,
-        Box::new(FastLogFormatRecord {}),
+        Box::new(FastLogFormatRecord {
+            hour: tz.hour() - utc.hour()
+        }),
     );
 }
 
@@ -175,95 +186,62 @@ pub fn init_custom_log(
     }
     let wait_group = FastLogWaitGroup::new();
     let main_recv = set_log(log_cup, level, filter);
-    if appenders.len() == 1 {
-        //main recv data
-        let wait_group1 = wait_group.clone();
-        std::thread::spawn(move || {
-            let mut do_exit = false;
-            loop {
-                let data = main_recv.recv();
-                if let Ok(data) = data {
-                    let mut others = vec![data];
-                    loop {
-                        if main_recv.len() > 0 {
-                            if let Ok(record) = main_recv.try_recv() {
-                                others.push(record);
-                            }
-                        } else {
-                            break;
-                        }
-                    }
-                    for mut record in &mut others {
-                        if record.command.eq(&Command::CommandExit) {
-                            do_exit = true;
-                        }
-                        format.do_format(&mut record);
-                        for appender in &appenders {
-                            appender.do_log(&mut record);
-                        }
-                    }
-                    if do_exit && main_recv.is_empty() {
-                        drop(wait_group1);
-                        break;
-                    }
+    let mut recvs = vec![];
+    let mut sends = vec![];
+    for idx in 0..appenders.len() {
+        let (s, r) = crossbeam_channel::bounded(log_cup);
+        recvs.push(r);
+        sends.push(s);
+    }
+    //main recv data
+    let wait_group1 = wait_group.clone();
+    std::thread::spawn(move || {
+        let mut do_exit = false;
+        loop {
+            let data = main_recv.recv();
+            if data.is_ok() {
+                let mut s: FastLogRecord = data.unwrap();
+                if s.command.eq(&Command::CommandExit) {
+                    do_exit = true;
+                }
+                for x in &sends {
+                    x.send(s.clone());
+                }
+                if do_exit && main_recv.is_empty() {
+                    drop(wait_group1);
+                    break;
                 }
             }
-        });
-    } else {
-        let mut recvs = vec![];
-        let mut sends = vec![];
-        for idx in 0..appenders.len() {
-            let (s, r) = crossbeam_channel::bounded(log_cup);
-            recvs.push(r);
-            sends.push(s);
         }
-        //main recv data
-        let wait_group1 = wait_group.clone();
+    });
+
+    let farc = Arc::new(format);
+    //all appender recv
+    let mut index = 0;
+    for item in appenders {
+        let wait_group_clone = wait_group.clone();
+        let recv = recvs[index].to_owned();
+
+        let farc_item = farc.clone();
         std::thread::spawn(move || {
             let mut do_exit = false;
             loop {
-                let data = main_recv.recv();
-                if data.is_ok() {
-                    let mut s: FastLogRecord = data.unwrap();
-                    if s.command.eq(&Command::CommandExit) {
+                //recv
+                let data = recv.recv();
+                if let Ok(mut data) = data {
+                    farc_item.do_format(&mut data);
+                    item.do_log(&mut data);
+                    if data.command.eq(&Command::CommandExit) {
                         do_exit = true;
                     }
-                    format.do_format(&mut s);
-                    for x in &sends {
-                        x.send(s.clone());
-                    }
-                    if do_exit && main_recv.is_empty() {
-                        drop(wait_group1);
+                    if do_exit && recv.is_empty() {
+                        drop(wait_group_clone);
                         break;
                     }
                 }
             }
         });
-
-        //all appender recv
-        let mut index = 0;
-        for item in appenders {
-            let wait_group_clone = wait_group.clone();
-            let recv = recvs[index].to_owned();
-            std::thread::spawn(move || {
-                let mut do_exit = false;
-                loop {
-                    //recv
-                    let data = recv.recv();
-                    if let Ok(mut data) = data {
-                        item.do_log(&mut data);
-                        if data.command.eq(&Command::CommandExit) {
-                            do_exit = true;
-                        }
-                        if do_exit && recv.is_empty() {
-                            drop(wait_group_clone);
-                            break;
-                        }
-                    }
-                }
-            });
-            index += 1;
-        }
+        index += 1;
     }
 
     let r = log::set_logger(&LOGGER).map(|()| log::set_max_level(level.to_level_filter()));
@@ -286,7 +264,7 @@ pub fn exit() -> Result<(), LogError> {
             module_path: String::new(),
             file: String::new(),
             line: None,
-            now: Local::now(),
+            now: SystemTime::now(),
             formated: "exit".to_string(),
         };
         let result = sender.send(fast_log_record);

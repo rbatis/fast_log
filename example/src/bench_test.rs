@@ -19,7 +19,9 @@ fn main(){
         1000,
         log::Level::Info,
         Box::new(NoFilter {}),
-        Box::new(FastLogFormatRecord {}),
+        Box::new(FastLogFormatRecord {
+            hour: 8
+        }),
     );
     let total = 10000;
     let now = Instant::now();

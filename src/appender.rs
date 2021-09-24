@@ -1,5 +1,6 @@
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Local, Utc, Timelike};
 use log::Level;
+use std::time::SystemTime;
 
 /// LogAppender append logs
 /// Appender will be running on single main thread,please do_log for new thread or new an Future
@@ -26,7 +27,7 @@ pub struct FastLogRecord {
     pub module_path: String,
     pub file: String,
     pub line: Option<u32>,
-    pub now: DateTime<Local>,
+    pub now: SystemTime,
     pub formated: String,
 }
 
@@ -39,16 +40,21 @@ impl FastLogRecord {
 }
 
 /// format record data
-pub trait RecordFormat: Send {
+pub trait RecordFormat: Send + Sync {
     fn do_format(&self, arg: &mut FastLogRecord);
 }
 
-pub struct FastLogFormatRecord {}
+pub struct FastLogFormatRecord {
+    pub hour: u32,
+}
 
 impl RecordFormat for FastLogFormatRecord {
     fn do_format(&self, arg: &mut FastLogRecord) {
         let data;
-        let now = format!("{:36}", arg.now.to_string());
+        let now: DateTime<Utc> = chrono::DateTime::from(arg.now);
+        let now = now.with_hour(now.hour() + self.hour).unwrap();
+        let now = format!("{:36}", now.to_string());
+        // let now= format!("{:?}",arg.now);
         match arg.level {
             Level::Warn | Level::Error => {
                 data = format!(
