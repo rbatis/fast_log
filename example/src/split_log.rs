@@ -1,6 +1,6 @@
 use fast_log::consts::LogSize;
 use fast_log::plugin::file_split::RollingType;
-use fast_log::plugin::packer::ZipPacker;
+use fast_log::plugin::packer::{ZipPacker, LogPacker};
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -9,11 +9,10 @@ fn main(){
         "target/logs/",
         1000,
         LogSize::MB(1),
-        false,
         RollingType::All,
         log::Level::Info,
         None,
-        Box::new(ZipPacker{}),
+        Box::new(LogPacker{}),
         true,
     );
     for _ in 0..20000 {

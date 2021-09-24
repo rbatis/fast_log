@@ -21,6 +21,9 @@ path = "src/split_log_zip.rs"
 name = "split_log_lz4"
 path = "src/split_log_lz4.rs"
 [[bin]]
+name = "split_log_gz"
+path = "src/split_log_gz.rs"
+[[bin]]
 name = "wait_log_finish"
 path = "src/wait_log_finish.rs"
 [[bin]]
@@ -36,4 +39,4 @@ crossbeam-utils = "0.8"
 crossbeam = "0.8"
 
 # features=["lz4"] or add features=["zip","lz4"] if you need lz4 packer
-fast_log = { path = "../", features = ["lz4","zip"]}
+fast_log = { path = "../", features = ["lz4","zip","gzip"]}

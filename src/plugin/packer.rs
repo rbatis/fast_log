@@ -2,9 +2,9 @@ use crate::plugin::file_split::Packer;
 use std::fs::File;
 use crate::error::LogError;
 use std::io::{BufReader, Write, BufRead, Error};
+use std::io::prelude::*;
 
-
-
+/// keep temp{date}.log
 pub struct LogPacker {
 
 }
@@ -131,6 +131,49 @@ impl Packer for LZ4Packer {
         let (_output, result) = encoder.finish();
         if result.is_err() {
             return Err(LogError::from(format!("[fast_log] try zip fail{:?}", result.err())));
+        }
+        return Ok(true);
+    }
+}
+
+
+#[cfg(feature = "gzip")]
+use flate2::write::GzEncoder;
+#[cfg(feature = "gzip")]
+use flate2::Compression;
+
+
+#[cfg(feature = "gzip")]
+pub struct GZipPacker {}
+
+#[cfg(feature = "gzip")]
+impl Packer for GZipPacker{
+    fn pack_name(&self) -> &'static str {
+        "gz"
+    }
+
+    fn do_pack(&self, mut log_file: File, log_file_path: &str) -> Result<bool, LogError> {
+        let mut log_name = log_file_path.replace("\\", "/").to_string();
+        if let Some(v) = log_file_path.rfind("/") {
+            log_name = log_name[(v + 1)..log_name.len()].to_string();
+        }
+        let zip_path = log_file_path.replace(".log", ".gz");
+        let zip_file = std::fs::File::create(&zip_path);
+        if zip_file.is_err() {
+            return Err(LogError::from(format!(
+                "[fast_log] create(&{}) fail:{}",
+                zip_path,
+                zip_file.err().unwrap()
+            )));
+        }
+        let mut zip_file = zip_file.unwrap();
+        //write zip bytes data
+        let mut zip = GzEncoder::new(&zip_file,Compression::default());
+        std::io::copy(&mut log_file,&mut zip);
+        zip.flush();
+        let finish = zip.finish();
+        if finish.is_err() {
+            return Err(LogError::from(format!("[fast_log] try zip fail{:?}", finish.err())));
         }
         return Ok(true);
     }

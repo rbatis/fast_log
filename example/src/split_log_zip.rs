@@ -9,7 +9,6 @@ fn main(){
         "target/logs/",
         1000,
         LogSize::KB(50),
-        true,
         RollingType::KeepNum(5),
         log::Level::Info,
         None,
