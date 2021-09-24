@@ -37,7 +37,7 @@ impl Packer for ZipPacker {
         "zip"
     }
 
-    fn do_pack(&self, log_file: File, log_file_path: &str) -> Result<bool, LogError> {
+    fn do_pack(&self, mut log_file: File, log_file_path: &str) -> Result<bool, LogError> {
         let mut log_name = log_file_path.replace("\\", "/").to_string();
         if let Some(v) = log_file_path.rfind("/") {
             log_name = log_name[(v + 1)..log_name.len()].to_string();
@@ -56,15 +56,7 @@ impl Packer for ZipPacker {
         let mut zip = zip::ZipWriter::new(zip_file);
         zip.start_file(log_name, FileOptions::default());
         //buf reader
-        let mut r = BufReader::new(log_file);
-        let mut buf = String::new();
-        while let Ok(l) = r.read_line(&mut buf) {
-            if l == 0 {
-                break;
-            }
-            zip.write(buf.as_bytes());
-            buf.clear();
-        }
+        std::io::copy(&mut log_file,&mut zip);
         zip.flush();
         let finish: ZipResult<File> = zip.finish();
         if finish.is_err() {
@@ -97,7 +89,7 @@ impl Packer for LZ4Packer {
         "lz4"
     }
 
-    fn do_pack(&self, log_file: File, log_file_path: &str) -> Result<bool, LogError> {
+    fn do_pack(&self, mut log_file: File, log_file_path: &str) -> Result<bool, LogError> {
         let mut log_name = log_file_path.replace("\\", "/").to_string();
         if let Some(v) = log_file_path.rfind("/") {
             log_name = log_name[(v + 1)..log_name.len()].to_string();
@@ -119,15 +111,7 @@ impl Packer for LZ4Packer {
             .build(lz4_file)?;
         // io::copy(&mut lz4_file, &mut encoder)?;
         //buf reader
-        let mut r = BufReader::new(log_file);
-        let mut buf = String::new();
-        while let Ok(l) = r.read_line(&mut buf) {
-            if l == 0 {
-                break;
-            }
-            encoder.write(buf.as_bytes());
-            buf.clear();
-        }
+        std::io::copy(&mut log_file,&mut encoder);
         let (_output, result) = encoder.finish();
         if result.is_err() {
             return Err(LogError::from(format!("[fast_log] try zip fail{:?}", result.err())));
