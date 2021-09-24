@@ -18,11 +18,15 @@ path = "src/split_log.rs"
 name = "split_log_zip"
 path = "src/split_log_zip.rs"
 [[bin]]
+name = "split_log_lz4"
+path = "src/split_log_lz4.rs"
+[[bin]]
 name = "wait_log_finish"
 path = "src/wait_log_finish.rs"
 [[bin]]
 name = "bench_test"
 path = "src/bench_test.rs"
+
 [dependencies]
 
 log = { version = "0.4", features = ["std"] }
