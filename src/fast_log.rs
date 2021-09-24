@@ -134,7 +134,6 @@ pub fn init_split_log(
     log_dir_path: &str,
     channel_log_cup: usize,
     max_temp_size: LogSize,
-    allow_zip_compress: bool,
     rolling_type: RollingType,
     level: log::Level,
     mut filter: Option<Box<dyn Filter>>,
@@ -145,7 +144,6 @@ pub fn init_split_log(
         log_dir_path,
         max_temp_size,
         rolling_type,
-        allow_zip_compress,
         1,
         packer,
     ))];

@@ -16,7 +16,8 @@ use crate::error::LogError;
 /// .zip or .lz4 or any one packer
 pub trait Packer: Send {
     fn pack_name(&self) -> &'static str;
-    fn do_pack(&self, log_file: File, log_file_path: &str) -> Result<(), LogError>;
+    //return bool: remove_log_file
+    fn do_pack(&self, log_file: File, log_file_path: &str) -> Result<bool, LogError>;
     /// default 0 is not retry pack. if retry > 0 ,it will trying rePack
     fn retry(&self) -> i32 { return 0; }
 }
@@ -28,7 +29,6 @@ pub struct FileSplitAppender {
 
 ///log data pack
 pub struct LogPack {
-    pub pack_name: String,
     pub dir: String,
     pub rolling: RollingType,
     pub new_log_name: String,
@@ -122,13 +122,10 @@ pub struct FileSplitAppenderData {
     max_split_bytes: usize,
     dir_path: String,
     file: File,
-    is_compress: bool,
     sender: Sender<LogPack>,
     rolling_type: RollingType,
     //cache data
     temp_bytes: usize,
-
-    pack_name: &'static str,
 }
 
 impl FileSplitAppenderData {
@@ -141,23 +138,11 @@ impl FileSplitAppenderData {
             format!("{:29}", Local::now().format("%Y_%m_%dT%H_%M_%S%.f")).replace(" ", "_")
         );
         std::fs::copy(&first_file_path, &new_log_name);
-        if self.is_compress {
-            //to zip
-            self.sender.send(LogPack {
-                pack_name: self.pack_name.to_string(),
-                dir: self.dir_path.clone(),
-                rolling: self.rolling_type.clone(),
-                new_log_name: new_log_name,
-            });
-        } else {
-            //send data
-            self.sender.send(LogPack {
-                pack_name: "log".to_string(),
-                dir: self.dir_path.clone(),
-                rolling: self.rolling_type.clone(),
-                new_log_name: new_log_name,
-            });
-        }
+        self.sender.send(LogPack {
+            dir: self.dir_path.clone(),
+            rolling: self.rolling_type.clone(),
+            new_log_name: new_log_name,
+        });
         self.truncate();
     }
 
@@ -178,7 +163,6 @@ impl FileSplitAppender {
         dir_path: &str,
         max_temp_size: LogSize,
         rolling_type: RollingType,
-        allow_pack_compress: bool,
         log_pack_cap: usize,
         packer: Box<dyn Packer>,
     ) -> FileSplitAppender {
@@ -210,7 +194,6 @@ impl FileSplitAppender {
         }
         file.seek(SeekFrom::Start(temp_bytes as u64));
         let (sender, receiver) = crossbeam_channel::bounded(log_pack_cap);
-        let pack_name = packer.pack_name();
         spawn_saver_thread(receiver, packer);
         Self {
             cell: RefCell::new(FileSplitAppenderData {
@@ -218,10 +201,8 @@ impl FileSplitAppender {
                 temp_bytes: temp_bytes,
                 dir_path: dir_path.to_string(),
                 file: file,
-                is_compress: allow_pack_compress,
                 sender: sender,
                 rolling_type: rolling_type,
-                pack_name: pack_name,
             }),
         }
     }
@@ -252,15 +233,19 @@ fn spawn_saver_thread(r: Receiver<LogPack>, packer: Box<dyn Packer>) {
                 pack.rolling.do_rolling(&pack.dir);
                 let log_file_path = pack.new_log_name.clone();
                 //do save pack
-                do_pack(&packer, pack);
-                std::fs::remove_file(log_file_path);
+                let remove = do_pack(&packer, pack);
+                if let Ok(remove) = remove {
+                    if remove {
+                        std::fs::remove_file(log_file_path);
+                    }
+                }
             }
         }
     });
 }
 
 /// write an Pack to zip file
-pub fn do_pack(packer: &Box<dyn Packer>, mut pack: LogPack) -> Result<(), LogPack> {
+pub fn do_pack(packer: &Box<dyn Packer>, mut pack: LogPack) -> Result<bool, LogPack> {
     let log_file_path = pack.new_log_name.as_str();
     if log_file_path.is_empty() {
         return Err(pack);
@@ -282,5 +267,8 @@ pub fn do_pack(packer: &Box<dyn Packer>, mut pack: LogPack) -> Result<(), LogPac
             }
         }
     }
-    return Ok(());
+    if let Ok(b) = r {
+        return Ok(b);
+    }
+    return Ok(false);
 }

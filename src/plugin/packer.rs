@@ -3,6 +3,24 @@ use std::fs::File;
 use crate::error::LogError;
 use std::io::{BufReader, Write, BufRead, Error};
 
+
+
+pub struct LogPacker {
+
+}
+impl Packer for LogPacker {
+    fn pack_name(&self) -> &'static str {
+        "log"
+    }
+
+    fn do_pack(&self, mut log_file: File, log_file_path: &str) -> Result<bool, LogError> {
+        //do nothing,and not remove file
+        return Ok(false);
+    }
+}
+
+
+
 #[cfg(feature = "zip")]
 use zip::write::FileOptions;
 #[cfg(feature = "zip")]
@@ -19,7 +37,7 @@ impl Packer for ZipPacker {
         "zip"
     }
 
-    fn do_pack(&self, log_file: File, log_file_path: &str) -> Result<(), LogError> {
+    fn do_pack(&self, log_file: File, log_file_path: &str) -> Result<bool, LogError> {
         let mut log_name = log_file_path.replace("\\", "/").to_string();
         if let Some(v) = log_file_path.rfind("/") {
             log_name = log_name[(v + 1)..log_name.len()].to_string();
@@ -53,7 +71,7 @@ impl Packer for ZipPacker {
             //println!("[fast_log] try zip fail{:?}", finish.err());
             return Err(LogError::from(format!("[fast_log] try zip fail{:?}", finish.err())));
         }
-        return Ok(());
+        return Ok(true);
     }
 }
 
@@ -79,7 +97,7 @@ impl Packer for LZ4Packer {
         "lz4"
     }
 
-    fn do_pack(&self, log_file: File, log_file_path: &str) -> Result<(), LogError> {
+    fn do_pack(&self, log_file: File, log_file_path: &str) -> Result<bool, LogError> {
         let mut log_name = log_file_path.replace("\\", "/").to_string();
         if let Some(v) = log_file_path.rfind("/") {
             log_name = log_name[(v + 1)..log_name.len()].to_string();
@@ -114,6 +132,6 @@ impl Packer for LZ4Packer {
         if result.is_err() {
             return Err(LogError::from(format!("[fast_log] try zip fail{:?}", result.err())));
         }
-        return Ok(());
+        return Ok(true);
     }
 }
