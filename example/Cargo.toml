@@ -7,6 +7,22 @@ publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+
+[[bin]]
+name = "custom_appender"
+path = "src/custom_appender.rs"
+[[bin]]
+name = "split_log"
+path = "src/split_log.rs"
+[[bin]]
+name = "split_log_zip"
+path = "src/split_log_zip.rs"
+[[bin]]
+name = "wait_log_finish"
+path = "src/wait_log_finish.rs"
+[[bin]]
+name = "bench_test"
+path = "src/bench_test.rs"
 [dependencies]
 
 log = { version = "0.4", features = ["std"] }
