@@ -7,7 +7,7 @@ use fast_log::bencher::QPS;
 struct BenchRecvLog {}
 
 impl LogAppender for BenchRecvLog {
-    fn do_log(&self, record: &mut [FastLogRecord]) {
+    fn do_log(&self, record: &mut FastLogRecord) {
         //do nothing
     }
 }

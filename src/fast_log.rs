@@ -13,6 +13,7 @@ use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
 use crate::plugin::file_split::{FileSplitAppender, RollingType, Packer};
 use crate::wait::FastLogWaitGroup;
+use std::result::Result::Ok;
 
 lazy_static! {
     static ref LOG_SENDER: RwLock<Option<LoggerSender>> = RwLock::new(Option::None);
@@ -183,28 +184,25 @@ pub fn init_custom_log(
             let mut do_exit = false;
             loop {
                 let data = main_recv.recv();
-                if data.is_ok() {
-                    let mut others = vec![data.unwrap()];
+                if let Ok(data) = data {
+                    let mut others = vec![data];
                     loop {
                         if main_recv.len() > 0 {
-                            match main_recv.try_recv() {
-                                Ok(ok) => {
-                                    others.push(ok);
-                                }
-                                Err(_) => {}
+                            if let Ok(record) = main_recv.try_recv() {
+                                others.push(record);
                             }
                         } else {
                             break;
                         }
                     }
-                    for mut s in &mut others {
-                        if s.command.eq(&Command::CommandExit) {
+                    for mut record in &mut others {
+                        if record.command.eq(&Command::CommandExit) {
                             do_exit = true;
                         }
-                        format.do_format(&mut s);
-                    }
-                    for x in &appenders {
-                        x.do_log(&mut others);
+                        format.do_format(&mut record);
+                        for appender in &appenders {
+                            appender.do_log(&mut record);
+                        }
                     }
                     if do_exit && main_recv.is_empty() {
                         drop(wait_group1);
@@ -254,13 +252,10 @@ pub fn init_custom_log(
                 loop {
                     //recv
                     let data = recv.recv();
-                    if data.is_ok() {
-                        let mut arr = vec![data.unwrap()];
-                        item.do_log(&mut arr);
-                        for s in &arr {
-                            if s.command.eq(&Command::CommandExit) {
-                                do_exit = true;
-                            }
+                    if let Ok(mut data) = data {
+                        item.do_log(&mut data);
+                        if data.command.eq(&Command::CommandExit) {
+                            do_exit = true;
                         }
                         if do_exit && recv.is_empty() {
                             drop(wait_group_clone);

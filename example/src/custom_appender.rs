@@ -7,8 +7,7 @@ use std::thread::sleep;
 struct CustomLog {}
 
 impl LogAppender for CustomLog {
-    fn do_log(&self, records: &mut [FastLogRecord]) {
-        for record in records {
+    fn do_log(&self, record: &mut FastLogRecord) {
             let data;
             match record.level {
                 Level::Warn | Level::Error => {
@@ -29,7 +28,6 @@ impl LogAppender for CustomLog {
                 }
             }
             print!("{}", data);
-        }
     }
 }
 

@@ -240,22 +240,19 @@ impl FileSplitAppender {
 }
 
 impl LogAppender for FileSplitAppender {
-    fn do_log(&self, records: &mut [FastLogRecord]) {
+    fn do_log(&self, record: &mut FastLogRecord) {
         let mut data = self.cell.borrow_mut();
         if data.temp_bytes >= data.max_split_bytes {
             data.send_pack();
         }
         let mut write_bytes = 0;
-        for record in records {
-            let w = data.file.write(record.formated.as_bytes());
-            match w {
-                Ok(w) => {
-                    write_bytes = write_bytes + w;
-                }
-                _ => {}
+        let w = data.file.write(record.formated.as_bytes());
+        match w {
+            Ok(w) => {
+                write_bytes = write_bytes + w;
             }
+            _ => {}
         }
-
         data.file.flush();
         data.temp_bytes += write_bytes;
     }
