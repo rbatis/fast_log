@@ -1,0 +1,1 @@
+cargo run --release --package example --bin bench_test
