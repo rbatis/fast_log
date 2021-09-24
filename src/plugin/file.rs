@@ -11,12 +11,9 @@ pub struct FileAppender {
 impl FileAppender {
     pub fn new(log_file_path: &str) -> FileAppender {
         let log_file_path = log_file_path.replace("\\", "/");
-        match log_file_path.rfind("/") {
-            None => {}
-            Some(right) => {
-                let path = &log_file_path[0..right];
-                std::fs::create_dir_all(path);
-            }
+        if let Some(right) = log_file_path.rfind("/") {
+            let path = &log_file_path[0..right];
+            std::fs::create_dir_all(path);
         }
         Self {
             file: RefCell::new(

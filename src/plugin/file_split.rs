@@ -45,27 +45,24 @@ pub enum RollingType {
 impl RollingType {
     fn read_paths(&self, dir: &str) -> Vec<DirEntry> {
         let paths = std::fs::read_dir(dir);
-        match paths {
-            Ok(paths) => {
-                let mut paths_vec = vec![];
-                for path in paths {
-                    match path {
-                        Ok(path) => {
-                            if let Some(v) = path.file_name().to_str() {
-                                //filter temp.log and not start with temp
-                                if v.ends_with("temp.log") || !v.starts_with("temp") {
-                                    continue;
-                                }
+        if let Ok(paths) = paths {
+            let mut paths_vec = vec![];
+            for path in paths {
+                match path {
+                    Ok(path) => {
+                        if let Some(v) = path.file_name().to_str() {
+                            //filter temp.log and not start with temp
+                            if v.ends_with("temp.log") || !v.starts_with("temp") {
+                                continue;
                             }
-                            paths_vec.push(path);
                         }
-                        _ => {}
+                        paths_vec.push(path);
                     }
+                    _ => {}
                 }
-                paths_vec.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
-                return paths_vec;
             }
-            _ => {}
+            paths_vec.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
+            return paths_vec;
         }
         return vec![];
     }
@@ -93,13 +90,10 @@ impl RollingType {
                     let item = &paths_vec[index];
                     let file_name = item.file_name();
                     let name = file_name.to_str().unwrap_or("").to_string();
-                    match self.file_name_parse_time(&name) {
-                        Some(time) => {
-                            if now.sub(time) > duration {
-                                std::fs::remove_file(item.path());
-                            }
+                    if let Some(time) = self.file_name_parse_time(&name) {
+                        if now.sub(time) > duration {
+                            std::fs::remove_file(item.path());
                         }
-                        _ => {}
                     }
                 }
             }
@@ -114,11 +108,8 @@ impl RollingType {
                 time_str = time_str[0..v].to_string();
             }
             let time = chrono::NaiveDateTime::parse_from_str(&time_str, "%Y_%m_%dT%H_%M_%S");
-            match time {
-                Ok(time) => {
-                    return Some(time);
-                }
-                _ => {}
+            if let Ok(time) = time {
+                return Some(time);
             }
         }
         return None;
@@ -214,11 +205,8 @@ impl FileSplitAppender {
         }
         let mut file = file.unwrap();
         let mut temp_bytes = 0;
-        match file.metadata() {
-            Ok(m) => {
-                temp_bytes = m.len() as usize;
-            }
-            _ => {}
+        if let Ok(m) = file.metadata() {
+            temp_bytes = m.len() as usize;
         }
         file.seek(SeekFrom::Start(temp_bytes as u64));
         let (sender, receiver) = crossbeam_channel::bounded(log_pack_cap);
@@ -247,11 +235,8 @@ impl LogAppender for FileSplitAppender {
         }
         let mut write_bytes = 0;
         let w = data.file.write(record.formated.as_bytes());
-        match w {
-            Ok(w) => {
-                write_bytes = write_bytes + w;
-            }
-            _ => {}
+        if let Ok(w) = w {
+            write_bytes = write_bytes + w;
         }
         data.file.flush();
         data.temp_bytes += write_bytes;
@@ -267,12 +252,7 @@ fn spawn_saver_thread(r: Receiver<LogPack>, packer: Box<dyn Packer>) {
                 pack.rolling.do_rolling(&pack.dir);
                 let log_file_path = pack.new_log_name.clone();
                 //do save pack
-                match pack.pack_name.as_str() {
-                    p_name => {
-                        do_pack(&packer, pack);
-                    }
-                    _ => {}
-                }
+                do_pack(&packer, pack);
                 std::fs::remove_file(log_file_path);
             }
         }
@@ -280,7 +260,7 @@ fn spawn_saver_thread(r: Receiver<LogPack>, packer: Box<dyn Packer>) {
 }
 
 /// write an Pack to zip file
-pub fn do_pack(packer: &Box<dyn Packer>, mut pack: LogPack) -> Result<(), LogPack>{
+pub fn do_pack(packer: &Box<dyn Packer>, mut pack: LogPack) -> Result<(), LogPack> {
     let log_file_path = pack.new_log_name.as_str();
     if log_file_path.is_empty() {
         return Err(pack);
