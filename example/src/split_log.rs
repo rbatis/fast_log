@@ -18,6 +18,6 @@ fn main(){
     for _ in 0..20000 {
         log::info!("Commencing yak shaving");
     }
-    sleep(Duration::from_secs(1));
+    sleep(Duration::from_secs(3));
     println!("you can see log files in path: {}","target/logs/")
 }

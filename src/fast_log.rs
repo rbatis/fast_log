@@ -14,7 +14,7 @@ use crate::plugin::file::FileAppender;
 use crate::plugin::file_split::{FileSplitAppender, RollingType, Packer};
 use crate::wait::FastLogWaitGroup;
 use std::result::Result::Ok;
-use std::time::SystemTime;
+use std::time::{SystemTime, Duration};
 use std::sync::Arc;
 
 lazy_static! {
@@ -186,13 +186,8 @@ pub fn init_custom_log(
     }
     let wait_group = FastLogWaitGroup::new();
     let main_recv = set_log(log_cup, level, filter);
-    let mut recvs = vec![];
-    let mut sends = vec![];
-    for idx in 0..appenders.len() {
-        let (s, r) = crossbeam_channel::bounded(log_cup*10);
-        recvs.push(r);
-        sends.push(s);
-    }
+
+    let (back_sender, back_recv) = crossbeam_channel::bounded(log_cup * 10 * appenders.len());
     //main recv data
     let wait_group1 = wait_group.clone();
     std::thread::spawn(move || {
@@ -204,9 +199,7 @@ pub fn init_custom_log(
                 if s.command.eq(&Command::CommandExit) {
                     do_exit = true;
                 }
-                for x in &sends {
-                    x.send(s.clone());
-                }
+                back_sender.send(s);
                 if do_exit && main_recv.is_empty() {
                     drop(wait_group1);
                     break;
@@ -215,34 +208,25 @@ pub fn init_custom_log(
         }
     });
 
+    let wait_group_back = wait_group.clone();
     let farc = Arc::new(format);
-    //all appender recv
-    let mut index = 0;
-    for item in appenders {
-        let wait_group_clone = wait_group.clone();
-        let recv = recvs[index].to_owned();
-
-        let farc_item = farc.clone();
-        std::thread::spawn(move || {
-            let mut do_exit = false;
-            loop {
-                //recv
-                let data = recv.recv();
-                if let Ok(mut data) = data {
-                    farc_item.do_format(&mut data);
-                    item.do_log(&mut data);
-                    if data.command.eq(&Command::CommandExit) {
-                        do_exit = true;
-                    }
-                    if do_exit && recv.is_empty() {
-                        drop(wait_group_clone);
-                        break;
-                    }
+    //back recv data
+    std::thread::spawn(move || {
+        loop {
+            //recv
+            let data = back_recv.recv();
+            if let Ok(mut data) = data {
+                if data.command.eq(&Command::CommandExit) {
+                    drop(wait_group_back);
+                    break;
+                }
+                farc.do_format(&mut data);
+                for x in &appenders {
+                    x.do_log(&mut data);
                 }
             }
-        });
-        index += 1;
-    }
+        }
+    });
 
     let r = log::set_logger(&LOGGER).map(|()| log::set_max_level(level.to_level_filter()));
     if r.is_err() {
