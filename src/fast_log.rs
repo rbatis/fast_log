@@ -189,38 +189,34 @@ pub fn init_custom_log(
 
     let (back_sender, back_recv) = crossbeam_channel::bounded(log_cup * 10 * appenders.len());
     //main recv data
-    let wait_group1 = wait_group.clone();
+    let wait_group_main = wait_group.clone();
     std::thread::spawn(move || {
-        let mut do_exit = false;
         loop {
             let data = main_recv.recv();
             if data.is_ok() {
                 let mut s: FastLogRecord = data.unwrap();
                 if s.command.eq(&Command::CommandExit) {
-                    do_exit = true;
-                }
-                back_sender.send(s);
-                if do_exit && main_recv.is_empty() {
-                    drop(wait_group1);
+                    back_sender.send(s);
+                    drop(wait_group_main);
                     break;
                 }
+                back_sender.send(s);
             }
         }
     });
 
     let wait_group_back = wait_group.clone();
-    let farc = Arc::new(format);
     //back recv data
     std::thread::spawn(move || {
         loop {
             //recv
             let data = back_recv.recv();
             if let Ok(mut data) = data {
-                if data.command.eq(&Command::CommandExit) {
+                if data.command.eq(&Command::CommandExit){
                     drop(wait_group_back);
                     break;
                 }
-                farc.do_format(&mut data);
+                format.do_format(&mut data);
                 for x in &appenders {
                     x.do_log(&mut data);
                 }

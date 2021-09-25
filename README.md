@@ -30,18 +30,9 @@ A log implementation for extreme speed, using Crossbeam to double the efficiency
               -----------------
 log data->    | main channel  |   ->          
               ----------------- 
-                                        ----------------             ----------------------
-                                  ->    |Thread channel|  -> Thread  |   file   appender  |
-                                        ----------------             ----------------------
-                                        ----------------             ----------------------
-                                  ->    |Thread channel|  -> Thread  |  console  appender  |
-                                        ----------------             ----------------------
-                                        ----------------             ----------------------
-                                  ->    |Thread channel|  -> Thread  |   zip   appender  |
-                                        ----------------             ----------------------
-                                        ----------------             ----------------------
-                                  ->    |Thread channel|  -> Thread  |   other   appender  |
-                                        ----------------             ----------------------
+                                        ----------------                       ----------------------
+                                  ->    |Thread channel|  -> background thread  |    appenders  |
+                                        ----------------                       ----------------------
 
 
 ```
