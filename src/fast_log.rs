@@ -189,7 +189,7 @@ pub fn init_custom_log(
     let mut recvs = vec![];
     let mut sends = vec![];
     for idx in 0..appenders.len() {
-        let (s, r) = crossbeam_channel::unbounded();
+        let (s, r) = crossbeam_channel::bounded(log_cup*10);
         recvs.push(r);
         sends.push(s);
     }
