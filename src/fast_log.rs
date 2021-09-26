@@ -116,17 +116,12 @@ pub fn init_log(
     if filter.is_some() {
         log_filter = filter.take().unwrap();
     }
-
-    let utc = chrono::Utc::now();
-    let tz = chrono::Local::now();
     return init_custom_log(
         appenders,
         channel_cup,
         level,
         log_filter,
-        Box::new(FastLogFormatRecord {
-            hour: tz.hour() - utc.hour()
-        }),
+        Box::new(FastLogFormatRecord::new()),
     );
 }
 

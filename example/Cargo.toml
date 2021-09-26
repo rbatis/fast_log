@@ -37,6 +37,7 @@ log = { version = "0.4", features = ["std"] }
 crossbeam-channel = "0.5"
 crossbeam-utils = "0.8"
 crossbeam = "0.8"
+chrono = { version = "0.4", features = ["serde"] }
 
 # features=["lz4"] or add features=["zip","lz4"] if you need lz4 packer
 fast_log = { path = "../", features = ["lz4","zip","gzip"]}

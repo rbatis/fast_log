@@ -76,3 +76,13 @@ impl RecordFormat for FastLogFormatRecord {
         arg.formated = data;
     }
 }
+
+impl FastLogFormatRecord {
+    pub fn new() -> FastLogFormatRecord {
+        let utc = chrono::Utc::now();
+        let tz = chrono::Local::now();
+        Self {
+            hour: tz.hour() - utc.hour()
+        }
+    }
+}

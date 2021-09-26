@@ -3,17 +3,19 @@ use fast_log::appender::{FastLogFormatRecord, LogAppender, FastLogRecord};
 use fast_log::filter::NoFilter;
 use log::Level;
 use std::thread::sleep;
+use chrono::{DateTime, Local};
 
 struct CustomLog {}
 
 impl LogAppender for CustomLog {
     fn do_log(&self, record: &mut FastLogRecord) {
+            let now:DateTime<Local> = chrono::DateTime::from(record.now);
             let data;
             match record.level {
                 Level::Warn | Level::Error => {
                     data = format!(
                         "{} {} {} - {}  {}\n",
-                        &record.now,
+                        now,
                         record.level,
                         record.module_path,
                         record.args,
@@ -23,7 +25,7 @@ impl LogAppender for CustomLog {
                 _ => {
                     data = format!(
                         "{} {} {} - {}\n",
-                        &record.now, record.level, record.module_path, record.args
+                        &now, record.level, record.module_path, record.args
                     );
                 }
             }
@@ -37,7 +39,7 @@ fn main(){
         1000,
         log::Level::Info,
         Box::new(NoFilter {}),
-        Box::new(FastLogFormatRecord {}),
+        Box::new(FastLogFormatRecord::new()),
     );
     log::info!("Commencing yak shaving");
     log::error!("Commencing error");
