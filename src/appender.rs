@@ -1,7 +1,7 @@
 use chrono::{DateTime, Local, Utc, Timelike, Duration};
 use log::Level;
 use std::time::SystemTime;
-use std::ops::Add;
+use std::ops::{Add, Sub};
 
 /// LogAppender append logs
 /// Appender will be running on single main thread,please do_log for new thread or new an Future
@@ -46,14 +46,14 @@ pub trait RecordFormat: Send + Sync {
 }
 
 pub struct FastLogFormatRecord {
-    pub hour: u32,
+    pub duration: Duration,
 }
 
 impl RecordFormat for FastLogFormatRecord {
     fn do_format(&self, arg: &mut FastLogRecord) {
         let data;
         let now: DateTime<Utc> = chrono::DateTime::from(arg.now);
-        let now = now.add(Duration::hours(8));
+        let now = now.add(self.duration);
         let now = format!("{:36}", now.to_string());
         // let now= format!("{:?}",arg.now);
         match arg.level {
@@ -80,10 +80,11 @@ impl RecordFormat for FastLogFormatRecord {
 
 impl FastLogFormatRecord {
     pub fn new() -> FastLogFormatRecord {
-        let utc = chrono::Utc::now();
-        let tz = chrono::Local::now();
+        let utc = chrono::Utc::now().naive_utc();
+        let tz = chrono::Local::now().naive_local();
+        let d = tz.sub(utc);
         Self {
-            hour: tz.hour() - utc.hour()
+            duration: d
         }
     }
 }
