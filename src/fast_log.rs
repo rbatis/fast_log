@@ -1,6 +1,4 @@
 use std::sync::atomic::AtomicI32;
-
-use chrono::{Local, Timelike};
 use crossbeam_channel::{Receiver, SendError, RecvError};
 use log::{Level, Metadata, Record};
 use parking_lot::RwLock;
@@ -156,16 +154,12 @@ pub fn init_split_log(
     if filter.is_some() {
         log_filter = filter.take().unwrap();
     }
-    let utc = chrono::Utc::now();
-    let tz = chrono::Local::now();
     return init_custom_log(
         appenders,
         channel_log_cup,
         level,
         log_filter,
-        Box::new(FastLogFormatRecord {
-            hour: tz.hour() - utc.hour()
-        }),
+        Box::new(FastLogFormatRecord::new()),
     );
 }
 
