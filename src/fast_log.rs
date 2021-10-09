@@ -69,23 +69,21 @@ impl log::Log for Logger {
         metadata.level() <= self.get_level()
     }
     fn log(&self, record: &Record) {
-        if self.enabled(record.metadata()) {
-            //send
-            if let Some(sender) = LOG_SENDER.read().as_ref() {
-                if !sender.filter.filter(record) {
-                    let fast_log_record = FastLogRecord {
-                        command: Command::CommandRecord,
-                        level: record.level(),
-                        target: record.metadata().target().to_string(),
-                        args: record.args().to_string(),
-                        module_path: record.module_path().unwrap_or_default().to_string(),
-                        file: record.file().unwrap_or_default().to_string(),
-                        line: record.line().clone(),
-                        now: SystemTime::now(),
-                        formated: String::new(),
-                    };
-                    sender.send(fast_log_record);
-                }
+        //send
+        if let Some(sender) = LOG_SENDER.read().as_ref() {
+            if !sender.filter.filter(record) {
+                let fast_log_record = FastLogRecord {
+                    command: Command::CommandRecord,
+                    level: record.level(),
+                    target: record.metadata().target().to_string(),
+                    args: record.args().to_string(),
+                    module_path: record.module_path().unwrap_or_default().to_string(),
+                    file: record.file().unwrap_or_default().to_string(),
+                    line: record.line().clone(),
+                    now: SystemTime::now(),
+                    formated: String::new(),
+                };
+                sender.send(fast_log_record);
             }
         }
     }
