@@ -53,7 +53,7 @@ fast_log="1.3"
 use fast_log::{init_log};
 use log::{error, info, warn};
 fn  main(){
-    fast_log::init_log("requests.log", 1000, log::Level::Info, None,true);      
+    fast_log::init_log("requests.log",  log::Level::Info, None,true);      
     info!("Commencing yak shaving");
 }
 ```
@@ -62,7 +62,7 @@ fn  main(){
 ```rust
 #[test]
     pub fn test_file_compation() {
-    init_split_log("target/logs/", 1000, LogSize::MB(1), false, log::Level::Info, None, true);
+    init_split_log("target/logs/",  LogSize::MB(1), false, log::Level::Info, None, true);
     for _ in 0..200000 {
             info!("Commencing yak shaving");
         }
@@ -82,7 +82,7 @@ use log::{error, info, warn};
         }
     }
 fn  main(){
-    fast_log::init_custom_log(vec![Box::new(CustomLog {})], 1000, log::Level::Info, Box::new(NoFilter {}));
+    fast_log::init_custom_log(vec![Box::new(CustomLog {})],  log::Level::Info, Box::new(NoFilter {}));
     info!("Commencing yak shaving");
     may::coroutine::sleep(std::time::Duration::from_secs(1));
 }
