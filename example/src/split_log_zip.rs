@@ -17,6 +17,6 @@ fn main(){
     for _ in 0..20000 {
         log::info!("Commencing yak shaving");
     }
-    sleep(Duration::from_secs(1));
+    may::coroutine::sleep(Duration::from_secs(1));
     println!("you can see log files in path: {}","target/logs/")
 }

@@ -28,5 +28,5 @@ fn main(){
     }
     now.time(total);
     now.qps(total);
-    sleep(Duration::from_secs(1));
+    may::coroutine::sleep(Duration::from_secs(1));
 }

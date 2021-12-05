@@ -42,5 +42,5 @@ fn main(){
     );
     log::info!("Commencing yak shaving");
     log::error!("Commencing error");
-    sleep(Duration::from_secs(1));
+    may::coroutine::sleep(Duration::from_secs(1));
 }
