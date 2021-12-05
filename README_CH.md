@@ -44,7 +44,7 @@ log data->    | main channel  |   ->
 * how to use?
 ```toml
 log = "0.4"
-fast_log="1.3"
+fast_log="1.4"
 ```
 
 
