@@ -3,13 +3,14 @@ use std::fs::{DirBuilder, DirEntry, File, OpenOptions};
 use std::io::{BufRead, BufReader, Seek, SeekFrom, Write, Error};
 
 use chrono::{Local, NaiveDateTime};
-use crossbeam_channel::{Receiver, Sender};
 use zip::write::FileOptions;
 
-use crate::appender::{FastLogRecord, LogAppender};
+use crate::appender::{Command, FastLogRecord, LogAppender};
 use crate::consts::LogSize;
 use std::ops::Sub;
 use std::time::Duration;
+use may::go;
+use may::sync::mpsc::{Receiver, Sender};
 use zip::result::ZipResult;
 use crate::error::LogError;
 
@@ -193,8 +194,8 @@ impl FileSplitAppender {
             temp_bytes = m.len() as usize;
         }
         file.seek(SeekFrom::Start(temp_bytes as u64));
-        let (sender, receiver) = crossbeam_channel::bounded(log_pack_cap);
-        spawn_saver_thread(receiver, packer);
+        let (sender, receiver) = may::sync::mpsc::channel();
+        spawn_saver(receiver, packer);
         Self {
             cell: RefCell::new(FileSplitAppenderData {
                 max_split_bytes: max_temp_size.get_len(),
@@ -211,7 +212,7 @@ impl FileSplitAppender {
 impl LogAppender for FileSplitAppender {
     fn do_log(&self, record: &mut FastLogRecord) {
         let mut data = self.cell.borrow_mut();
-        if data.temp_bytes >= data.max_split_bytes {
+        if record.command.eq(&Command::CommandFlush) || (data.temp_bytes >= data.max_split_bytes) {
             data.send_pack();
         }
         let mut write_bytes = 0;
@@ -225,8 +226,8 @@ impl LogAppender for FileSplitAppender {
 }
 
 ///spawn an saver thread to save log file or zip file
-fn spawn_saver_thread(r: Receiver<LogPack>, packer: Box<dyn Packer>) {
-    std::thread::spawn(move || {
+fn spawn_saver(r: Receiver<LogPack>, packer: Box<dyn Packer>) {
+    go!(move || {
         loop {
             if let Ok(pack) = r.recv() {
                 //do rolling

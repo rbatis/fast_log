@@ -246,3 +246,30 @@ pub fn exit() -> Result<(), LogError> {
 
     return Err(LogError::E("[fast_log] exit fail!".to_string()));
 }
+
+
+pub fn flush() -> Result<(), LogError> {
+    let sender = LOG_SENDER.read();
+    if sender.is_some() {
+        let sender = sender.as_ref().unwrap();
+        let fast_log_record = FastLogRecord {
+            command: Command::CommandFlush,
+            level: log::Level::Info,
+            target: String::new(),
+            args: "flush".to_string(),
+            module_path: String::new(),
+            file: String::new(),
+            line: None,
+            now: SystemTime::now(),
+            formated: "flush".to_string(),
+        };
+        let result = sender.send(fast_log_record);
+        match result {
+            Ok(()) => {
+                return Ok(());
+            }
+            _ => {}
+        }
+    }
+    return Err(LogError::E("[fast_log] flush fail!".to_string()));
+}

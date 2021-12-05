@@ -19,6 +19,8 @@ pub trait LogAppender: Send {
 pub enum Command {
     CommandRecord,
     CommandExit,
+    /// Ensure that the log splitter forces splitting and saves the log
+    CommandFlush
 }
 
 #[derive(Clone, Debug)]
