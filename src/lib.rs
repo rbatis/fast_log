@@ -15,7 +15,4 @@ pub mod filter;
 pub mod plugin;
 pub mod wait;
 
-pub use fast_log::init_custom_log;
-///init log
-pub use fast_log::init_log;
-pub use fast_log::init_split_log;
+pub use fast_log::*;

@@ -214,6 +214,7 @@ impl LogAppender for FileSplitAppender {
         let mut data = self.cell.borrow_mut();
         if record.command.eq(&Command::CommandFlush) || (data.temp_bytes >= data.max_split_bytes) {
             data.send_pack();
+            return;
         }
         let mut write_bytes = 0;
         let w = data.file.write(record.formated.as_bytes());

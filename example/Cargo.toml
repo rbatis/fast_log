@@ -24,12 +24,14 @@ path = "src/split_log_lz4.rs"
 name = "split_log_gz"
 path = "src/split_log_gz.rs"
 [[bin]]
-name = "wait_log_finish"
-path = "src/wait_log_finish.rs"
+name = "wait_log"
+path = "src/wait_log.rs"
 [[bin]]
 name = "bench_test"
 path = "src/bench_test.rs"
-
+[[bin]]
+name = "split_log_flush"
+path = "src/split_log_flush.rs"
 [dependencies]
 
 log = { version = "0.4", features = ["std"] }
