@@ -1,5 +1,5 @@
 use std::sync::atomic::AtomicI32;
-use crossbeam_channel::{Receiver, SendError, RecvError};
+use may::sync::mpsc::{Receiver, Sender};
 use log::{Level, Metadata, Record};
 use parking_lot::RwLock;
 
@@ -14,6 +14,8 @@ use crate::wait::FastLogWaitGroup;
 use std::result::Result::Ok;
 use std::time::{SystemTime, Duration};
 use std::sync::Arc;
+use std::sync::mpsc::SendError;
+use may::go;
 
 lazy_static! {
     static ref LOG_SENDER: RwLock<Option<LoggerSender>> = RwLock::new(Option::None);
@@ -21,12 +23,12 @@ lazy_static! {
 
 pub struct LoggerSender {
     pub filter: Box<dyn Filter>,
-    pub inner: crossbeam_channel::Sender<FastLogRecord>,
+    pub inner: Sender<FastLogRecord>,
 }
 
 impl LoggerSender {
     pub fn new(cap: usize, filter: Box<dyn Filter>) -> (Self, Receiver<FastLogRecord>) {
-        let (s, r) = crossbeam_channel::bounded(cap);
+        let (s, r) = may::sync::mpsc::channel();
         (Self { inner: s, filter }, r)
     }
     pub fn send(&self, data: FastLogRecord) -> Result<(), SendError<FastLogRecord>> {
@@ -177,7 +179,7 @@ pub fn init_custom_log(
     let (back_sender, back_recv) = crossbeam_channel::bounded(log_cup * 10 * appenders.len());
     //main recv data
     let wait_group_main = wait_group.clone();
-    std::thread::spawn(move || {
+    go!(move ||{
         loop {
             let data = main_recv.recv();
             if data.is_ok() {
@@ -191,7 +193,6 @@ pub fn init_custom_log(
             }
         }
     });
-
     let wait_group_back = wait_group.clone();
     //back recv data
     std::thread::spawn(move || {
