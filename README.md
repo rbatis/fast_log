@@ -10,6 +10,8 @@ the fast log . This crate uses #! [forbid(unsafe_code)] to ensure everything is 
 A log implementation for extreme speed, using Crossbeam to double the efficiency (as opposed to the standard library MPSC) with a lockless channel, using a channel to write logs asynchronously. Completely use the safe code to achieve, without safe code
 
 
+* Low overhead, based on May coroutines
+
 * High performance, use lockless message queue, log is stored in queue, then flush disk. It does not block the caller
 
 * Full APPEND mode file writing, high efficiency for solid state/mechanical disk (solid state and mechanical disk sequential write performance is better than random write)
