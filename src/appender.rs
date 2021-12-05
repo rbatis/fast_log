@@ -6,7 +6,7 @@ use std::ops::{Add, Sub};
 /// LogAppender append logs
 /// Appender will be running on single main thread,please do_log for new thread or new an Future
 pub trait LogAppender: Send {
-    /// this method use one coroutines run this.
+    /// this method use one coroutines run this(Multiple appenders share one Appender).
     /// so. if you want  access the network, you can launch a coroutine using go! (| | {});
     fn do_log(&self, record: &mut FastLogRecord);
 
