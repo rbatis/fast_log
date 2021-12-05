@@ -18,11 +18,9 @@ the fast log  . This crate uses #![forbid(unsafe_code)] to ensure everything is 
               -----------------
 log data->    | main channel  |   ->          
               ----------------- 
-                                        ----------------                       ----------------------
-                                  ->    |Thread channel|  -> background thread  |    appenders  |
-                                        ----------------                       ----------------------
-
-
+                                        ----------------                                    ----------------------
+                                  ->    |may coroutines channel|  -> background coroutines  |    appenders  |
+                                        ----------------                                    ----------------------
 ```
 
 

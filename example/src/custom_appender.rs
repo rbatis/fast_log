@@ -36,7 +36,6 @@ impl LogAppender for CustomLog {
 fn main(){
     fast_log::init_custom_log(
         vec![Box::new(CustomLog {})],
-        1000,
         log::Level::Info,
         Box::new(NoFilter {}),
         Box::new(FastLogFormatRecord::new()),

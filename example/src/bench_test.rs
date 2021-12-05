@@ -1,7 +1,8 @@
 use fast_log::filter::NoFilter;
 use fast_log::appender::{FastLogFormatRecord, LogAppender, FastLogRecord};
 use std::time::{Instant, Duration};
-use std::thread::sleep;
+use may::coroutine::sleep;
+
 use fast_log::bencher::QPS;
 
 struct BenchRecvLog {}
@@ -16,7 +17,6 @@ impl LogAppender for BenchRecvLog {
 fn main(){
     fast_log::init_custom_log(
         vec![Box::new(BenchRecvLog {})],
-        1000,
         log::Level::Info,
         Box::new(NoFilter {}),
         Box::new(FastLogFormatRecord::new()),

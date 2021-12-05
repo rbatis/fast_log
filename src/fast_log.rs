@@ -27,7 +27,7 @@ pub struct LoggerSender {
 }
 
 impl LoggerSender {
-    pub fn new(cap: usize, filter: Box<dyn Filter>) -> (Self, Receiver<FastLogRecord>) {
+    pub fn new( filter: Box<dyn Filter>) -> (Self, Receiver<FastLogRecord>) {
         let (s, r) = may::sync::mpsc::channel();
         (Self { inner: s, filter }, r)
     }
@@ -36,10 +36,10 @@ impl LoggerSender {
     }
 }
 
-fn set_log(cup: usize, level: log::Level, filter: Box<dyn Filter>) -> Receiver<FastLogRecord> {
+fn set_log( level: log::Level, filter: Box<dyn Filter>) -> Receiver<FastLogRecord> {
     LOGGER.set_level(level);
     let mut w = LOG_SENDER.write();
-    let (log, recv) = LoggerSender::new(cup, filter);
+    let (log, recv) = LoggerSender::new(filter);
     *w = Some(log);
     return recv;
 }
@@ -101,7 +101,6 @@ static LOGGER: Logger = Logger {
 /// channel_cup: example -> 1000
 pub fn init_log(
     log_file_path: &str,
-    channel_cup: usize,
     level: log::Level,
     mut filter: Option<Box<dyn Filter>>,
     debug_mode: bool,
@@ -116,7 +115,6 @@ pub fn init_log(
     }
     return init_custom_log(
         appenders,
-        channel_cup,
         level,
         log_filter,
         Box::new(FastLogFormatRecord::new()),
@@ -125,14 +123,12 @@ pub fn init_log(
 
 /// initializes the log file path
 /// log_dir_path:  example->  "log/"
-/// channel_log_cup: example -> 1000
 /// max_temp_size: do zip if temp log full
 /// allow_zip_compress: zip compress log file
 /// filter: log filter
 /// packer: you can use ZipPacker or LZ4Packer or custom your Packer
 pub fn init_split_log(
     log_dir_path: &str,
-    channel_log_cup: usize,
     max_temp_size: LogSize,
     rolling_type: RollingType,
     level: log::Level,
@@ -156,7 +152,6 @@ pub fn init_split_log(
     }
     return init_custom_log(
         appenders,
-        channel_log_cup,
         level,
         log_filter,
         Box::new(FastLogFormatRecord::new()),
@@ -165,7 +160,6 @@ pub fn init_split_log(
 
 pub fn init_custom_log(
     appenders: Vec<Box<dyn LogAppender>>,
-    log_cup: usize,
     level: log::Level,
     filter: Box<dyn Filter>,
     format: Box<dyn RecordFormat>,
@@ -174,9 +168,8 @@ pub fn init_custom_log(
         return Err(LogError::from("[fast_log] appenders can not be empty!"));
     }
     let wait_group = FastLogWaitGroup::new();
-    let main_recv = set_log(log_cup, level, filter);
-
-    let (back_sender, back_recv) = crossbeam_channel::bounded(log_cup * 10 * appenders.len());
+    let main_recv = set_log(level, filter);
+    let (back_sender, back_recv) =  may::sync::mpsc::channel();
     //main recv data
     let wait_group_main = wait_group.clone();
     go!(move ||{

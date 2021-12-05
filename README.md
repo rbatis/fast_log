@@ -30,9 +30,9 @@ A log implementation for extreme speed, using Crossbeam to double the efficiency
               -----------------
 log data->    | main channel  |   ->          
               ----------------- 
-                                        ----------------                       ----------------------
-                                  ->    |Thread channel|  -> background thread  |    appenders  |
-                                        ----------------                       ----------------------
+                                        ----------------                                    ----------------------
+                                  ->    |may coroutines channel|  -> background coroutines  |    appenders  |
+                                        ----------------                                    ----------------------
 
 
 ```

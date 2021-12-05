@@ -7,7 +7,6 @@ use std::time::Duration;
 fn main(){
     fast_log::init_split_log(
         "target/logs/",
-        1000,
         LogSize::MB(1),
         RollingType::All,
         log::Level::Info,
