@@ -228,7 +228,7 @@ impl LogAppender for FileSplitAppender {
 
 ///spawn an saver thread to save log file or zip file
 fn spawn_saver(r: Receiver<LogPack>, packer: Box<dyn Packer>) {
-    go!(move || {
+    std::thread::spawn(move || {
         loop {
             if let Ok(pack) = r.recv() {
                 //do rolling
