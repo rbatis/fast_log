@@ -27,7 +27,7 @@ pub struct LoggerSender {
 }
 
 impl LoggerSender {
-    pub fn new( filter: Box<dyn Filter>) -> (Self, Receiver<FastLogRecord>) {
+    pub fn new(filter: Box<dyn Filter>) -> (Self, Receiver<FastLogRecord>) {
         let (s, r) = may::sync::mpsc::channel();
         (Self { inner: s, filter }, r)
     }
@@ -36,7 +36,7 @@ impl LoggerSender {
     }
 }
 
-fn set_log( level: log::Level, filter: Box<dyn Filter>) -> Receiver<FastLogRecord> {
+fn set_log(level: log::Level, filter: Box<dyn Filter>) -> Receiver<FastLogRecord> {
     LOGGER.set_level(level);
     let mut w = LOG_SENDER.write();
     let (log, recv) = LoggerSender::new(filter);
@@ -74,6 +74,11 @@ impl log::Log for Logger {
         //send
         if let Some(sender) = LOG_SENDER.read().as_ref() {
             if !sender.filter.filter(record) {
+                if let Some(v) = record.module_path() {
+                    if v == "may::io::sys::select" {
+                        return;
+                    }
+                }
                 let fast_log_record = FastLogRecord {
                     command: Command::CommandRecord,
                     level: record.level(),
@@ -169,7 +174,7 @@ pub fn init_custom_log(
     }
     let wait_group = FastLogWaitGroup::new();
     let main_recv = set_log(level, filter);
-    let (back_sender, back_recv) =  may::sync::mpsc::channel();
+    let (back_sender, back_recv) = may::sync::mpsc::channel();
     //main recv data
     let wait_group_main = wait_group.clone();
     go!(move ||{
@@ -188,7 +193,7 @@ pub fn init_custom_log(
     });
     let wait_group_back = wait_group.clone();
     //back recv data
-    std::thread::spawn(move || {
+    go!(move || {
         loop {
             //recv
             let data = back_recv.recv();
