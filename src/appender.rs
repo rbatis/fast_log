@@ -57,7 +57,7 @@ impl RecordFormat for FastLogFormatRecord {
     fn do_format(&self, arg: &mut FastLogRecord) {
         let data;
         let now: DateTime<Utc> = chrono::DateTime::from(arg.now);
-        let now = now.add(self.duration);
+        let now = now.add(self.duration).naive_utc();
         match arg.level {
             Level::Warn | Level::Error => {
                 data = format!(
