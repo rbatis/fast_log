@@ -48,8 +48,8 @@ pub struct FastLogFormatRecord {
 impl RecordFormat for FastLogFormatRecord {
     fn do_format(&self, arg: &mut FastLogRecord) ->String{
         let data;
-        //let now: DateTime<Utc> = chrono::DateTime::from(arg.now);
-        let now = "asdfasdfasdfasdfsfda";
+        let now: DateTime<Utc> = chrono::DateTime::from(arg.now);
+        let now = now.add(self.duration).naive_utc().to_string();
         match arg.level {
             Level::Warn | Level::Error => {
                 data = format!(
