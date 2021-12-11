@@ -32,6 +32,9 @@ path = "src/bench_test.rs"
 [[bin]]
 name = "split_log_flush"
 path = "src/split_log_flush.rs"
+[[bin]]
+name = "split_log_loop"
+path = "src/split_log_loop.rs"
 [dependencies]
 
 log = { version = "0.4", features = ["std"] }

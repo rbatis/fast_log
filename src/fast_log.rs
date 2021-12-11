@@ -132,6 +132,7 @@ pub fn init_log(
 /// allow_zip_compress: zip compress log file
 /// filter: log filter
 /// packer: you can use ZipPacker or LZ4Packer or custom your Packer
+/// temp is "temp.log"
 pub fn init_split_log(
     log_dir_path: &str,
     max_temp_size: LogSize,
@@ -143,9 +144,9 @@ pub fn init_split_log(
 ) -> Result<FastLogWaitGroup, LogError> {
     let mut appenders: Vec<Box<dyn LogAppender>> = vec![Box::new(FileSplitAppender::new(
         log_dir_path,
+        "temp.log",
         max_temp_size,
         rolling_type,
-        1,
         packer,
     ))];
     if allow_console_log {
