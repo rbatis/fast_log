@@ -30,10 +30,10 @@ A log implementation for extreme speed, using Crossbeam to double the efficiency
 ```
 
               -----------------
-log data->    | main channel  |   ->          
+log data->    | main channel(crossbeam)  |   ->          
               ----------------- 
                                         ----------------                                    ----------------------
-                                  ->    |may coroutines channel|  -> background coroutines  |    appenders  |
+                                  ->    |coroutines channel(may)|  -> background coroutines  |    appenders  |
                                         ----------------                                    ----------------------
 
 

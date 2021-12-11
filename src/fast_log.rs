@@ -23,20 +23,20 @@ lazy_static! {
 
 pub struct LoggerSender {
     pub filter: Box<dyn Filter>,
-    pub inner: Sender<FastLogRecord>,
+    pub inner: crossbeam::channel::Sender<FastLogRecord>,
 }
 
 impl LoggerSender {
-    pub fn new(filter: Box<dyn Filter>) -> (Self, Receiver<FastLogRecord>) {
-        let (s, r) = may::sync::mpsc::channel();
+    pub fn new(filter: Box<dyn Filter>) -> (Self, crossbeam::channel::Receiver<FastLogRecord>) {
+        let (s, r) = crossbeam::channel::unbounded();
         (Self { inner: s, filter }, r)
     }
-    pub fn send(&self, data: FastLogRecord) -> Result<(), SendError<FastLogRecord>> {
+    pub fn send(&self, data: FastLogRecord) -> Result<(), crossbeam::channel::SendError<FastLogRecord>> {
         self.inner.send(data)
     }
 }
 
-fn set_log(level: log::Level, filter: Box<dyn Filter>) -> Receiver<FastLogRecord> {
+fn set_log(level: log::Level, filter: Box<dyn Filter>) -> crossbeam::channel::Receiver<FastLogRecord> {
     LOGGER.set_level(level);
     let mut w = LOG_SENDER.write();
     let (log, recv) = LoggerSender::new(filter);
