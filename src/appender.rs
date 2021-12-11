@@ -20,7 +20,7 @@ pub enum Command {
     CommandRecord,
     CommandExit,
     /// Ensure that the log splitter forces splitting and saves the log
-    CommandFlush
+    CommandFlush,
 }
 
 #[derive(Clone, Debug)]
@@ -38,7 +38,7 @@ pub struct FastLogRecord {
 
 /// format record data
 pub trait RecordFormat: Send + Sync {
-    fn do_format(&self, arg: &mut FastLogRecord);
+    fn do_format(&self, arg: &mut FastLogRecord)->String;
 }
 
 pub struct FastLogFormatRecord {
@@ -46,10 +46,10 @@ pub struct FastLogFormatRecord {
 }
 
 impl RecordFormat for FastLogFormatRecord {
-    fn do_format(&self, arg: &mut FastLogRecord) {
+    fn do_format(&self, arg: &mut FastLogRecord) ->String{
         let data;
-        let now: DateTime<Utc> = chrono::DateTime::from(arg.now);
-        let now = now.add(self.duration).naive_utc().to_string();
+        //let now: DateTime<Utc> = chrono::DateTime::from(arg.now);
+        let now = "asdfasdfasdfasdfsfda";
         match arg.level {
             Level::Warn | Level::Error => {
                 data = format!(
@@ -69,17 +69,54 @@ impl RecordFormat for FastLogFormatRecord {
                 );
             }
         }
-        arg.formated = data;
+        data
     }
 }
 
 impl FastLogFormatRecord {
-    pub fn new() -> FastLogFormatRecord {
+
+    pub fn local_duration() -> Duration {
         let utc = chrono::Utc::now().naive_utc();
         let tz = chrono::Local::now().naive_local();
-        let d = tz.sub(utc);
+        tz.sub(utc)
+    }
+
+    pub fn new() -> FastLogFormatRecord {
         Self {
-            duration: d
+            duration: Self::local_duration()
         }
     }
 }
+
+// #[cfg(test)]
+// mod test {
+//     use std::time::{Instant, SystemTime};
+//     use log::Level;
+//     use crate::appender::{Command, FastLogFormatRecord, FastLogRecord, RecordFormat};
+//     use crate::bencher::QPS;
+//
+//     #[test]
+//     fn test_bench() {
+//         let arg = FastLogFormatRecord::new();
+//         let mut a = FastLogRecord {
+//             command: Command::CommandRecord,
+//             level: Level::Error,
+//             target: "".to_string(),
+//             args: "".to_string(),
+//             module_path: "".to_string(),
+//             file: "".to_string(),
+//             line: None,
+//             now: SystemTime::now(),
+//             formated: "".to_string(),
+//         };
+//         let total = 10000;
+//         let now = Instant::now();
+//         for index in 0..total {
+//             //use Time: 5.6558ms ,each:565 ns/op
+//             //use QPS: 1761897 QPS/s
+//             arg.do_format(&mut a);
+//         }
+//         now.time(total);
+//         now.qps(total);
+//     }
+// }

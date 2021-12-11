@@ -202,7 +202,7 @@ pub fn init_custom_log(
                     drop(wait_group_back);
                     break;
                 }
-                format.do_format(&mut data);
+                data.formated = format.do_format(&mut data);
                 for x in &appenders {
                     x.do_log(&mut data);
                 }
