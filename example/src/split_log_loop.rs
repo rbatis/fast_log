@@ -9,7 +9,7 @@ use fast_log::plugin::file_loop::FileLoopAppender;
 
 ///Single logs are stored in rolling mode by capacity
 fn main(){
-    fast_log::init_custom_log(vec![Box::new(FileLoopAppender::new("sloop.log",LogSize::KB(1)))],
+    fast_log::init_custom_log(vec![Box::new(FileLoopAppender::new("target/logs/sloop.log",LogSize::KB(1)))],
                               log::Level::Info,
                               Box::new(NoFilter {}),
                               Box::new(FastLogFormatRecord::new()),

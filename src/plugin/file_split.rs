@@ -158,16 +158,26 @@ impl FileSplitAppenderData {
 
 impl FileSplitAppender {
     ///split_log_bytes:  log file data bytes(MB) splite
-    ///dir_path:         the log dir
+    ///file_path:         the log dir or file name
     ///log_pack_cap:     pack(zip,lz4 or more...) or log Waiting cap
     /// packer: default is zip packer
     pub fn new(
-        dir_path: &str,
-        file_name: &str,
+        file_path: &str,
         max_temp_size: LogSize,
         rolling_type: RollingType,
         packer: Box<dyn Packer>,
     ) -> FileSplitAppender {
+        let mut dir_path = file_path.to_owned();
+        let mut temp_file_name = dir_path.to_string();
+        if dir_path.contains("/"){
+            let new_dir_path = dir_path[0..dir_path.rfind("/").unwrap_or_default()].to_string()+"/";
+            std::fs::create_dir_all(&new_dir_path);
+            temp_file_name = dir_path.trim_start_matches(&new_dir_path).to_string();
+            dir_path = new_dir_path;
+        }
+        if temp_file_name.is_empty(){
+            temp_file_name = "temp.log".to_string();
+        }
         if !dir_path.is_empty() && dir_path.ends_with(".log") {
             panic!("FileCompactionAppender only support new from path,for example: 'logs/xx/'");
         }
@@ -175,10 +185,10 @@ impl FileSplitAppender {
             panic!("FileCompactionAppender only support new from path,for example: 'logs/xx/'");
         }
         if !dir_path.is_empty() {
-            std::fs::create_dir_all(dir_path);
+            std::fs::create_dir_all(&dir_path);
         }
-        let mut file_name = file_name.trim_end_matches(".log");
-        let first_file_path = format!("{}{}.log", dir_path, file_name);
+        let mut file_name = temp_file_name.trim_end_matches(".log");
+        let first_file_path = format!("{}{}.log", &dir_path, file_name);
         let file = OpenOptions::new()
             .create(true)
             .read(true)

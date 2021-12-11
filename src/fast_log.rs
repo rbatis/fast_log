@@ -144,7 +144,6 @@ pub fn init_split_log(
 ) -> Result<FastLogWaitGroup, LogError> {
     let mut appenders: Vec<Box<dyn LogAppender>> = vec![Box::new(FileSplitAppender::new(
         log_dir_path,
-        "temp.log",
         max_temp_size,
         rolling_type,
         packer,
