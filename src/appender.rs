@@ -36,14 +36,6 @@ pub struct FastLogRecord {
     pub formated: String,
 }
 
-impl FastLogRecord {
-    pub fn format_line(&self) -> String {
-        match (self.file.as_str(), self.line.unwrap_or(0)) {
-            (file, line) => format!("({}:{})", file, line),
-        }
-    }
-}
-
 /// format record data
 pub trait RecordFormat: Send + Sync {
     fn do_format(&self, arg: &mut FastLogRecord);
@@ -61,12 +53,13 @@ impl RecordFormat for FastLogFormatRecord {
         match arg.level {
             Level::Warn | Level::Error => {
                 data = format!(
-                    "{:30} {} {} - {}  {}\n",
+                    "{:30} {} {} - {}  {}:{}\n",
                     &now,
                     arg.level,
                     arg.module_path,
                     arg.args,
-                    arg.format_line()
+                    arg.file,
+                    arg.line.unwrap_or_default()
                 );
             }
             _ => {
