@@ -44,6 +44,7 @@ pub trait RecordFormat: Send + Sync {
 
 pub struct FastLogFormatRecord {
     pub duration: Duration,
+    pub display_file: log::Level
 }
 
 impl RecordFormat for FastLogFormatRecord {
@@ -52,24 +53,21 @@ impl RecordFormat for FastLogFormatRecord {
             let data;
             let now: DateTime<Utc> = chrono::DateTime::from(arg.now);
             let now = now.add(self.duration).naive_utc().to_string();
-            match arg.level {
-                Level::Warn | Level::Error => {
-                    data = format!(
-                        "{:30} {} {} - {}  {}:{}\n",
-                        &now,
-                        arg.level,
-                        arg.module_path,
-                        arg.args,
-                        arg.file,
-                        arg.line.unwrap_or_default()
-                    );
-                }
-                _ => {
-                    data = format!(
-                        "{:30} {} {} - {}\n",
-                        &now, arg.level, arg.module_path, arg.args
-                    );
-                }
+            if arg.level <= self.display_file{
+                data = format!(
+                    "{:26} {} {} - {}  {}:{}\n",
+                    &now,
+                    arg.level,
+                    arg.module_path,
+                    arg.args,
+                    arg.file,
+                    arg.line.unwrap_or_default()
+                );
+            }else{
+                data = format!(
+                    "{:26} {} {} - {}\n",
+                    &now, arg.level, arg.module_path, arg.args
+                );
             }
             return data;
         }
@@ -86,40 +84,8 @@ impl FastLogFormatRecord {
 
     pub fn new() -> FastLogFormatRecord {
         Self {
-            duration: Self::local_duration()
+            duration: Self::local_duration(),
+            display_file: Level::Warn
         }
     }
 }
-
-// #[cfg(test)]
-// mod test {
-//     use std::time::{Instant, SystemTime};
-//     use log::Level;
-//     use crate::appender::{Command, FastLogFormatRecord, FastLogRecord, RecordFormat};
-//     use crate::bencher::QPS;
-//
-//     #[test]
-//     fn test_bench() {
-//         let arg = FastLogFormatRecord::new();
-//         let mut a = FastLogRecord {
-//             command: Command::CommandRecord,
-//             level: Level::Error,
-//             target: "".to_string(),
-//             args: "".to_string(),
-//             module_path: "".to_string(),
-//             file: "".to_string(),
-//             line: None,
-//             now: SystemTime::now(),
-//             formated: "".to_string(),
-//         };
-//         let total = 10000;
-//         let now = Instant::now();
-//         for index in 0..total {
-//             //use Time: 5.6558ms ,each:565 ns/op
-//             //use QPS: 1761897 QPS/s
-//             arg.do_format(&mut a);
-//         }
-//         now.time(total);
-//         now.qps(total);
-//     }
-// }
