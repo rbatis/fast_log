@@ -177,7 +177,7 @@ pub fn init_custom_log(
     let (back_sender, back_recv) = may::sync::mpsc::channel();
     //main recv data
     let wait_group_main = wait_group.clone();
-    go!(move ||{
+    std::thread::spawn(move || {
         loop {
             let data = main_recv.recv();
             if data.is_ok() {
