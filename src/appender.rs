@@ -1,5 +1,5 @@
 use chrono::{DateTime, Local, Utc, Timelike, Duration};
-use log::Level;
+use log::{Level, LevelFilter};
 use std::time::SystemTime;
 use std::ops::{Add, Sub};
 use crate::appender::Command::CommandRecord;
@@ -44,7 +44,7 @@ pub trait RecordFormat: Send + Sync {
 
 pub struct FastLogFormatRecord {
     pub duration: Duration,
-    pub display_file: log::Level
+    pub display_file: log::LevelFilter,
 }
 
 impl RecordFormat for FastLogFormatRecord {
@@ -53,7 +53,7 @@ impl RecordFormat for FastLogFormatRecord {
             let data;
             let now: DateTime<Utc> = chrono::DateTime::from(arg.now);
             let now = now.add(self.duration).naive_utc().to_string();
-            if arg.level <= self.display_file{
+            if arg.level.to_level_filter() <= self.display_file {
                 data = format!(
                     "{:26} {} {} - {}  {}:{}\n",
                     &now,
@@ -63,7 +63,7 @@ impl RecordFormat for FastLogFormatRecord {
                     arg.file,
                     arg.line.unwrap_or_default()
                 );
-            }else{
+            } else {
                 data = format!(
                     "{:26} {} {} - {}\n",
                     &now, arg.level, arg.module_path, arg.args
@@ -85,7 +85,7 @@ impl FastLogFormatRecord {
     pub fn new() -> FastLogFormatRecord {
         Self {
             duration: Self::local_duration(),
-            display_file: Level::Warn
+            display_file: LevelFilter::Warn,
         }
     }
 }
