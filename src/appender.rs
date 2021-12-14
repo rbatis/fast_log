@@ -1,5 +1,5 @@
 use chrono::{DateTime, Local, Utc, Timelike, Duration};
-use log::{Level, LevelFilter};
+use log::{LevelFilter};
 use std::time::SystemTime;
 use std::ops::{Add, Sub};
 use crate::appender::Command::CommandRecord;
