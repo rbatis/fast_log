@@ -25,8 +25,6 @@ A log implementation for extreme speed, using Crossbeam to double the efficiency
 * Support custom compression algorithms, such as ZIP and LZ4
 
 
-
-
 ```
 
               -----------------
