@@ -2,6 +2,7 @@ use chrono::{DateTime, Local, Utc, Timelike, Duration};
 use log::Level;
 use std::time::SystemTime;
 use std::ops::{Add, Sub};
+use crate::appender::Command::CommandRecord;
 
 /// LogAppender append logs
 /// Appender will be running on single main thread,please do_log for new thread or new an Future
@@ -38,7 +39,7 @@ pub struct FastLogRecord {
 
 /// format record data
 pub trait RecordFormat: Send + Sync {
-    fn do_format(&self, arg: &mut FastLogRecord)->String;
+    fn do_format(&self, arg: &mut FastLogRecord) -> String;
 }
 
 pub struct FastLogFormatRecord {
@@ -46,35 +47,37 @@ pub struct FastLogFormatRecord {
 }
 
 impl RecordFormat for FastLogFormatRecord {
-    fn do_format(&self, arg: &mut FastLogRecord) ->String{
-        let data;
-        let now: DateTime<Utc> = chrono::DateTime::from(arg.now);
-        let now = now.add(self.duration).naive_utc().to_string();
-        match arg.level {
-            Level::Warn | Level::Error => {
-                data = format!(
-                    "{:30} {} {} - {}  {}:{}\n",
-                    &now,
-                    arg.level,
-                    arg.module_path,
-                    arg.args,
-                    arg.file,
-                    arg.line.unwrap_or_default()
-                );
+    fn do_format(&self, arg: &mut FastLogRecord) -> String {
+        if arg.command.eq(&CommandRecord) {
+            let data;
+            let now: DateTime<Utc> = chrono::DateTime::from(arg.now);
+            let now = now.add(self.duration).naive_utc().to_string();
+            match arg.level {
+                Level::Warn | Level::Error => {
+                    data = format!(
+                        "{:30} {} {} - {}  {}:{}\n",
+                        &now,
+                        arg.level,
+                        arg.module_path,
+                        arg.args,
+                        arg.file,
+                        arg.line.unwrap_or_default()
+                    );
+                }
+                _ => {
+                    data = format!(
+                        "{:30} {} {} - {}\n",
+                        &now, arg.level, arg.module_path, arg.args
+                    );
+                }
             }
-            _ => {
-                data = format!(
-                    "{:30} {} {} - {}\n",
-                    &now, arg.level, arg.module_path, arg.args
-                );
-            }
+            return data;
         }
-        data
+        return String::new();
     }
 }
 
 impl FastLogFormatRecord {
-
     pub fn local_duration() -> Duration {
         let utc = chrono::Utc::now().naive_utc();
         let tz = chrono::Local::now().naive_local();

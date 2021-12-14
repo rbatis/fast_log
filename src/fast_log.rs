@@ -16,6 +16,7 @@ use std::result::Result::Ok;
 use std::time::{SystemTime, Duration};
 use std::sync::Arc;
 use std::sync::mpsc::SendError;
+use may::coroutine::yield_now;
 use may::go;
 
 lazy_static! {
@@ -175,27 +176,9 @@ pub fn init_custom_log(
     }
     let wait_group = FastLogWaitGroup::new();
     let main_recv = set_log(level, filter);
-    let (back_sender, back_recv) = may::sync::mpsc::channel();
     //main recv data
-    let wait_group_main = wait_group.clone();
-    std::thread::spawn(move || {
-        loop {
-            let data = main_recv.recv();
-            if data.is_ok() {
-                let mut s: FastLogRecord = data.unwrap();
-                if s.command.eq(&Command::CommandExit) {
-                    back_sender.send(s);
-                    drop(wait_group_main);
-                    break;
-                }
-                back_sender.send(s);
-            }
-        }
-    });
     let wait_group_back = wait_group.clone();
-
-    //back recv data
-    let back_recv = move || {
+    std::thread::spawn(move || {
         let mut recever_vec = vec![];
         let mut sender_vec: Vec<may::sync::mpsc::Sender<Arc<FastLogRecord>>> = vec![];
         for a in appenders {
@@ -204,29 +187,39 @@ pub fn init_custom_log(
             recever_vec.push((r, a));
         }
         for (recever, appender) in recever_vec {
+            let current_wait_group = wait_group_back.clone();
             go!(move ||{
-                if let Ok(msg) = recever.recv(){
+                loop{
+                    if let Ok(msg) = recever.recv(){
+                     if msg.command.eq(&Command::CommandExit) {
+                        drop(current_wait_group);
+                        break;
+                     }
                      appender.do_log(msg.as_ref());
+                    }else{
+                        yield_now();
+                    }
                 }
             });
         }
         loop {
             //recv
-            let data = back_recv.recv();
+            let data = main_recv.recv();
             if let Ok(mut data) = data {
-                if data.command.eq(&Command::CommandExit) {
-                    drop(wait_group_back);
-                    break;
-                }
                 data.formated = format.do_format(&mut data);
                 let data = Arc::new(data);
                 for x in &sender_vec {
                     x.send(data.clone());
                 }
+                if data.command.eq(&Command::CommandExit) {
+                    drop(wait_group_back);
+                    break;
+                }
+            } else {
+                yield_now();
             }
         }
-    };
-    go!(back_recv);
+    });
     let r = log::set_logger(&LOGGER).map(|()| log::set_max_level(level.to_level_filter()));
     if r.is_err() {
         return Err(LogError::from(r.err().unwrap()));
@@ -243,12 +236,12 @@ pub fn exit() -> Result<(), LogError> {
             command: Command::CommandExit,
             level: log::Level::Info,
             target: String::new(),
-            args: "exit".to_string(),
+            args: String::new(),
             module_path: String::new(),
             file: String::new(),
             line: None,
             now: SystemTime::now(),
-            formated: "exit".to_string(),
+            formated: String::new(),
         };
         let result = sender.send(fast_log_record);
         match result {
@@ -271,12 +264,12 @@ pub fn flush() -> Result<(), LogError> {
             command: Command::CommandFlush,
             level: log::Level::Info,
             target: String::new(),
-            args: "flush".to_string(),
+            args:  String::new(),
             module_path: String::new(),
             file: String::new(),
             line: None,
             now: SystemTime::now(),
-            formated: "flush".to_string(),
+            formated: String::new(),
         };
         let result = sender.send(fast_log_record);
         match result {
