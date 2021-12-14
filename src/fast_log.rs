@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::sync::atomic::AtomicI32;
 use may::sync::mpsc::{Receiver, Sender};
 use log::{Level, Metadata, Record};
@@ -192,24 +193,40 @@ pub fn init_custom_log(
         }
     });
     let wait_group_back = wait_group.clone();
+
     //back recv data
-    go!(move || {
+    let back_recv = move || {
+        let mut recever_vec = vec![];
+        let mut sender_vec: Vec<may::sync::mpsc::Sender<Arc<FastLogRecord>>> = vec![];
+        for a in appenders {
+            let (s, r) = may::sync::mpsc::channel();
+            sender_vec.push(s);
+            recever_vec.push((r, a));
+        }
+        for (recever, appender) in recever_vec {
+            go!(move ||{
+                if let Ok(msg) = recever.recv(){
+                     appender.do_log(msg.as_ref());
+                }
+            });
+        }
         loop {
             //recv
             let data = back_recv.recv();
             if let Ok(mut data) = data {
-                if data.command.eq(&Command::CommandExit){
+                if data.command.eq(&Command::CommandExit) {
                     drop(wait_group_back);
                     break;
                 }
                 data.formated = format.do_format(&mut data);
-                for x in &appenders {
-                    x.do_log(&mut data);
+                let data = Arc::new(data);
+                for x in &sender_vec {
+                    x.send(data.clone());
                 }
             }
         }
-    });
-
+    };
+    go!(back_recv);
     let r = log::set_logger(&LOGGER).map(|()| log::set_max_level(level.to_level_filter()));
     if r.is_err() {
         return Err(LogError::from(r.err().unwrap()));

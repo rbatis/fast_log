@@ -17,10 +17,22 @@ the fast log  . This crate uses #![forbid(unsafe_code)] to ensure everything is 
 ```
 
               -----------------
-log data->    | main channel  |   ->          
+log data->    | main channel(crossbeam)  |   ->          
               ----------------- 
                                         ----------------                                    ----------------------
-                                  ->    |may coroutines channel|  -> background coroutines  |    appenders  |
+                                  ->    |coroutines channel(may)|  -> background coroutines  |    appender1  |
+                                        ----------------                                    ----------------------
+
+                                        ----------------                                    ----------------------
+                                  ->    |coroutines channel(may)|  -> background coroutines  |    appender2  |
+                                        ----------------                                    ----------------------
+
+                                        ----------------                                    ----------------------
+                                  ->    |coroutines channel(may)|  -> background coroutines  |    appender3  |
+                                        ----------------                                    ----------------------
+
+                                        ----------------                                    ----------------------
+                                  ->    |coroutines channel(may)|  -> background coroutines  |    appender4  |
                                         ----------------                                    ----------------------
 ```
 

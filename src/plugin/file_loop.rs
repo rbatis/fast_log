@@ -20,7 +20,7 @@ impl FileLoopAppender {
 }
 
 impl LogAppender for FileLoopAppender {
-    fn do_log(&self, record: &mut FastLogRecord) {
+    fn do_log(&self, record: &FastLogRecord) {
         self.file.do_log(record);
     }
 }

@@ -33,7 +33,19 @@ A log implementation for extreme speed, using Crossbeam to double the efficiency
 log data->    | main channel(crossbeam)  |   ->          
               ----------------- 
                                         ----------------                                    ----------------------
-                                  ->    |coroutines channel(may)|  -> background coroutines  |    appenders  |
+                                  ->    |coroutines channel(may)|  -> background coroutines  |    appender1  |
+                                        ----------------                                    ----------------------
+
+                                        ----------------                                    ----------------------
+                                  ->    |coroutines channel(may)|  -> background coroutines  |    appender2  |
+                                        ----------------                                    ----------------------
+
+                                        ----------------                                    ----------------------
+                                  ->    |coroutines channel(may)|  -> background coroutines  |    appender3  |
+                                        ----------------                                    ----------------------
+
+                                        ----------------                                    ----------------------
+                                  ->    |coroutines channel(may)|  -> background coroutines  |    appender4  |
                                         ----------------                                    ----------------------
 
 

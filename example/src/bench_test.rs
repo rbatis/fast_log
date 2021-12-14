@@ -8,20 +8,20 @@ use fast_log::bencher::QPS;
 struct BenchRecvLog {}
 
 impl LogAppender for BenchRecvLog {
-    fn do_log(&self, record: &mut FastLogRecord) {
+    fn do_log(&self, record: &FastLogRecord) {
         //do nothing
     }
 }
 
 // this example should be   "cargo run --release --package example --bin bench_test"
-fn main(){
+fn main() {
     fast_log::init_custom_log(
         vec![Box::new(BenchRecvLog {})],
         log::Level::Info,
         Box::new(NoFilter {}),
         Box::new(FastLogFormatRecord::new()),
     );
-    let total = 10000;
+    let total = 1000000;
     let now = Instant::now();
     for index in 0..total {
         log::info!("Commencing yak shaving{}", index);

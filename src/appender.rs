@@ -8,7 +8,7 @@ use std::ops::{Add, Sub};
 pub trait LogAppender: Send {
     /// this method use one coroutines run this(Multiple appenders share one Appender).
     /// so. if you want  access the network, you can launch a coroutine using go! (| | {});
-    fn do_log(&self, record: &mut FastLogRecord);
+    fn do_log(&self, record: &FastLogRecord);
 
     fn type_name(&self) -> &'static str {
         std::any::type_name::<Self>()

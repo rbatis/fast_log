@@ -28,7 +28,7 @@ impl FileAppender {
 }
 
 impl LogAppender for FileAppender {
-    fn do_log(&self, record: &mut FastLogRecord) {
+    fn do_log(&self, record: &FastLogRecord) {
         let mut log_file = self.file.borrow_mut();
         let mut buf = vec![];
         for x in record.formated.bytes() {
