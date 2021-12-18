@@ -38,6 +38,7 @@ pub struct LogPack {
 ///rolling keep type
 #[derive(Copy, Clone, Debug)]
 pub enum RollingType {
+    /// keep All of log packs
     All,
     /// keep by Time Duration,
     /// for example:
