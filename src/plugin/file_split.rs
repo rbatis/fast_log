@@ -39,7 +39,12 @@ pub struct LogPack {
 #[derive(Copy, Clone, Debug)]
 pub enum RollingType {
     All,
+    /// keep by Time Duration,
+    /// for example:
+    /// // keep one day log pack
+    /// (Duration::from_secs(24 * 3600))
     KeepTime(Duration),
+    /// keep log pack num(.log,.zip.lz4...more)
     KeepNum(i64),
 }
 
