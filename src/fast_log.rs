@@ -187,7 +187,24 @@ pub fn init_custom_log(
         }
         for (recever, appender) in recever_vec {
             let current_wait_group = wait_group_back.clone();
-            go!(move ||{
+            if appender.type_name().starts_with("fast_log::plugin") {
+                // if is file appender, use thread spawn
+                std::thread::spawn(move || {
+                    loop {
+                        if let Ok(msg) = recever.recv() {
+                            if msg.command.eq(&Command::CommandExit) {
+                                drop(current_wait_group);
+                                break;
+                            }
+                            appender.do_log(msg.as_ref());
+                        } else {
+                            yield_now();
+                        }
+                    }
+                });
+            } else {
+                // if is network appender, use thread spawn
+                go!(move ||{
                 loop{
                     if let Ok(msg) = recever.recv(){
                      if msg.command.eq(&Command::CommandExit) {
@@ -200,6 +217,7 @@ pub fn init_custom_log(
                     }
                 }
             });
+            }
         }
         loop {
             //recv
@@ -263,7 +281,7 @@ pub fn flush() -> Result<(), LogError> {
             command: Command::CommandFlush,
             level: log::Level::Info,
             target: String::new(),
-            args:  String::new(),
+            args: String::new(),
             module_path: String::new(),
             file: String::new(),
             line: None,
