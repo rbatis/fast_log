@@ -108,7 +108,7 @@ pub fn test_file_compation() {
     for _ in 0..200000 {
         info!("Commencing yak shaving");
     }
-    may::coroutine::sleep(Duration::from_secs(1));
+    cogo::coroutine::sleep(Duration::from_secs(1));
 }
 ```
 
@@ -129,6 +129,6 @@ impl LogAppender for CustomLog{
 fn  main(){
     fast_log::init_custom_log(vec![Box::new(CustomLog {})],  log::Level::Info, Box::new(NoFilter {}));
     info!("Commencing yak shaving");
-    may::coroutine::sleep(std::time::Duration::from_secs(1));
+    cogo::coroutine::sleep(std::time::Duration::from_secs(1));
 }
 ```

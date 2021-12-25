@@ -9,8 +9,9 @@ use crate::appender::{Command, FastLogRecord, LogAppender};
 use crate::consts::LogSize;
 use std::ops::Sub;
 use std::time::Duration;
-use may::go;
-use may::sync::mpsc::{Receiver, Sender};
+use cogo::go;
+use cogo::std::channel::{Receiver, Sender};
+
 use zip::result::ZipResult;
 use crate::error::LogError;
 
@@ -212,7 +213,7 @@ impl FileSplitAppender {
             temp_bytes = m.len() as usize;
         }
         file.seek(SeekFrom::Start(temp_bytes as u64));
-        let (sender, receiver) = may::sync::mpsc::channel();
+        let (sender, receiver) = cogo::std::sync::mpsc::channel();
         spawn_saver(file_name,receiver, packer);
         Self {
             cell: RefCell::new(FileSplitAppenderData {

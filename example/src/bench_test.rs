@@ -1,8 +1,6 @@
 use fast_log::filter::NoFilter;
 use fast_log::appender::{FastLogFormatRecord, LogAppender, FastLogRecord};
 use std::time::{Instant, Duration};
-use may::coroutine::sleep;
-
 use fast_log::bencher::QPS;
 
 struct BenchRecvLog {}
@@ -28,5 +26,5 @@ fn main() {
     }
     now.time(total);
     now.qps(total);
-    may::coroutine::sleep(Duration::from_secs(1));
+    cogo::coroutine::sleep(Duration::from_secs(1));
 }

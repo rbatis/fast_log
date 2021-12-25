@@ -1,6 +1,5 @@
 use std::borrow::Borrow;
 use std::sync::atomic::AtomicI32;
-use may::sync::mpsc::{Receiver, Sender};
 use log::{Level, Metadata, Record};
 use parking_lot::RwLock;
 
@@ -16,8 +15,8 @@ use std::result::Result::Ok;
 use std::time::{SystemTime, Duration};
 use std::sync::Arc;
 use std::sync::mpsc::SendError;
-use may::coroutine::yield_now;
-use may::go;
+use cogo::coroutine::yield_now;
+use cogo::go;
 
 lazy_static! {
     static ref LOG_SENDER: RwLock<Option<LoggerSender>> = RwLock::new(Option::None);
@@ -77,7 +76,7 @@ impl log::Log for Logger {
         if let Some(sender) = LOG_SENDER.read().as_ref() {
             if !sender.filter.filter(record) {
                 if let Some(v) = record.module_path() {
-                    if v == "may::io::sys::select" {
+                    if v == "cogo::io::sys::select" {
                         return;
                     }
                 }
@@ -180,9 +179,9 @@ pub fn init_custom_log(
     let wait_group_back = wait_group.clone();
     std::thread::spawn(move || {
         let mut recever_vec = vec![];
-        let mut sender_vec: Vec<may::sync::mpsc::Sender<Arc<FastLogRecord>>> = vec![];
+        let mut sender_vec: Vec<cogo::std::channel::Sender<Arc<FastLogRecord>>> = vec![];
         for a in appenders {
-            let (s, r) = may::sync::mpsc::channel();
+            let (s, r) = cogo::std::sync::mpsc::channel();
             sender_vec.push(s);
             recever_vec.push((r, a));
         }
