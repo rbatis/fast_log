@@ -8,7 +8,7 @@ use chrono::{DateTime, Local};
 struct CustomLog {}
 
 impl LogAppender for CustomLog {
-    fn do_log(&self, record: &mut FastLogRecord) {
+    fn do_log(&self, record: &FastLogRecord) {
             let now:DateTime<Local> = chrono::DateTime::from(record.now);
             let data;
             match record.level {
@@ -19,7 +19,7 @@ impl LogAppender for CustomLog {
                         record.level,
                         record.module_path,
                         record.args,
-                        record.format_line()
+                        record.formated
                     );
                 }
                 _ => {
@@ -34,13 +34,13 @@ impl LogAppender for CustomLog {
 }
 
 fn main(){
-    fast_log::init_custom_log(
+    let wait=fast_log::init_custom_log(
         vec![Box::new(CustomLog {})],
         log::Level::Info,
         Box::new(NoFilter {}),
         Box::new(FastLogFormatRecord::new()),
-    );
+    ).unwrap();
     log::info!("Commencing yak shaving");
     log::error!("Commencing error");
-    cogo::coroutine::sleep(Duration::from_secs(1));
+    wait.wait();
 }
