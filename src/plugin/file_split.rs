@@ -10,7 +10,8 @@ use crate::consts::LogSize;
 use std::ops::Sub;
 use std::time::Duration;
 use cogo::go;
-use cogo::std::channel::{Receiver, Sender};
+use cogo::std::sync::mpsc::{Receiver, Sender};
+
 
 use zip::result::ZipResult;
 use crate::error::LogError;

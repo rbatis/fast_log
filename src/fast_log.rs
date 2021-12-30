@@ -179,7 +179,7 @@ pub fn init_custom_log(
     let wait_group_back = wait_group.clone();
     std::thread::spawn(move || {
         let mut recever_vec = vec![];
-        let mut sender_vec: Vec<cogo::std::channel::Sender<Arc<FastLogRecord>>> = vec![];
+        let mut sender_vec: Vec<cogo::std::sync::mpsc::Sender<Arc<FastLogRecord>>> = vec![];
         for a in appenders {
             let (s, r) = cogo::std::sync::mpsc::channel();
             sender_vec.push(s);
