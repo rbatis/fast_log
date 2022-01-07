@@ -29,7 +29,7 @@ pub type Sender<T> = crossbeam::channel::Sender<T>;
 
 #[cfg(not(feature = "cogo"))]
 pub fn chan<T>() -> (Sender<T>, Receiver<T>) {
-    cogo::chan!()
+    crossbeam::channel::unbounded()
 }
 
 #[cfg(not(feature = "cogo"))]
