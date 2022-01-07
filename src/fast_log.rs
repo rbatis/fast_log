@@ -15,8 +15,6 @@ use std::result::Result::Ok;
 use std::time::{SystemTime, Duration};
 use std::sync::Arc;
 use std::sync::mpsc::SendError;
-use cogo::coroutine::{Builder, yield_now};
-use cogo::go;
 
 lazy_static! {
     static ref LOG_SENDER: RwLock<Option<LoggerSender>> = RwLock::new(Option::None);
@@ -198,13 +196,13 @@ pub fn init_custom_log(
                             }
                             appender.do_log(msg.as_ref());
                         } else {
-                            yield_now();
+                            cogo::coroutine::yield_now();
                         }
                     }
                 });
             } else {
                 // if is network appender, use thread spawn
-                go!(Builder::new().stack_size(2*0x1000),move ||{
+                cogo::go!(cogo::coroutine::Builder::new().stack_size(2*0x1000),move ||{
                 loop{
                     if let Ok(msg) = recever.recv(){
                      if msg.command.eq(&Command::CommandExit) {
@@ -231,7 +229,7 @@ pub fn init_custom_log(
                     break;
                 }
             } else {
-                yield_now();
+                cogo::coroutine::yield_now();
             }
         }
     });
