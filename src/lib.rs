@@ -14,5 +14,8 @@ pub mod fast_log;
 pub mod filter;
 pub mod plugin;
 pub mod wait;
+pub mod runtime;
 
 pub use fast_log::*;
+pub use runtime::*;
+

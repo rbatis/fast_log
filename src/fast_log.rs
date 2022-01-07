@@ -15,6 +15,7 @@ use std::result::Result::Ok;
 use std::time::{SystemTime, Duration};
 use std::sync::Arc;
 use std::sync::mpsc::SendError;
+use crate::{chan, Sender, spawn};
 
 lazy_static! {
     static ref LOG_SENDER: RwLock<Option<LoggerSender>> = RwLock::new(Option::None);
@@ -73,11 +74,6 @@ impl log::Log for Logger {
         //send
         if let Some(sender) = LOG_SENDER.read().as_ref() {
             if !sender.filter.filter(record) {
-                if let Some(v) = record.module_path() {
-                    if v == "cogo::io::sys::select" {
-                        return;
-                    }
-                }
                 let fast_log_record = FastLogRecord {
                     command: Command::CommandRecord,
                     level: record.level(),
@@ -177,9 +173,9 @@ pub fn init_custom_log(
     let wait_group_back = wait_group.clone();
     std::thread::spawn(move || {
         let mut recever_vec = vec![];
-        let mut sender_vec: Vec<cogo::std::sync::mpsc::Sender<Arc<FastLogRecord>>> = vec![];
+        let mut sender_vec: Vec<Sender<Arc<FastLogRecord>>> = vec![];
         for a in appenders {
-            let (s, r) = cogo::std::sync::mpsc::channel();
+            let (s, r) = chan();
             sender_vec.push(s);
             recever_vec.push((r, a));
         }
@@ -195,24 +191,22 @@ pub fn init_custom_log(
                                 break;
                             }
                             appender.do_log(msg.as_ref());
-                        } else {
-                            cogo::coroutine::yield_now();
                         }
                     }
                 });
             } else {
                 // if is network appender, use thread spawn
-                cogo::go!(cogo::coroutine::Builder::new().stack_size(2*0x1000),move ||{
-                loop{
-                    if let Ok(msg) = recever.recv(){
-                     if msg.command.eq(&Command::CommandExit) {
-                        drop(current_wait_group);
-                        break;
-                     }
-                     appender.do_log(msg.as_ref());
+                spawn(move || {
+                    loop {
+                        if let Ok(msg) = recever.recv() {
+                            if msg.command.eq(&Command::CommandExit) {
+                                drop(current_wait_group);
+                                break;
+                            }
+                            appender.do_log(msg.as_ref());
+                        }
                     }
-                }
-            });
+                });
             }
         }
         loop {
@@ -228,8 +222,6 @@ pub fn init_custom_log(
                     drop(wait_group_back);
                     break;
                 }
-            } else {
-                cogo::coroutine::yield_now();
             }
         }
     });

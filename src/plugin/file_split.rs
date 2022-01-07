@@ -11,6 +11,7 @@ use std::ops::Sub;
 use std::time::Duration;
 use zip::result::ZipResult;
 use crate::error::LogError;
+use crate::{chan, Receiver, Sender};
 
 /// .zip or .lz4 or any one packer
 pub trait Packer: Send {
@@ -127,7 +128,7 @@ pub struct FileSplitAppenderData {
     max_split_bytes: usize,
     dir_path: String,
     file: File,
-    sender: cogo::std::sync::mpmc::Sender<LogPack>,
+    sender: Sender<LogPack>,
     rolling_type: RollingType,
     //cache data
     temp_bytes: usize,
@@ -210,7 +211,7 @@ impl FileSplitAppender {
             temp_bytes = m.len() as usize;
         }
         file.seek(SeekFrom::Start(temp_bytes as u64));
-        let (sender, receiver) = cogo::chan!();
+        let (sender, receiver) = chan();
         spawn_saver(file_name,receiver, packer);
         Self {
             cell: RefCell::new(FileSplitAppenderData {
@@ -244,7 +245,7 @@ impl LogAppender for FileSplitAppender {
 }
 
 ///spawn an saver thread to save log file or zip file
-fn spawn_saver(temp_name: &str, r: cogo::std::sync::mpmc::Receiver<LogPack>, packer: Box<dyn Packer>) {
+fn spawn_saver(temp_name: &str, r: Receiver<LogPack>, packer: Box<dyn Packer>) {
     let temp = temp_name.to_string();
     std::thread::spawn(move || {
         loop {

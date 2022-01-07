@@ -17,6 +17,6 @@ fn main(){
     for _ in 0..80000 {
         log::info!("Commencing yak shaving");
     }
-    cogo::coroutine::sleep(Duration::from_secs(3));
+    sleep(Duration::from_secs(3));
     println!("you can see log files in path: {}","target/logs/")
 }

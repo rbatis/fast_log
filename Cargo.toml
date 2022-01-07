@@ -6,7 +6,7 @@ members = [
 
 [package]
 name = "fast_log"
-version = "1.4.12"
+version = "1.4.13"
 description = "Rust async log High-performance asynchronous logging"
 readme = "Readme.md"
 authors = ["ce <zhuxiujia@qq.com>"]
@@ -15,8 +15,11 @@ license = "MIT"
 
 
 [features]
-default = ["zip","cogo"]
+default = ["zip","runtime_cogo"]
 gzip = ["flate2"]
+
+runtime_thread = []
+runtime_cogo = ["cogo"]
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }

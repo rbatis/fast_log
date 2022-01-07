@@ -23,6 +23,6 @@ fn main(){
     /// let wait = fast_log::init_split_log(...);
     /// wait.wait();
     ///
-    cogo::coroutine::sleep(Duration::from_secs(3));
+    sleep(Duration::from_secs(3));
     println!("you can see log files in path: {}","target/logs/")
 }
