@@ -2,9 +2,9 @@ use std::time::Duration;
 
 /// if use cogo runtime
 #[cfg(feature = "cogo")]
-pub type Receiver<T> = cogo::std::sync::mpmc::Receiver<T>;
+pub type Receiver<T> = cogo::std::sync::channel::Receiver<T>;
 #[cfg(feature = "cogo")]
-pub type Sender<T> = cogo::std::sync::mpmc::Sender<T>;
+pub type Sender<T> = cogo::std::sync::channel::Sender<T>;
 
 #[cfg(feature = "cogo")]
 pub fn chan<T>() -> (Sender<T>, Receiver<T>) {
