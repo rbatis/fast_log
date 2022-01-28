@@ -17,35 +17,31 @@ use std::time::{SystemTime, Duration};
 use std::sync::Arc;
 use std::sync::mpsc::SendError;
 use crossbeam_channel::RecvError;
-use once_cell::sync::Lazy;
+use once_cell::sync::{Lazy, OnceCell};
 use crate::{chan, Sender, spawn};
 
 pub static LOG_SENDER: Lazy<LoggerSender> = Lazy::new(|| {
     LoggerSender::new_def()
 });
 
-
 pub struct LoggerSender {
-    pub filter: UnsafeCell<Option<Box<dyn Filter>>>,
+    pub filter: OnceCell<Box<dyn Filter>>,
     pub inner: crossbeam::channel::Sender<FastLogRecord>,
     pub recv: crossbeam::channel::Receiver<FastLogRecord>,
 }
-
-unsafe impl Sync for LoggerSender {}
-
-unsafe impl Send for LoggerSender {}
 
 impl LoggerSender {
     pub fn new_def() -> Self {
         let (s, r) = crossbeam::channel::unbounded();
         LoggerSender {
-            filter: UnsafeCell::new(None),
+            filter: OnceCell::new(),
             inner: s,
             recv: r,
         }
     }
     pub fn set_filter(&self, f: Box<dyn Filter>) {
-        *unsafe { &mut *self.filter.get() } = Some(f);
+        self.filter.get_or_init(|| f);
+        self.filter.get();
     }
 
     pub fn recv(&self) -> Result<FastLogRecord, RecvError> {
@@ -90,7 +86,7 @@ impl log::Log for Logger {
     }
     fn log(&self, record: &Record) {
         //send
-        let f = unsafe { &*LOG_SENDER.filter.get() };
+        let f = LOG_SENDER.filter.get();
         if f.is_some() {
             if !f.as_ref().unwrap().filter(record) {
                 let fast_log_record = FastLogRecord {

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 #![allow(unused_variables)]
 #![allow(unused_assignments)]
 #![allow(unused_must_use)]
