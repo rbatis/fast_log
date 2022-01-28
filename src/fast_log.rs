@@ -196,33 +196,17 @@ pub fn init_custom_log(
         }
         for (recever, appender) in recever_vec {
             let current_wait_group = wait_group_back.clone();
-            if appender.type_name().starts_with("fast_log::plugin") {
-                // if is file appender, use thread spawn
-                std::thread::spawn(move || {
-                    loop {
-                        if let Ok(msg) = recever.recv() {
-                            if msg.command.eq(&Command::CommandExit) {
-                                drop(current_wait_group);
-                                break;
-                            }
-                            appender.do_log(msg.as_ref());
+            spawn(move || {
+                loop {
+                    if let Ok(msg) = recever.recv() {
+                        if msg.command.eq(&Command::CommandExit) {
+                            drop(current_wait_group);
+                            break;
                         }
+                        appender.do_log(msg.as_ref());
                     }
-                });
-            } else {
-                // if is network appender, use thread spawn
-                spawn(move || {
-                    loop {
-                        if let Ok(msg) = recever.recv() {
-                            if msg.command.eq(&Command::CommandExit) {
-                                drop(current_wait_group);
-                                break;
-                            }
-                            appender.do_log(msg.as_ref());
-                        }
-                    }
-                });
-            }
+                }
+            });
         }
         loop {
             //recv
