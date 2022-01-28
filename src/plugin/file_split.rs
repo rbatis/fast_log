@@ -3,13 +3,11 @@ use std::fs::{DirBuilder, DirEntry, File, OpenOptions};
 use std::io::{BufRead, BufReader, Seek, SeekFrom, Write, Error};
 
 use chrono::{Local, NaiveDateTime};
-use zip::write::FileOptions;
 
 use crate::appender::{Command, FastLogRecord, LogAppender};
 use crate::consts::LogSize;
 use std::ops::Sub;
 use std::time::Duration;
-use zip::result::ZipResult;
 use crate::error::LogError;
 use crate::{chan, Receiver, Sender};
 
