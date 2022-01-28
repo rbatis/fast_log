@@ -78,7 +78,7 @@ fast_log = {version = "1.4"}
 or
 ```toml
 log = "0.4"
-#default is enable zip packer,this is allow lz4 packer(this is vary faster)
+# "lz4","zip","gzip"
 fast_log = {version = "1.4" , features = ["lz4"]}
 ```
 
