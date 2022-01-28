@@ -72,14 +72,13 @@ log data->    | main channel(crossbeam)  |   ->
 
 ```toml
 log = "0.4"
-#default is enable zip packer
 fast_log = {version = "1.4"}
 ```
-or
+or enable zip/lz4/gzip Compression library
 ```toml
 log = "0.4"
 # "lz4","zip","gzip"
-fast_log = {version = "1.4" , features = ["lz4"]}
+fast_log = {version = "1.4" , features = ["lz4","zip","gzip"]}
 ```
 
 
