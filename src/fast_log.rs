@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::cell::UnsafeCell;
 use std::sync::atomic::AtomicI32;
 use log::{Level, Metadata, Record};
 use parking_lot::RwLock;
@@ -15,33 +16,50 @@ use std::result::Result::Ok;
 use std::time::{SystemTime, Duration};
 use std::sync::Arc;
 use std::sync::mpsc::SendError;
+use crossbeam_channel::RecvError;
+use once_cell::sync::Lazy;
 use crate::{chan, Sender, spawn};
 
-lazy_static! {
-    static ref LOG_SENDER: RwLock<Option<LoggerSender>> = RwLock::new(Option::None);
-}
+pub static LOG_SENDER: Lazy<LoggerSender> = Lazy::new(|| {
+    LoggerSender::new_def()
+});
+
 
 pub struct LoggerSender {
-    pub filter: Box<dyn Filter>,
+    pub filter: UnsafeCell<Option<Box<dyn Filter>>>,
     pub inner: crossbeam::channel::Sender<FastLogRecord>,
+    pub recv: crossbeam::channel::Receiver<FastLogRecord>,
 }
 
+unsafe impl Sync for LoggerSender {}
+
+unsafe impl Send for LoggerSender {}
+
 impl LoggerSender {
-    pub fn new(filter: Box<dyn Filter>) -> (Self, crossbeam::channel::Receiver<FastLogRecord>) {
+    pub fn new_def() -> Self {
         let (s, r) = crossbeam::channel::unbounded();
-        (Self { inner: s, filter }, r)
+        LoggerSender {
+            filter: UnsafeCell::new(None),
+            inner: s,
+            recv: r,
+        }
     }
+    pub fn set_filter(&self, f: Box<dyn Filter>) {
+        *unsafe { &mut *self.filter.get() } = Some(f);
+    }
+
+    pub fn recv(&self) -> Result<FastLogRecord, RecvError> {
+        self.recv.recv()
+    }
+
     pub fn send(&self, data: FastLogRecord) -> Result<(), crossbeam::channel::SendError<FastLogRecord>> {
         self.inner.send(data)
     }
 }
 
-fn set_log(level: log::Level, filter: Box<dyn Filter>) -> crossbeam::channel::Receiver<FastLogRecord> {
+fn set_log(level: log::Level, filter: Box<dyn Filter>) {
     LOGGER.set_level(level);
-    let mut w = LOG_SENDER.write();
-    let (log, recv) = LoggerSender::new(filter);
-    *w = Some(log);
-    return recv;
+    LOG_SENDER.set_filter(filter);
 }
 
 pub struct Logger {
@@ -72,8 +90,9 @@ impl log::Log for Logger {
     }
     fn log(&self, record: &Record) {
         //send
-        if let Some(sender) = LOG_SENDER.read().as_ref() {
-            if !sender.filter.filter(record) {
+        let f = unsafe { &*LOG_SENDER.filter.get() };
+        if f.is_some() {
+            if !f.as_ref().unwrap().filter(record) {
                 let fast_log_record = FastLogRecord {
                     command: Command::CommandRecord,
                     level: record.level(),
@@ -85,7 +104,7 @@ impl log::Log for Logger {
                     now: SystemTime::now(),
                     formated: String::new(),
                 };
-                sender.send(fast_log_record);
+                LOG_SENDER.send(fast_log_record);
             }
         }
     }
@@ -168,7 +187,7 @@ pub fn init_custom_log(
         return Err(LogError::from("[fast_log] appenders can not be empty!"));
     }
     let wait_group = FastLogWaitGroup::new();
-    let main_recv = set_log(level, filter);
+    set_log(level, filter);
     //main recv data
     let wait_group_back = wait_group.clone();
     std::thread::spawn(move || {
@@ -211,7 +230,7 @@ pub fn init_custom_log(
         }
         loop {
             //recv
-            let data = main_recv.recv();
+            let data = LOG_SENDER.recv();
             if let Ok(mut data) = data {
                 data.formated = format.do_format(&mut data);
                 let data = Arc::new(data);
@@ -234,55 +253,46 @@ pub fn init_custom_log(
 }
 
 pub fn exit() -> Result<(), LogError> {
-    let sender = LOG_SENDER.read();
-    if sender.is_some() {
-        let sender = sender.as_ref().unwrap();
-        let fast_log_record = FastLogRecord {
-            command: Command::CommandExit,
-            level: log::Level::Info,
-            target: String::new(),
-            args: String::new(),
-            module_path: String::new(),
-            file: String::new(),
-            line: None,
-            now: SystemTime::now(),
-            formated: String::new(),
-        };
-        let result = sender.send(fast_log_record);
-        match result {
-            Ok(()) => {
-                return Ok(());
-            }
-            _ => {}
+    let fast_log_record = FastLogRecord {
+        command: Command::CommandExit,
+        level: log::Level::Info,
+        target: String::new(),
+        args: String::new(),
+        module_path: String::new(),
+        file: String::new(),
+        line: None,
+        now: SystemTime::now(),
+        formated: String::new(),
+    };
+    let result = LOG_SENDER.send(fast_log_record);
+    match result {
+        Ok(()) => {
+            return Ok(());
         }
+        _ => {}
     }
-
     return Err(LogError::E("[fast_log] exit fail!".to_string()));
 }
 
 
 pub fn flush() -> Result<(), LogError> {
-    let sender = LOG_SENDER.read();
-    if sender.is_some() {
-        let sender = sender.as_ref().unwrap();
-        let fast_log_record = FastLogRecord {
-            command: Command::CommandFlush,
-            level: log::Level::Info,
-            target: String::new(),
-            args: String::new(),
-            module_path: String::new(),
-            file: String::new(),
-            line: None,
-            now: SystemTime::now(),
-            formated: String::new(),
-        };
-        let result = sender.send(fast_log_record);
-        match result {
-            Ok(()) => {
-                return Ok(());
-            }
-            _ => {}
+    let fast_log_record = FastLogRecord {
+        command: Command::CommandFlush,
+        level: log::Level::Info,
+        target: String::new(),
+        args: String::new(),
+        module_path: String::new(),
+        file: String::new(),
+        line: None,
+        now: SystemTime::now(),
+        formated: String::new(),
+    };
+    let result = LOG_SENDER.send(fast_log_record);
+    match result {
+        Ok(()) => {
+            return Ok(());
         }
+        _ => {}
     }
     return Err(LogError::E("[fast_log] flush fail!".to_string()));
 }
