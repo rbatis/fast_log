@@ -14,13 +14,9 @@ fn main(){
         Box::new(LogPacker{}),
         true,
     );
-    for _ in 0..12{
-        std::thread::spawn(||{
-            for _ in 0..2000000 {
-                log::info!("Commencing yak shaving");
-            }
-        });
+    for _ in 0..20000 {
+        log::info!("Commencing yak shaving");
     }
-    sleep(Duration::from_secs(3*3600*3600));
+    sleep(Duration::from_secs(3));
     println!("you can see log files in path: {}","target/logs/")
 }
