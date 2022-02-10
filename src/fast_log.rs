@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::borrow::Borrow;
 use std::cell::UnsafeCell;
 use std::sync::atomic::AtomicI32;
@@ -16,9 +17,8 @@ use std::result::Result::Ok;
 use std::time::{SystemTime, Duration};
 use std::sync::Arc;
 use std::sync::mpsc::SendError;
-use crossbeam_channel::RecvError;
 use once_cell::sync::{Lazy, OnceCell};
-use crate::{chan, Sender, spawn};
+use crate::{chan, Receiver, Sender, spawn};
 
 pub static LOG_SENDER: Lazy<LoggerSender> = Lazy::new(|| {
     LoggerSender::new_def()
@@ -26,30 +26,22 @@ pub static LOG_SENDER: Lazy<LoggerSender> = Lazy::new(|| {
 
 pub struct LoggerSender {
     pub filter: OnceCell<Box<dyn Filter>>,
-    pub inner: crossbeam::channel::Sender<FastLogRecord>,
-    pub recv: crossbeam::channel::Receiver<FastLogRecord>,
+    pub send: Sender<FastLogRecord>,
+    pub recv: Receiver<FastLogRecord>,
 }
 
 impl LoggerSender {
     pub fn new_def() -> Self {
-        let (s, r) = crossbeam::channel::unbounded();
+        let (s, r) = chan();
         LoggerSender {
             filter: OnceCell::new(),
-            inner: s,
+            send: s,
             recv: r,
         }
     }
     pub fn set_filter(&self, f: Box<dyn Filter>) {
         self.filter.get_or_init(|| f);
         self.filter.get();
-    }
-
-    pub fn recv(&self) -> Result<FastLogRecord, RecvError> {
-        self.recv.recv()
-    }
-
-    pub fn send(&self, data: FastLogRecord) -> Result<(), crossbeam::channel::SendError<FastLogRecord>> {
-        self.inner.send(data)
     }
 }
 
@@ -100,7 +92,7 @@ impl log::Log for Logger {
                     now: SystemTime::now(),
                     formated: String::new(),
                 };
-                LOG_SENDER.send(fast_log_record);
+                LOG_SENDER.send.send(fast_log_record);
             }
         }
     }
@@ -210,7 +202,7 @@ pub fn init_custom_log(
         }
         loop {
             //recv
-            let data = LOG_SENDER.recv();
+            let data = LOG_SENDER.recv.recv();
             if let Ok(mut data) = data {
                 data.formated = format.do_format(&mut data);
                 let data = Arc::new(data);
@@ -244,7 +236,7 @@ pub fn exit() -> Result<(), LogError> {
         now: SystemTime::now(),
         formated: String::new(),
     };
-    let result = LOG_SENDER.send(fast_log_record);
+    let result = LOG_SENDER.send.send(fast_log_record);
     match result {
         Ok(()) => {
             return Ok(());
@@ -267,7 +259,7 @@ pub fn flush() -> Result<(), LogError> {
         now: SystemTime::now(),
         formated: String::new(),
     };
-    let result = LOG_SENDER.send(fast_log_record);
+    let result = LOG_SENDER.send.send(fast_log_record);
     match result {
         Ok(()) => {
             return Ok(());

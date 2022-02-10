@@ -1,4 +1,4 @@
-use crossbeam_utils::sync::WaitGroup;
+use crate::WaitGroup;
 
 /// In the case of multithreading, you need to call clone and drop at the end func
 #[derive(Clone, Debug)]
