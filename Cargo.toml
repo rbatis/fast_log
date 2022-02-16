@@ -6,7 +6,7 @@ members = [
 
 [package]
 name = "fast_log"
-version = "1.4.19"
+version = "1.4.20"
 description = "Rust async log High-performance asynchronous logging"
 readme = "Readme.md"
 authors = ["ce <zhuxiujia@qq.com>"]
@@ -19,7 +19,7 @@ default = ["runtime_thread"]
 gzip = ["flate2"]
 
 runtime_thread = []
-runtime_cogo = ["cogo"]
+runtime_mco = ["mco"]
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
@@ -30,7 +30,7 @@ crossbeam-utils = "0.8"
 crossbeam = "0.8"
 crossbeam-channel = "0.5"
 parking_lot = "0.11"
-cogo = {version = "0.1", optional = true }
+mco = {version = "0.1", optional = true }
 once_cell = "1.9"
 
 
