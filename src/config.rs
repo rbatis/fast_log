@@ -18,7 +18,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             appenders: vec![],
-            level: Level::Info,
+            level: Level::Debug,
             filter: Box::new(NoFilter {}),
             format: Box::new(FastLogFormatRecord::new()),
         }
@@ -30,16 +30,16 @@ impl Config {
         Self::default()
     }
 
-    pub fn level(mut self,level:Level) -> Self{
+    pub fn level(mut self, level: Level) -> Self {
         self.level = level;
         self
     }
-    pub fn filter<F:Filter+'static>(mut self,filter:F) -> Self{
-        self.filter = filter;
+    pub fn filter<F: Filter + 'static>(mut self, filter: F) -> Self {
+        self.filter = Box::new(filter);
         self
     }
-    pub fn format<F:RecordFormat+'static>(mut self,format:F) -> Self{
-        self.format = format;
+    pub fn format<F: RecordFormat + 'static>(mut self, format: F) -> Self {
+        self.format = Box::new(format);
         self
     }
     pub fn console(mut self) -> Self {
@@ -54,15 +54,15 @@ impl Config {
         self.appenders.push(Box::new(FileLoopAppender::new(file, max_temp_size)));
         self
     }
-    pub fn file_split<P: Packer+'static>(mut self, file_path: &str,
-                                      max_temp_size: LogSize,
-                                      rolling_type: RollingType,
-                                      packer: P, ) -> Self {
+    pub fn file_split<P: Packer + 'static>(mut self, file_path: &str,
+                                           max_temp_size: LogSize,
+                                           rolling_type: RollingType,
+                                           packer: P, ) -> Self {
         self.appenders.push(Box::new(FileSplitAppender::new(file_path, max_temp_size, rolling_type, Box::new(packer))));
         self
     }
 
-    pub fn custom<Appender: LogAppender+'static>(mut self, arg: Appender) -> Self {
+    pub fn custom<Appender: LogAppender + 'static>(mut self, arg: Appender) -> Self {
         self.appenders.push(Box::new(arg));
         self
     }
