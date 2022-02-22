@@ -126,7 +126,7 @@ pub fn test_file_compation() {
 ##### Custom Log
 
 ```rust
-use fast_log::{init_custom_log,LogAppender};
+use fast_log::{LogAppender};
 use log::{error, info, warn};
 
 pub struct CustomLog{}
