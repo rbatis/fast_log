@@ -91,7 +91,8 @@ fast_log = {version = "1.4" , features = ["lz4","zip","gzip"]}
 use fast_log::{init_log};
 use log::{error, info, warn};
 fn  main(){
-    fast_log::init_log("requests.log",  log::Level::Info, None,true);
+    let log = fast_log::init(Config::new().console()).unwrap();
+    log::info!("Commencing yak shaving{}", 0);
     info!("Commencing yak shaving");
 }
 ```
@@ -101,9 +102,18 @@ fn  main(){
 ##### split log, allow_zip_compress = Zip compression
 
 ```rust
+use fast_log::plugin::file_split::RollingType;
+use fast_log::consts::LogSize;
+use fast_log::plugin::packer::LogPacker;
+
 #[test]
 pub fn test_file_compation() {
-    init_split_log("target/logs/",  LogSize::MB(1), false, log::Level::Info, None, Box::new(ZipPacker{}), true);// or Box::new(LZ4Packer{})
+    fast_log::init(Config::new()
+        .console()
+        .file_split("target/logs/",
+                    LogSize::MB(1),
+                    RollingType::All,
+                    LogPacker{})).unwrap();
     for _ in 0..200000 {
         info!("Commencing yak shaving");
     }
@@ -126,7 +136,7 @@ impl LogAppender for CustomLog{
     }
 }
 fn  main(){
-    fast_log::init_custom_log(vec![Box::new(CustomLog {})],  log::Level::Info, Box::new(NoFilter {}));
+    let wait = fast_log::init(Config::new().custom(CustomLog {})).unwrap();
     info!("Commencing yak shaving");
     sleep(std::time::Duration::from_secs(1));
 }

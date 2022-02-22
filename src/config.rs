@@ -18,7 +18,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             appenders: vec![],
-            level: Level::Debug,
+            level: Level::Info,
             filter: Box::new(NoFilter {}),
             format: Box::new(FastLogFormatRecord::new()),
         }
