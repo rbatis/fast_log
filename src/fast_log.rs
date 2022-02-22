@@ -19,6 +19,7 @@ use std::sync::Arc;
 use std::sync::mpsc::SendError;
 use once_cell::sync::{Lazy, OnceCell};
 use crate::{chan, Receiver, Sender, spawn};
+use crate::config::Config;
 
 pub static LOG_SENDER: Lazy<LoggerSender> = Lazy::new(|| {
     LoggerSender::new_def()
@@ -103,81 +104,18 @@ static LOGGER: Logger = Logger {
     level: AtomicI32::new(1),
 };
 
-/// initializes the log file path
-/// log_file_path:  example->  "test.log"
-/// channel_cup: example -> 1000
-pub fn init_log(
-    log_file_path: &str,
-    level: log::Level,
-    mut filter: Option<Box<dyn Filter>>,
-    debug_mode: bool,
-) -> Result<FastLogWaitGroup, LogError> {
-    let mut appenders: Vec<Box<dyn LogAppender>> = vec![Box::new(FileAppender::new(log_file_path))];
-    if debug_mode {
-        appenders.push(Box::new(ConsoleAppender {}));
-    }
-    let mut log_filter: Box<dyn Filter> = Box::new(NoFilter {});
-    if filter.is_some() {
-        log_filter = filter.take().unwrap();
-    }
-    return init_custom_log(
-        appenders,
-        level,
-        log_filter,
-        Box::new(FastLogFormatRecord::new()),
-    );
-}
 
-/// initializes the log file path
-/// log_dir_path:  example->  "log/"
-/// max_temp_size: do zip if temp log full
-/// allow_zip_compress: zip compress log file
-/// filter: log filter
-/// packer: you can use ZipPacker or LZ4Packer or custom your Packer
-/// temp is "temp.log"
-pub fn init_split_log(
-    log_dir_path: &str,
-    max_temp_size: LogSize,
-    rolling_type: RollingType,
-    level: log::Level,
-    mut filter: Option<Box<dyn Filter>>,
-    packer: Box<dyn Packer>,
-    allow_console_log: bool,
-) -> Result<FastLogWaitGroup, LogError> {
-    let mut appenders: Vec<Box<dyn LogAppender>> = vec![Box::new(FileSplitAppender::new(
-        log_dir_path,
-        max_temp_size,
-        rolling_type,
-        packer,
-    ))];
-    if allow_console_log {
-        appenders.push(Box::new(ConsoleAppender {}));
-    }
-    let mut log_filter: Box<dyn Filter> = Box::new(NoFilter {});
-    if filter.is_some() {
-        log_filter = filter.take().unwrap();
-    }
-    return init_custom_log(
-        appenders,
-        level,
-        log_filter,
-        Box::new(FastLogFormatRecord::new()),
-    );
-}
-
-pub fn init_custom_log(
-    appenders: Vec<Box<dyn LogAppender>>,
-    level: log::Level,
-    filter: Box<dyn Filter>,
-    format: Box<dyn RecordFormat>,
-) -> Result<FastLogWaitGroup, LogError> {
-    if appenders.is_empty() {
+pub fn init(config: Config) -> Result<FastLogWaitGroup, LogError> {
+    if config.appenders.is_empty() {
         return Err(LogError::from("[fast_log] appenders can not be empty!"));
     }
     let wait_group = FastLogWaitGroup::new();
-    set_log(level, filter);
+    set_log(config.level.clone(), config.filter);
     //main recv data
     let wait_group_back = wait_group.clone();
+    let appenders = config.appenders;
+    let format = config.format;
+    let level = config.level;
     std::thread::spawn(move || {
         let mut recever_vec = vec![];
         let mut sender_vec: Vec<Sender<Arc<FastLogRecord>>> = vec![];

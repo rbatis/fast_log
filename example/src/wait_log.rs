@@ -1,5 +1,9 @@
+use fast_log::config::Config;
+
 fn main(){
-    let wait=fast_log::init_log("requests.log", log::Level::Debug, None, true).unwrap();
+    let wait=fast_log::init(Config::new()
+        .console()
+        .file("requests.log")).unwrap();
     log::debug!("Commencing yak shaving{}", 0);
     wait.wait();
 }
