@@ -33,7 +33,7 @@ impl LogAppender for CustomLog {
                 );
             }
         }
-        self.rt.spawn(async move {
+        self.rt.block_on(async move {
             //send to web,file,any way
             print!("{}", data);
         });
