@@ -11,7 +11,7 @@ use meilisearch_sdk::document::Document;
 use meilisearch_sdk::indexes::Index;
 use tokio::runtime::Runtime;
 use fast_log::config::Config;
-use serde::{Serialize,Deserialize};
+use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct LogDoc {
@@ -30,8 +30,8 @@ impl Document for LogDoc {
 
 
 struct CustomLog {
-    c:Arc<Index>,
-    rt:Runtime
+    c: Arc<Client>,
+    rt: Runtime,
 }
 
 impl LogAppender for CustomLog {
@@ -57,14 +57,18 @@ impl LogAppender for CustomLog {
             }
         }
         let id = now.timestamp_millis() as usize;
-        let c=self.c.clone();
+        let c = self.c.clone();
         self.rt.block_on(async move {
+            let doc = c.index("LogDoc");
             //send to web,file,any way
-            let log=LogDoc{
+            let log = LogDoc {
                 id: id,
                 log: data.to_string(),
             };
-            c.add_documents(&[log], Some("id")).await.unwrap();
+            let r = doc.add_documents(&[log], Some("id")).await;
+            if r.is_err() {
+                println!("add_documents fail: {}", r.err().unwrap().to_string());
+            }
             print!("{}", data);
         });
     }
@@ -74,12 +78,11 @@ impl LogAppender for CustomLog {
 #[tokio::main]
 async fn main() {
     let client = Client::new("http://localhost:7700", "masterKey");
-    let doc= client.index("LogDoc");
     let wait = fast_log::init(Config::new().custom(CustomLog {
-        c:Arc::new(doc),
-        rt: tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap()
+        c: Arc::new(client),
+        rt: tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap(),
     })).unwrap();
-    for index in 0..1000{
+    for index in 0..1000 {
         log::info!("Commencing yak shaving:{}",index);
         log::error!("Commencing error:{}",index);
     }
