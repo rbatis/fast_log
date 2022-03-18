@@ -35,15 +35,16 @@ path = "src/split_log_flush.rs"
 [[bin]]
 name = "split_log_loop"
 path = "src/split_log_loop.rs"
+[[bin]]
+name = "custom_appender_tokio"
+path = "src/custom_appender_tokio.rs"
 [dependencies]
-
 log = { version = "0.4", features = ["std"] }
-
 crossbeam-channel = "0.5"
 crossbeam-utils = "0.8"
 crossbeam = "0.8"
 chrono = { version = "0.4", features = ["serde"] }
-mco = "0.1"
-
 # features=["lz4"] or add features=["zip","lz4"] if you need lz4 packer
 fast_log = { path = "../", features = ["lz4","zip","gzip"]}
+
+tokio = {version="1.17",features = ["full"]}
