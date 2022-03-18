@@ -29,7 +29,12 @@ impl Document for LogDoc {
 }
 
 
-/// you should [download](https://github.com/meilisearch/Meilisearch/releases) and run meilisearch
+/// you should download run  [download](https://github.com/meilisearch/Meilisearch/releases)
+///
+/// or use docker command run meilisearch
+/// ```
+/// docker run -p 7700:7700 -d --name meilisearch getmeili/meilisearch
+/// ```
 #[tokio::main]
 async fn main() {
     let client = Client::new("http://localhost:7700", "masterKey");
