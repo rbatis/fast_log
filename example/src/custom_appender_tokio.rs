@@ -43,7 +43,7 @@ impl LogAppender for CustomLog {
 #[tokio::main]
 async fn main() {
     let wait = fast_log::init(Config::new().custom(CustomLog {
-        rt: tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap()
+        rt: tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap()
     })).unwrap();
     log::info!("Commencing yak shaving");
     log::error!("Commencing error");
