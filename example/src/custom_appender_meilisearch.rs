@@ -58,7 +58,7 @@ impl LogAppender for CustomLog {
         }
         let id = now.timestamp_millis() as usize;
         let c=self.c.clone();
-        self.rt.block_on(async move {
+        self.rt.spawn(async move {
             //send to web,file,any way
             let log=LogDoc{
                 id: id,
