@@ -9,8 +9,7 @@ the fast log . This crate uses #! [forbid(unsafe_code)] to ensure everything is 
 
 A log implementation for extreme speed, using Crossbeam to double the efficiency (as opposed to the standard library MPSC) with a lockless channel, using a channel to write logs asynchronously. Completely use the safe code to achieve, without safe code
 
-
-* Low overhead, based on May coroutines
+* Low overhead, based on thread
 
 * High performance, use lockless message queue, log is stored in queue, then flush disk. It does not block the caller
 
@@ -31,19 +30,19 @@ A log implementation for extreme speed, using Crossbeam to double the efficiency
 log data->    | main channel(crossbeam)  |   ->          
               ----------------- 
                                         ----------------                                    ----------------------
-                                  ->    |coroutines channel(may)|  -> background coroutines  |    appender1  |
+                                  ->    |thread channel)|  -> background thread  |    appender1  |
                                         ----------------                                    ----------------------
 
                                         ----------------                                    ----------------------
-                                  ->    |coroutines channel(may)|  -> background coroutines  |    appender2  |
+                                  ->    |thread channel)|  -> background thread  |    appender2  |
                                         ----------------                                    ----------------------
 
                                         ----------------                                    ----------------------
-                                  ->    |coroutines channel(may)|  -> background coroutines  |    appender3  |
+                                  ->    |thread channel)|  -> background thread  |    appender3  |
                                         ----------------                                    ----------------------
 
                                         ----------------                                    ----------------------
-                                  ->    |coroutines channel(may)|  -> background coroutines  |    appender4  |
+                                  ->    |thread channel)|  -> background thread  |    appender4  |
                                         ----------------                                    ----------------------
 
 

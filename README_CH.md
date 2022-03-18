@@ -6,7 +6,7 @@ the fast log  . This crate uses #![forbid(unsafe_code)] to ensure everything is 
 
 一款追求极致速度的日志实现，使用crossbeam 无锁channel提高一倍效率(相对于标准库的mpsc)，使用channel异步写日志。完全使用safe 代码实现，无不安全代码
 
-* 低开销，基于may协程
+* 低开销，基于线程
 * 高性能，使用无锁消息队列,日志先存于队列中，后续flush磁盘。不阻塞调用方
 * 全Append模式写入文件，对固态/机械磁盘效率高（固态以及机械硬盘 顺序写性能好于随机写）
 * 内置 Zip压缩，压缩文件名为日期+序号，无需操心日志文件过大
@@ -20,20 +20,22 @@ the fast log  . This crate uses #![forbid(unsafe_code)] to ensure everything is 
 log data->    | main channel(crossbeam)  |   ->          
               ----------------- 
                                         ----------------                                    ----------------------
-                                  ->    |coroutines channel(may)|  -> background coroutines  |    appender1  |
+                                  ->    |thread channel)|  -> background thread  |    appender1  |
                                         ----------------                                    ----------------------
 
                                         ----------------                                    ----------------------
-                                  ->    |coroutines channel(may)|  -> background coroutines  |    appender2  |
+                                  ->    |thread channel)|  -> background thread  |    appender2  |
                                         ----------------                                    ----------------------
 
                                         ----------------                                    ----------------------
-                                  ->    |coroutines channel(may)|  -> background coroutines  |    appender3  |
+                                  ->    |thread channel)|  -> background thread  |    appender3  |
                                         ----------------                                    ----------------------
 
                                         ----------------                                    ----------------------
-                                  ->    |coroutines channel(may)|  -> background coroutines  |    appender4  |
+                                  ->    |thread channel)|  -> background thread  |    appender4  |
                                         ----------------                                    ----------------------
+
+
 ```
 
 
