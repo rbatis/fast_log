@@ -29,6 +29,22 @@ impl Document for LogDoc {
 }
 
 
+/// you should [download](https://github.com/meilisearch/Meilisearch/releases) and run meilisearch
+#[tokio::main]
+async fn main() {
+    let client = Client::new("http://localhost:7700", "masterKey");
+    let wait = fast_log::init(Config::new().custom(CustomLog {
+        c: Arc::new(client),
+        rt: tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap(),
+    })).unwrap();
+    for index in 0..1000 {
+        log::info!("Commencing yak shaving:{}",index);
+        log::error!("Commencing error:{}",index);
+    }
+    wait.wait();
+}
+
+
 struct CustomLog {
     c: Arc<Client>,
     rt: Runtime,
@@ -73,19 +89,4 @@ impl LogAppender for CustomLog {
             print!("{}", data);
         });
     }
-}
-
-/// you should download(https://github.com/meilisearch/meilisearch-rust/releases) and run meilisearch
-#[tokio::main]
-async fn main() {
-    let client = Client::new("http://localhost:7700", "masterKey");
-    let wait = fast_log::init(Config::new().custom(CustomLog {
-        c: Arc::new(client),
-        rt: tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap(),
-    })).unwrap();
-    for index in 0..1000 {
-        log::info!("Commencing yak shaving:{}",index);
-        log::error!("Commencing error:{}",index);
-    }
-    wait.wait();
 }
