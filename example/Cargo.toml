@@ -38,6 +38,9 @@ path = "src/split_log_loop.rs"
 [[bin]]
 name = "custom_appender_tokio"
 path = "src/custom_appender_tokio.rs"
+[[bin]]
+name = "custom_appender_meilisearch"
+path = "src/custom_appender_meilisearch.rs"
 [dependencies]
 log = { version = "0.4", features = ["std"] }
 crossbeam-channel = "0.5"
@@ -48,3 +51,6 @@ chrono = { version = "0.4", features = ["serde"] }
 fast_log = { path = "../", features = ["lz4","zip","gzip"]}
 
 tokio = {version="1.17",features = ["full"]}
+
+meilisearch-sdk = "0.15.0"
+serde = { version = "1.0", features = ["derive"] }
