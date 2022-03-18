@@ -79,9 +79,9 @@ async fn main() {
         c:Arc::new(doc),
         rt: tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap()
     })).unwrap();
-    for _ in 0..1000{
-        log::info!("Commencing yak shaving");
-        log::error!("Commencing error");
+    for index in 0..1000{
+        log::info!("Commencing yak shaving:{}",index);
+        log::error!("Commencing error:{}",index);
     }
     wait.wait();
 }
