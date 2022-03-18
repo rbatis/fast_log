@@ -13,7 +13,7 @@ impl LogAppender for BenchRecvLog {
     }
 }
 
-// this example should be   "cargo run --release --package example --bin bench_test"
+/// cargo run --release --package example --bin bench_test
 fn main() {
     fast_log::init(Config::new().custom(BenchRecvLog {}));
     let total = 1000000;
