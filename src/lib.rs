@@ -16,4 +16,5 @@ pub mod config;
 
 pub use fast_log::*;
 pub use runtime::*;
+pub use crate::config::Config;
 
