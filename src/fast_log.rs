@@ -113,7 +113,7 @@ static LOGGER: Logger = Logger {
 };
 
 
-pub fn init(config: Config) -> Result<(), LogError> {
+pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     if config.appenders.is_empty() {
         return Err(LogError::from("[fast_log] appenders can not be empty!"));
     }
@@ -169,7 +169,7 @@ pub fn init(config: Config) -> Result<(), LogError> {
     if r.is_err() {
         return Err(LogError::from(r.err().unwrap()));
     } else {
-        return Ok(());
+        return Ok(&LOGGER);
     }
 }
 
