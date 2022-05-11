@@ -2,7 +2,7 @@ use std::any::Any;
 use std::borrow::Borrow;
 use std::cell::UnsafeCell;
 use std::sync::atomic::AtomicI32;
-use log::{Level, Metadata, Record};
+use log::{Level, Log, Metadata, Record};
 use parking_lot::RwLock;
 
 use crate::appender::{Command, FastLogFormatRecord, FastLogRecord, LogAppender, RecordFormat};
@@ -71,6 +71,10 @@ impl Logger {
             5 => Level::Trace,
             _ => panic!("error log level!"),
         }
+    }
+
+    pub fn wait(&self) {
+        self.flush();
     }
 }
 
