@@ -99,7 +99,7 @@ impl log::Log for Logger {
         }
     }
     fn flush(&self) {
-        match flush(){
+        match flush() {
             Ok(v) => {
                 v.wait();
             }
@@ -134,7 +134,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
             spawn(move || {
                 loop {
                     if let Ok(msg) = recever.recv() {
-                        match msg.command{
+                        match msg.command {
                             Command::CommandRecord => {}
                             Command::CommandExit => {
                                 break;
@@ -158,7 +158,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                 for x in &sender_vec {
                     x.send(data.clone());
                 }
-                match data.command{
+                match data.command {
                     Command::CommandRecord => {}
                     Command::CommandExit => {
                         break;
@@ -200,7 +200,7 @@ pub fn exit() -> Result<(), LogError> {
 
 
 pub fn flush() -> Result<WaitGroup, LogError> {
-    let wg=WaitGroup::new();
+    let wg = WaitGroup::new();
     let fast_log_record = FastLogRecord {
         command: Command::CommandFlush(wg.clone()),
         level: log::Level::Info,
