@@ -15,7 +15,7 @@ impl LogAppender for BenchRecvLog {
 
 /// cargo run --release --package example --bin bench_test
 fn main() {
-    fast_log::init(Config::new().custom(BenchRecvLog {}));
+    fast_log::init(Config::new().file("target/test.log"));
     let total = 1000000;
     let now = Instant::now();
     for index in 0..total {
@@ -23,5 +23,5 @@ fn main() {
     }
     now.time(total);
     now.qps(total);
-    sleep(Duration::from_secs(1));
+    log::logger().flush();
 }

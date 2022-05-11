@@ -46,7 +46,7 @@ async fn main() {
         log::info!("Commencing yak shaving:{}",index);
         log::error!("Commencing error:{}",index);
     }
-    wait.wait();
+    log::logger().flush();
 }
 
 

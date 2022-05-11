@@ -2,6 +2,7 @@ use chrono::{DateTime, Local, Utc, Timelike, Duration};
 use log::{LevelFilter};
 use std::time::SystemTime;
 use std::ops::{Add, Sub};
+use crossbeam_utils::sync::WaitGroup;
 use crate::appender::Command::CommandRecord;
 
 /// LogAppender append logs
@@ -16,12 +17,12 @@ pub trait LogAppender: Send {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum Command {
     CommandRecord,
     CommandExit,
     /// Ensure that the log splitter forces splitting and saves the log
-    CommandFlush,
+    CommandFlush(WaitGroup),
 }
 
 #[derive(Clone, Debug)]
@@ -49,27 +50,31 @@ pub struct FastLogFormatRecord {
 
 impl RecordFormat for FastLogFormatRecord {
     fn do_format(&self, arg: &mut FastLogRecord) -> String {
-        if arg.command.eq(&CommandRecord) {
-            let data;
-            let now: DateTime<Utc> = chrono::DateTime::from(arg.now);
-            let now = now.add(self.duration).naive_utc().to_string();
-            if arg.level.to_level_filter() <= self.display_file {
-                data = format!(
-                    "{:26} {} {} - {}  {}:{}\n",
-                    &now,
-                    arg.level,
-                    arg.module_path,
-                    arg.args,
-                    arg.file,
-                    arg.line.unwrap_or_default()
-                );
-            } else {
-                data = format!(
-                    "{:26} {} {} - {}\n",
-                    &now, arg.level, arg.module_path, arg.args
-                );
+        match arg.command{
+            CommandRecord => {
+                let data;
+                let now: DateTime<Utc> = chrono::DateTime::from(arg.now);
+                let now = now.add(self.duration).naive_utc().to_string();
+                if arg.level.to_level_filter() <= self.display_file {
+                    data = format!(
+                        "{:26} {} {} - {}  {}:{}\n",
+                        &now,
+                        arg.level,
+                        arg.module_path,
+                        arg.args,
+                        arg.file,
+                        arg.line.unwrap_or_default()
+                    );
+                } else {
+                    data = format!(
+                        "{:26} {} {} - {}\n",
+                        &now, arg.level, arg.module_path, arg.args
+                    );
+                }
+                return data;
             }
-            return data;
+            Command::CommandExit => {}
+            Command::CommandFlush(_) => {}
         }
         return String::new();
     }

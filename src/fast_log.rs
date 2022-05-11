@@ -17,6 +17,7 @@ use std::result::Result::Ok;
 use std::time::{SystemTime, Duration};
 use std::sync::Arc;
 use std::sync::mpsc::SendError;
+use crossbeam_utils::sync::WaitGroup;
 use once_cell::sync::{Lazy, OnceCell};
 use crate::{chan, Receiver, Sender, spawn};
 use crate::config::Config;
@@ -97,7 +98,14 @@ impl log::Log for Logger {
             }
         }
     }
-    fn flush(&self) {}
+    fn flush(&self) {
+        match flush(){
+            Ok(v) => {
+                v.wait();
+            }
+            Err(_) => {}
+        }
+    }
 }
 
 static LOGGER: Logger = Logger {
@@ -105,14 +113,12 @@ static LOGGER: Logger = Logger {
 };
 
 
-pub fn init(config: Config) -> Result<FastLogWaitGroup, LogError> {
+pub fn init(config: Config) -> Result<(), LogError> {
     if config.appenders.is_empty() {
         return Err(LogError::from("[fast_log] appenders can not be empty!"));
     }
-    let wait_group = FastLogWaitGroup::new();
     set_log(config.level.clone(), config.filter);
     //main recv data
-    let wait_group_back = wait_group.clone();
     let appenders = config.appenders;
     let format = config.format;
     let level = config.level;
@@ -125,13 +131,15 @@ pub fn init(config: Config) -> Result<FastLogWaitGroup, LogError> {
             recever_vec.push((r, a));
         }
         for (recever, appender) in recever_vec {
-            let current_wait_group = wait_group_back.clone();
             spawn(move || {
                 loop {
                     if let Ok(msg) = recever.recv() {
-                        if msg.command.eq(&Command::CommandExit) {
-                            drop(current_wait_group);
-                            break;
+                        match msg.command{
+                            Command::CommandRecord => {}
+                            Command::CommandExit => {
+                                break;
+                            }
+                            Command::CommandFlush(_) => {}
                         }
                         appender.do_log(msg.as_ref());
                     }
@@ -147,9 +155,12 @@ pub fn init(config: Config) -> Result<FastLogWaitGroup, LogError> {
                 for x in &sender_vec {
                     x.send(data.clone());
                 }
-                if data.command.eq(&Command::CommandExit) {
-                    drop(wait_group_back);
-                    break;
+                match data.command{
+                    Command::CommandRecord => {}
+                    Command::CommandExit => {
+                        break;
+                    }
+                    Command::CommandFlush(_) => {}
                 }
             }
         }
@@ -158,7 +169,7 @@ pub fn init(config: Config) -> Result<FastLogWaitGroup, LogError> {
     if r.is_err() {
         return Err(LogError::from(r.err().unwrap()));
     } else {
-        return Ok(wait_group);
+        return Ok(());
     }
 }
 
@@ -185,9 +196,10 @@ pub fn exit() -> Result<(), LogError> {
 }
 
 
-pub fn flush() -> Result<(), LogError> {
+pub fn flush() -> Result<WaitGroup, LogError> {
+    let wg=WaitGroup::new();
     let fast_log_record = FastLogRecord {
-        command: Command::CommandFlush,
+        command: Command::CommandFlush(wg.clone()),
         level: log::Level::Info,
         target: String::new(),
         args: String::new(),
@@ -200,7 +212,7 @@ pub fn flush() -> Result<(), LogError> {
     let result = LOG_SENDER.send.send(fast_log_record);
     match result {
         Ok(()) => {
-            return Ok(());
+            return Ok(wg);
         }
         _ => {}
     }

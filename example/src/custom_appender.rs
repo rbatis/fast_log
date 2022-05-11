@@ -35,8 +35,8 @@ impl LogAppender for CustomLog {
 }
 
 fn main() {
-    let wait = fast_log::init(Config::new().custom(CustomLog {})).unwrap();
+    fast_log::init(Config::new().custom(CustomLog {})).unwrap();
     log::info!("Commencing yak shaving");
     log::error!("Commencing error");
-    wait.wait();
+    log::logger().flush();
 }
