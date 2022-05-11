@@ -35,6 +35,9 @@ impl LogAppender for FileAppender {
             buf.push(x);
         }
         log_file.write_all(buf.as_slice());
-        log_file.flush();
+    }
+
+    fn flush(&self) {
+        self.file.borrow_mut().flush();
     }
 }

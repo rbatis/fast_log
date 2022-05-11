@@ -249,6 +249,10 @@ impl LogAppender for FileSplitAppender {
         data.file.flush();
         data.temp_bytes += write_bytes;
     }
+    fn flush(&self) {
+        let mut data = self.cell.borrow_mut();
+        data.file.flush();
+    }
 }
 
 ///spawn an saver thread to save log file or zip file

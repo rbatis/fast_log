@@ -23,4 +23,7 @@ impl LogAppender for FileLoopAppender {
     fn do_log(&self, record: &FastLogRecord) {
         self.file.do_log(record);
     }
+    fn flush(&self) {
+        self.file.flush();
+    }
 }
