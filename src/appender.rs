@@ -12,6 +12,9 @@ pub trait LogAppender: Send {
     /// so. if you want  access the network, you can launch a coroutine using go! (| | {});
     fn do_log(&self, record: &FastLogRecord);
 
+    /// flush or do nothing
+    fn flush(&self){}
+
     fn type_name(&self) -> &'static str {
         std::any::type_name::<Self>()
     }

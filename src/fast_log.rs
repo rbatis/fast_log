@@ -139,7 +139,10 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                             Command::CommandExit => {
                                 break;
                             }
-                            Command::CommandFlush(_) => {}
+                            Command::CommandFlush(_) => {
+                                appender.flush();
+                                continue;
+                            }
                         }
                         appender.do_log(msg.as_ref());
                     }
