@@ -15,12 +15,15 @@ fn main(){
     for _ in 0..20000 {
         log::info!("Commencing yak shaving");
     }
-    /// Even if the capacity is not reached, a log is forced to save
-    let wg = fast_log::flush().unwrap();
-    /// wait save end,or you can use
-    /// let wait = fast_log::init_split_log(...);
-    /// wait.wait();
-    ///
-    wg.wait();
+
+    log::logger().flush();
+
+    // /// Even if the capacity is not reached, a log is forced to save
+    // let wg = fast_log::flush().unwrap();
+    // /// wait save end,or you can use
+    // /// let wait = fast_log::init_split_log(...);
+    // /// wait.wait();
+    // ///
+    // wg.wait();
     println!("you can see log files in path: {}","target/logs/")
 }
