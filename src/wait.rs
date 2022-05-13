@@ -26,3 +26,9 @@ impl FastLogWaitGroup {
         crate::fast_log::exit();
     }
 }
+
+impl Default for FastLogWaitGroup {
+    fn default() -> Self {
+        Self::new()
+    }
+}

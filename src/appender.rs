@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local, Utc, Timelike, Duration};
+use chrono::{DateTime, Utc, Duration};
 use log::{LevelFilter};
 use std::time::SystemTime;
 use std::ops::{Add, Sub};
@@ -13,7 +13,7 @@ pub trait LogAppender: Send {
     fn do_log(&self, record: &FastLogRecord);
 
     /// flush or do nothing
-    fn flush(&self){}
+    fn flush(&self) {}
 
     fn type_name(&self) -> &'static str {
         std::any::type_name::<Self>()
@@ -53,13 +53,12 @@ pub struct FastLogFormatRecord {
 
 impl RecordFormat for FastLogFormatRecord {
     fn do_format(&self, arg: &mut FastLogRecord) -> String {
-        match arg.command{
+        match arg.command {
             CommandRecord => {
-                let data;
                 let now: DateTime<Utc> = chrono::DateTime::from(arg.now);
                 let now = now.add(self.duration).naive_utc().to_string();
-                if arg.level.to_level_filter() <= self.display_file {
-                    data = format!(
+                let data = if arg.level.to_level_filter() <= self.display_file {
+                    format!(
                         "{:26} {} {} - {}  {}:{}\n",
                         &now,
                         arg.level,
@@ -67,19 +66,20 @@ impl RecordFormat for FastLogFormatRecord {
                         arg.args,
                         arg.file,
                         arg.line.unwrap_or_default()
-                    );
+                    )
                 } else {
-                    data = format!(
+                    format!(
                         "{:26} {} {} - {}\n",
                         &now, arg.level, arg.module_path, arg.args
-                    );
-                }
+                    )
+                };
                 return data;
             }
+            // fixme: can we use _ => { String::new() } instead ?
             Command::CommandExit => {}
             Command::CommandFlush(_) => {}
         }
-        return String::new();
+        String::new()
     }
 }
 
@@ -95,5 +95,11 @@ impl FastLogFormatRecord {
             duration: Self::local_duration(),
             display_file: LevelFilter::Warn,
         }
+    }
+}
+
+impl Default for FastLogFormatRecord {
+    fn default() -> Self {
+        Self::new()
     }
 }

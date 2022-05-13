@@ -1,24 +1,20 @@
 use crate::plugin::file_split::Packer;
 use std::fs::File;
 use crate::error::LogError;
-use std::io::{BufReader, Write, BufRead, Error};
-use std::io::prelude::*;
 
 /// keep temp{date}.log
-pub struct LogPacker {
+pub struct LogPacker {}
 
-}
 impl Packer for LogPacker {
     fn pack_name(&self) -> &'static str {
         "log"
     }
 
-    fn do_pack(&self, mut log_file: File, log_file_path: &str) -> Result<bool, LogError> {
+    fn do_pack(&self, log_file: File, log_file_path: &str) -> Result<bool, LogError> {
         //do nothing,and not remove file
-        return Ok(false);
+        Ok(false)
     }
 }
-
 
 
 #[cfg(feature = "zip")]
@@ -56,7 +52,7 @@ impl Packer for ZipPacker {
         let mut zip = zip::ZipWriter::new(zip_file);
         zip.start_file(log_name, FileOptions::default());
         //buf reader
-        std::io::copy(&mut log_file,&mut zip);
+        std::io::copy(&mut log_file, &mut zip);
         zip.flush();
         let finish: ZipResult<File> = zip.finish();
         if finish.is_err() {
@@ -111,7 +107,7 @@ impl Packer for LZ4Packer {
             .build(lz4_file)?;
         // io::copy(&mut lz4_file, &mut encoder)?;
         //buf reader
-        std::io::copy(&mut log_file,&mut encoder);
+        std::io::copy(&mut log_file, &mut encoder);
         let (_output, result) = encoder.finish();
         if result.is_err() {
             return Err(LogError::from(format!("[fast_log] try zip fail{:?}", result.err())));
@@ -131,7 +127,7 @@ use flate2::Compression;
 pub struct GZipPacker {}
 
 #[cfg(feature = "gzip")]
-impl Packer for GZipPacker{
+impl Packer for GZipPacker {
     fn pack_name(&self) -> &'static str {
         "gz"
     }
@@ -152,8 +148,8 @@ impl Packer for GZipPacker{
         }
         let mut zip_file = zip_file.unwrap();
         //write zip bytes data
-        let mut zip = GzEncoder::new(&zip_file,Compression::default());
-        std::io::copy(&mut log_file,&mut zip);
+        let mut zip = GzEncoder::new(&zip_file, Compression::default());
+        std::io::copy(&mut log_file, &mut zip);
         zip.flush();
         let finish = zip.finish();
         if finish.is_err() {

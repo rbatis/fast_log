@@ -8,7 +8,7 @@ pub struct NoFilter {}
 
 impl Filter for NoFilter {
     fn filter(&self, module: &log::Record) -> bool {
-        return false;
+        false
     }
 }
 
@@ -61,6 +61,6 @@ impl Filter for ModuleFilter {
             return false;
         }
         //not filter
-        return false;
+        false
     }
 }

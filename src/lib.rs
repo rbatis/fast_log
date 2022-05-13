@@ -14,7 +14,7 @@ pub mod wait;
 pub mod runtime;
 pub mod config;
 
-pub use fast_log::*;
-pub use runtime::*;
+pub use crate::fast_log::*;
+pub use crate::runtime::*;
 pub use crate::config::Config;
 

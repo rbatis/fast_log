@@ -1,22 +1,12 @@
-use std::any::Any;
-use std::borrow::Borrow;
-use std::cell::UnsafeCell;
 use std::sync::atomic::AtomicI32;
 use log::{Level, Log, Metadata, Record};
-use parking_lot::RwLock;
 
-use crate::appender::{Command, FastLogFormatRecord, FastLogRecord, LogAppender, RecordFormat};
-use crate::consts::LogSize;
+use crate::appender::{Command, FastLogRecord};
 use crate::error::LogError;
-use crate::filter::{Filter, NoFilter};
-use crate::plugin::console::ConsoleAppender;
-use crate::plugin::file::FileAppender;
-use crate::plugin::file_split::{FileSplitAppender, RollingType, Packer};
-use crate::wait::FastLogWaitGroup;
+use crate::filter::{Filter};
 use std::result::Result::Ok;
-use std::time::{SystemTime, Duration};
+use std::time::{SystemTime};
 use std::sync::Arc;
-use std::sync::mpsc::SendError;
 use crossbeam_utils::sync::WaitGroup;
 use once_cell::sync::{Lazy, OnceCell};
 use crate::{chan, Receiver, Sender, spawn};
@@ -85,29 +75,24 @@ impl log::Log for Logger {
     fn log(&self, record: &Record) {
         //send
         let f = LOG_SENDER.filter.get();
-        if f.is_some() {
-            if !f.as_ref().unwrap().filter(record) {
-                let fast_log_record = FastLogRecord {
-                    command: Command::CommandRecord,
-                    level: record.level(),
-                    target: record.metadata().target().to_string(),
-                    args: record.args().to_string(),
-                    module_path: record.module_path().unwrap_or_default().to_string(),
-                    file: record.file().unwrap_or_default().to_string(),
-                    line: record.line().clone(),
-                    now: SystemTime::now(),
-                    formated: String::new(),
-                };
-                LOG_SENDER.send.send(fast_log_record);
-            }
+        if f.is_some() && !f.as_ref().unwrap().filter(record) {
+            let fast_log_record = FastLogRecord {
+                command: Command::CommandRecord,
+                level: record.level(),
+                target: record.metadata().target().to_string(),
+                args: record.args().to_string(),
+                module_path: record.module_path().unwrap_or_default().to_string(),
+                file: record.file().unwrap_or_default().to_string(),
+                line: record.line(),
+                now: SystemTime::now(),
+                formated: String::new(),
+            };
+            LOG_SENDER.send.send(fast_log_record);
         }
     }
     fn flush(&self) {
-        match flush() {
-            Ok(v) => {
-                v.wait();
-            }
-            Err(_) => {}
+        if let Ok(v) = flush() {
+            v.wait();
         }
     }
 }
@@ -121,7 +106,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     if config.appenders.is_empty() {
         return Err(LogError::from("[fast_log] appenders can not be empty!"));
     }
-    set_log(config.level.clone(), config.filter);
+    set_log(config.level, config.filter);
     //main recv data
     let appenders = config.appenders;
     let format = config.format;
@@ -174,9 +159,9 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     });
     let r = log::set_logger(&LOGGER).map(|()| log::set_max_level(level.to_level_filter()));
     if r.is_err() {
-        return Err(LogError::from(r.err().unwrap()));
+        Err(LogError::from(r.err().unwrap()))
     } else {
-        return Ok(&LOGGER);
+        Ok(&LOGGER)
     }
 }
 
@@ -193,13 +178,10 @@ pub fn exit() -> Result<(), LogError> {
         formated: String::new(),
     };
     let result = LOG_SENDER.send.send(fast_log_record);
-    match result {
-        Ok(()) => {
-            return Ok(());
-        }
-        _ => {}
+    if let Ok(()) = result {
+        return Ok(());
     }
-    return Err(LogError::E("[fast_log] exit fail!".to_string()));
+    Err(LogError::E("[fast_log] exit fail!".to_string()))
 }
 
 
@@ -217,11 +199,8 @@ pub fn flush() -> Result<WaitGroup, LogError> {
         formated: String::new(),
     };
     let result = LOG_SENDER.send.send(fast_log_record);
-    match result {
-        Ok(()) => {
-            return Ok(wg);
-        }
-        _ => {}
+    if let Ok(()) = result {
+        return Ok(wg);
     }
-    return Err(LogError::E("[fast_log] flush fail!".to_string()));
+    Err(LogError::E("[fast_log] flush fail!".to_string()))
 }
