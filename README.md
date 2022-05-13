@@ -84,13 +84,25 @@ fast_log = {version = "1.4" , features = ["lz4","zip","gzip"]}
 
 
 
-#### Use Log
+#### Use Log(Console)
 
 ```rust
 use fast_log::{init_log};
 use log::{error, info, warn};
 fn  main(){
     let log = fast_log::init(Config::new().console()).unwrap();
+    log::info!("Commencing yak shaving{}", 0);
+    info!("Commencing yak shaving");
+}
+```
+
+#### Use Log(File)
+
+```rust
+use fast_log::{init_log};
+use log::{error, info, warn};
+fn  main(){
+    let log = fast_log::init(Config::new().file("target/test.log")).unwrap();
     log::info!("Commencing yak shaving{}", 0);
     info!("Commencing yak shaving");
 }
