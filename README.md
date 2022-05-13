@@ -128,7 +128,7 @@ pub fn test_file_compation() {
     for _ in 0..200000 {
         info!("Commencing yak shaving");
     }
-    sleep(Duration::from_secs(1));
+    log::logger().flush();
 }
 ```
 
@@ -149,6 +149,6 @@ impl LogAppender for CustomLog{
 fn  main(){
     let wait = fast_log::init(Config::new().custom(CustomLog {})).unwrap();
     info!("Commencing yak shaving");
-    sleep(std::time::Duration::from_secs(1));
+    log::logger().flush();
 }
 ```
