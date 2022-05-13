@@ -3,7 +3,6 @@ use std::borrow::Borrow;
 use std::cell::UnsafeCell;
 use std::sync::atomic::AtomicI32;
 use log::{Level, Log, Metadata, Record};
-use parking_lot::RwLock;
 
 use crate::appender::{Command, FastLogFormatRecord, FastLogRecord, LogAppender, RecordFormat};
 use crate::consts::LogSize;
