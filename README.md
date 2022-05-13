@@ -90,7 +90,7 @@ fast_log = {version = "1.4" , features = ["lz4","zip","gzip"]}
 use fast_log::{init_log};
 use log::{error, info, warn};
 fn  main(){
-    let log = fast_log::init(Config::new().console()).unwrap();
+    fast_log::init(Config::new().console()).unwrap();
     log::info!("Commencing yak shaving{}", 0);
     info!("Commencing yak shaving");
 }
@@ -102,7 +102,7 @@ fn  main(){
 use fast_log::{init_log};
 use log::{error, info, warn};
 fn  main(){
-    let log = fast_log::init(Config::new().file("target/test.log")).unwrap();
+    fast_log::init(Config::new().file("target/test.log")).unwrap();
     log::info!("Commencing yak shaving{}", 0);
     info!("Commencing yak shaving");
 }
