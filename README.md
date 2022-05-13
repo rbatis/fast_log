@@ -110,7 +110,7 @@ fn  main(){
 
 
 
-##### split log, allow_zip_compress = Zip compression
+#### Split Log(.log packer)
 
 ```rust
 use fast_log::plugin::file_split::RollingType;
@@ -134,7 +134,7 @@ pub fn test_file_compation() {
 
 
 
-##### Custom Log
+##### Custom Log(impl do_log method)
 
 ```rust
 use fast_log::{LogAppender};
