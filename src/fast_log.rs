@@ -1,20 +1,12 @@
-use std::any::Any;
-use std::borrow::Borrow;
-use std::cell::UnsafeCell;
 use std::sync::atomic::AtomicI32;
 use log::{Level, Log, Metadata, Record};
 
-use crate::appender::{Command, FastLogFormatRecord, FastLogRecord, LogAppender, RecordFormat};
-use crate::consts::LogSize;
+use crate::appender::{Command, FastLogRecord};
 use crate::error::LogError;
-use crate::filter::{Filter, NoFilter};
-use crate::plugin::console::ConsoleAppender;
-use crate::plugin::file::FileAppender;
-use crate::plugin::file_split::{FileSplitAppender, RollingType, Packer};
+use crate::filter::{Filter};
 use std::result::Result::Ok;
-use std::time::{SystemTime, Duration};
+use std::time::{SystemTime};
 use std::sync::Arc;
-use std::sync::mpsc::SendError;
 use crossbeam_utils::sync::WaitGroup;
 use once_cell::sync::{Lazy, OnceCell};
 use crate::{chan, Receiver, Sender, spawn};

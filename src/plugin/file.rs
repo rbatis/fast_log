@@ -1,6 +1,6 @@
 use crate::appender::{FastLogRecord, LogAppender};
 use std::cell::RefCell;
-use std::fs::{File, OpenOptions, DirBuilder};
+use std::fs::{File, OpenOptions};
 use std::io::Write;
 
 /// only write append into file

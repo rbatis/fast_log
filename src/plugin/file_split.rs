@@ -1,6 +1,6 @@
 use std::cell::RefCell;
-use std::fs::{DirBuilder, DirEntry, File, OpenOptions};
-use std::io::{BufRead, BufReader, Seek, SeekFrom, Write, Error};
+use std::fs::{DirEntry, File, OpenOptions};
+use std::io::{Seek, SeekFrom, Write};
 
 use chrono::{Local, NaiveDateTime};
 
@@ -190,7 +190,7 @@ impl FileSplitAppender {
         if !dir_path.is_empty() {
             std::fs::create_dir_all(&dir_path);
         }
-        let mut file_name = temp_file_name.trim_end_matches(".log");
+        let file_name = temp_file_name.trim_end_matches(".log");
         let first_file_path = format!("{}{}.log", &dir_path, file_name);
         let file = OpenOptions::new()
             .create(true)
@@ -228,7 +228,7 @@ impl FileSplitAppender {
 impl LogAppender for FileSplitAppender {
     fn do_log(&self, record: &FastLogRecord) {
         let mut data = self.cell.borrow_mut();
-        if (data.temp_bytes >= data.max_split_bytes){
+        if data.temp_bytes >= data.max_split_bytes {
             data.send_pack();
             return;
         }
