@@ -1,7 +1,5 @@
 use fast_log::consts::LogSize;
 use fast_log::plugin::file_split::RollingType;
-use std::thread::sleep;
-use std::time::Duration;
 use fast_log::config::Config;
 use fast_log::plugin::packer::GZipPacker;
 

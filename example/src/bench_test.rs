@@ -1,14 +1,12 @@
-use fast_log::filter::NoFilter;
-use fast_log::appender::{FastLogFormatRecord, LogAppender, FastLogRecord};
-use std::time::{Instant, Duration};
+use fast_log::appender::{LogAppender, FastLogRecord};
+use std::time::{Instant};
 use fast_log::bencher::QPS;
 use fast_log::config::Config;
-use fast_log::sleep;
 
 struct BenchRecvLog {}
 
 impl LogAppender for BenchRecvLog {
-    fn do_log(&self, record: &FastLogRecord) {
+    fn do_log(&self, _: &FastLogRecord) {
         //do nothing
     }
 }
