@@ -1,6 +1,6 @@
+use crate::error::LogError;
 use crate::plugin::file_split::Packer;
 use std::fs::File;
-use crate::error::LogError;
 
 /// keep temp{date}.log
 pub struct LogPacker {}
@@ -16,11 +16,10 @@ impl Packer for LogPacker {
     }
 }
 
-
-#[cfg(feature = "zip")]
-use zip::write::FileOptions;
 #[cfg(feature = "zip")]
 use zip::result::ZipResult;
+#[cfg(feature = "zip")]
+use zip::write::FileOptions;
 
 /// you need enable fast_log = { ... ,features=["zip"]}
 /// the zip compress
@@ -57,12 +56,14 @@ impl Packer for ZipPacker {
         let finish: ZipResult<File> = zip.finish();
         if finish.is_err() {
             //println!("[fast_log] try zip fail{:?}", finish.err());
-            return Err(LogError::from(format!("[fast_log] try zip fail{:?}", finish.err())));
+            return Err(LogError::from(format!(
+                "[fast_log] try zip fail{:?}",
+                finish.err()
+            )));
         }
         return Ok(true);
     }
 }
-
 
 /// you need enable fast_log = { ... ,features=["lz4"]}
 #[cfg(feature = "lz4")]
@@ -102,26 +103,25 @@ impl Packer for LZ4Packer {
         let mut lz4_file = lz4_file.unwrap();
         //write lz4 bytes data
 
-        let mut encoder = EncoderBuilder::new()
-            .level(0)
-            .build(lz4_file)?;
+        let mut encoder = EncoderBuilder::new().level(0).build(lz4_file)?;
         // io::copy(&mut lz4_file, &mut encoder)?;
         //buf reader
         std::io::copy(&mut log_file, &mut encoder);
         let (_output, result) = encoder.finish();
         if result.is_err() {
-            return Err(LogError::from(format!("[fast_log] try zip fail{:?}", result.err())));
+            return Err(LogError::from(format!(
+                "[fast_log] try zip fail{:?}",
+                result.err()
+            )));
         }
         return Ok(true);
     }
 }
 
-
 #[cfg(feature = "gzip")]
 use flate2::write::GzEncoder;
 #[cfg(feature = "gzip")]
 use flate2::Compression;
-
 
 #[cfg(feature = "gzip")]
 pub struct GZipPacker {}
@@ -153,7 +153,10 @@ impl Packer for GZipPacker {
         zip.flush();
         let finish = zip.finish();
         if finish.is_err() {
-            return Err(LogError::from(format!("[fast_log] try zip fail{:?}", finish.err())));
+            return Err(LogError::from(format!(
+                "[fast_log] try zip fail{:?}",
+                finish.err()
+            )));
         }
         return Ok(true);
     }

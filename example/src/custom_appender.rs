@@ -1,10 +1,10 @@
-use std::time::Duration;
-use fast_log::appender::{FastLogFormatRecord, LogAppender, FastLogRecord};
+use chrono::{DateTime, Local};
+use fast_log::appender::{FastLogFormatRecord, FastLogRecord, LogAppender};
+use fast_log::config::Config;
 use fast_log::filter::NoFilter;
 use log::Level;
 use std::thread::sleep;
-use chrono::{DateTime, Local};
-use fast_log::config::Config;
+use std::time::Duration;
 
 struct CustomLog {}
 
@@ -16,11 +16,7 @@ impl LogAppender for CustomLog {
             Level::Warn | Level::Error => {
                 data = format!(
                     "{} {} {} - {}  {}\n",
-                    now,
-                    record.level,
-                    record.module_path,
-                    record.args,
-                    record.formated
+                    now, record.level, record.module_path, record.args, record.formated
                 );
             }
             _ => {

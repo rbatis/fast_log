@@ -1,14 +1,14 @@
-use std::time::Duration;
-use fast_log::appender::{FastLogFormatRecord, LogAppender, FastLogRecord};
+use chrono::{DateTime, Local};
+use fast_log::appender::{FastLogFormatRecord, FastLogRecord, LogAppender};
+use fast_log::config::Config;
 use fast_log::filter::NoFilter;
 use log::Level;
 use std::thread::sleep;
-use chrono::{DateTime, Local};
+use std::time::Duration;
 use tokio::runtime::Runtime;
-use fast_log::config::Config;
 
 struct CustomLog {
-    rt:Runtime
+    rt: Runtime,
 }
 
 impl LogAppender for CustomLog {
@@ -19,11 +19,7 @@ impl LogAppender for CustomLog {
             Level::Warn | Level::Error => {
                 data = format!(
                     "{} {} {} - {}  {}\n",
-                    now,
-                    record.level,
-                    record.module_path,
-                    record.args,
-                    record.formated
+                    now, record.level, record.module_path, record.args, record.formated
                 );
             }
             _ => {
@@ -42,9 +38,15 @@ impl LogAppender for CustomLog {
 
 #[tokio::main]
 async fn main() {
-     fast_log::init(Config::new().custom(CustomLog {
-        rt: tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap()
-    })).unwrap();
+    fast_log::init(
+        Config::new().custom(CustomLog {
+            rt: tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .unwrap(),
+        }),
+    )
+    .unwrap();
     log::info!("Commencing yak shaving");
     log::error!("Commencing error");
     log::logger().flush();

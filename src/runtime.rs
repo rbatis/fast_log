@@ -27,11 +27,17 @@ pub fn sleep(d: Duration) {
 }
 
 #[cfg(not(feature = "mco"))]
-pub fn spawn<F>(f: F) -> JoinHandle<()> where F: FnOnce() + std::marker::Send + 'static {
+pub fn spawn<F>(f: F) -> JoinHandle<()>
+where
+    F: FnOnce() + std::marker::Send + 'static,
+{
     std::thread::spawn(f)
 }
 
 #[cfg(not(feature = "mco"))]
-pub fn spawn_stack_size<F>(f: F, stack_size:usize) -> JoinHandle<()> where F: FnOnce() + std::marker::Send + 'static {
+pub fn spawn_stack_size<F>(f: F, stack_size: usize) -> JoinHandle<()>
+where
+    F: FnOnce() + std::marker::Send + 'static,
+{
     std::thread::spawn(f)
 }

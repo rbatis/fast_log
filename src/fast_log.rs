@@ -1,20 +1,18 @@
-use std::sync::atomic::AtomicI32;
 use log::{Level, Log, Metadata, Record};
+use std::sync::atomic::AtomicI32;
 
 use crate::appender::{Command, FastLogRecord};
+use crate::config::Config;
 use crate::error::LogError;
-use crate::filter::{Filter};
-use std::result::Result::Ok;
-use std::time::{SystemTime};
-use std::sync::Arc;
+use crate::filter::Filter;
+use crate::{chan, spawn, Receiver, Sender};
 use crossbeam_utils::sync::WaitGroup;
 use once_cell::sync::{Lazy, OnceCell};
-use crate::{chan, Receiver, Sender, spawn};
-use crate::config::Config;
+use std::result::Result::Ok;
+use std::sync::Arc;
+use std::time::SystemTime;
 
-pub static LOG_SENDER: Lazy<LoggerSender> = Lazy::new(|| {
-    LoggerSender::new_def()
-});
+pub static LOG_SENDER: Lazy<LoggerSender> = Lazy::new(|| LoggerSender::new_def());
 
 pub struct LoggerSender {
     pub filter: OnceCell<Box<dyn Filter>>,
@@ -101,7 +99,6 @@ static LOGGER: Logger = Logger {
     level: AtomicI32::new(1),
 };
 
-
 pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     if config.appenders.is_empty() {
         return Err(LogError::from("[fast_log] appenders can not be empty!"));
@@ -120,21 +117,19 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
             recever_vec.push((r, a));
         }
         for (recever, appender) in recever_vec {
-            spawn(move || {
-                loop {
-                    if let Ok(msg) = recever.recv() {
-                        match msg.command {
-                            Command::CommandRecord => {}
-                            Command::CommandExit => {
-                                break;
-                            }
-                            Command::CommandFlush(_) => {
-                                appender.flush();
-                                continue;
-                            }
+            spawn(move || loop {
+                if let Ok(msg) = recever.recv() {
+                    match msg.command {
+                        Command::CommandRecord => {}
+                        Command::CommandExit => {
+                            break;
                         }
-                        appender.do_log(msg.as_ref());
+                        Command::CommandFlush(_) => {
+                            appender.flush();
+                            continue;
+                        }
                     }
+                    appender.do_log(msg.as_ref());
                 }
             });
         }
@@ -183,7 +178,6 @@ pub fn exit() -> Result<(), LogError> {
     }
     Err(LogError::E("[fast_log] exit fail!".to_string()))
 }
-
 
 pub fn flush() -> Result<WaitGroup, LogError> {
     let wg = WaitGroup::new();

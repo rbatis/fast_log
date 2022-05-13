@@ -6,10 +6,10 @@ use chrono::{Local, NaiveDateTime};
 
 use crate::appender::{Command, FastLogRecord, LogAppender};
 use crate::consts::LogSize;
-use std::ops::{Deref, Sub};
-use std::time::Duration;
 use crate::error::LogError;
 use crate::{chan, Receiver, Sender};
+use std::ops::{Deref, Sub};
+use std::time::Duration;
 
 /// .zip or .lz4 or any one packer
 pub trait Packer: Send {
@@ -17,7 +17,9 @@ pub trait Packer: Send {
     //return bool: remove_log_file
     fn do_pack(&self, log_file: File, log_file_path: &str) -> Result<bool, LogError>;
     /// default 0 is not retry pack. if retry > 0 ,it will trying rePack
-    fn retry(&self) -> i32 { 0 }
+    fn retry(&self) -> i32 {
+        0
+    }
 }
 
 /// split log file allow compress log
@@ -54,7 +56,9 @@ impl RollingType {
             for path in paths.flatten() {
                 if let Some(v) = path.file_name().to_str() {
                     //filter temp.log and not start with temp
-                    if (v.ends_with(".log") && v.trim_end_matches(".log").ends_with(temp_name)) || !v.starts_with(temp_name) {
+                    if (v.ends_with(".log") && v.trim_end_matches(".log").ends_with(temp_name))
+                        || !v.starts_with(temp_name)
+                    {
                         continue;
                     }
                 }
@@ -167,7 +171,8 @@ impl FileSplitAppender {
         let mut dir_path = file_path.to_owned();
         let mut temp_file_name = dir_path.to_string();
         if dir_path.contains('/') {
-            let new_dir_path = dir_path[0..dir_path.rfind('/').unwrap_or_default()].to_string() + "/";
+            let new_dir_path =
+                dir_path[0..dir_path.rfind('/').unwrap_or_default()].to_string() + "/";
             std::fs::create_dir_all(&new_dir_path);
             temp_file_name = dir_path.trim_start_matches(&new_dir_path).to_string();
             dir_path = new_dir_path;
