@@ -12,7 +12,6 @@ use crate::filter::{Filter, NoFilter};
 use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
 use crate::plugin::file_split::{FileSplitAppender, RollingType, Packer};
-use crate::wait::FastLogWaitGroup;
 use std::result::Result::Ok;
 use std::time::{SystemTime, Duration};
 use std::sync::Arc;
