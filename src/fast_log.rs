@@ -1,5 +1,5 @@
 use std::sync::atomic::AtomicI32;
-use log::{Level, Log, Metadata, Record};
+use log::{Level, LevelFilter, Log, Metadata, Record};
 
 use crate::appender::{Command, FastLogRecord};
 use crate::error::LogError;
@@ -37,7 +37,7 @@ impl LoggerSender {
     }
 }
 
-fn set_log(level: log::Level, filter: Box<dyn Filter>) {
+fn set_log(level: log::LevelFilter, filter: Box<dyn Filter>) {
     LOGGER.set_level(level);
     LOG_SENDER.set_filter(filter);
 }
@@ -47,18 +47,19 @@ pub struct Logger {
 }
 
 impl Logger {
-    pub fn set_level(&self, level: log::Level) {
+    pub fn set_level(&self, level: LevelFilter) {
         self.level
             .swap(level as i32, std::sync::atomic::Ordering::Relaxed);
     }
 
-    pub fn get_level(&self) -> log::Level {
+    pub fn get_level(&self) -> LevelFilter {
         match self.level.load(std::sync::atomic::Ordering::Relaxed) {
-            1 => Level::Error,
-            2 => Level::Warn,
-            3 => Level::Info,
-            4 => Level::Debug,
-            5 => Level::Trace,
+            0 => LevelFilter::Off,
+            1 => LevelFilter::Error,
+            2 => LevelFilter::Warn,
+            3 => LevelFilter::Info,
+            4 => LevelFilter::Debug,
+            5 => LevelFilter::Trace,
             _ => panic!("error log level!"),
         }
     }
@@ -68,7 +69,7 @@ impl Logger {
     }
 }
 
-impl log::Log for Logger {
+impl Log for Logger {
     fn enabled(&self, metadata: &Metadata) -> bool {
         metadata.level() <= self.get_level()
     }
@@ -162,7 +163,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
             }
         }
     });
-    let r = log::set_logger(&LOGGER).map(|()| log::set_max_level(level.to_level_filter()));
+    let r = log::set_logger(&LOGGER).map(|()| log::set_max_level(level));
     if r.is_err() {
         return Err(LogError::from(r.err().unwrap()));
     } else {

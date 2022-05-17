@@ -1,4 +1,4 @@
-use log::Level;
+use log::{Level, LevelFilter};
 use crate::appender::{FastLogFormatRecord, LogAppender, RecordFormat};
 use crate::consts::LogSize;
 use crate::filter::{Filter, NoFilter};
@@ -9,7 +9,7 @@ use crate::plugin::file_split::{FileSplitAppender, Packer, RollingType};
 
 pub struct Config {
     pub appenders: Vec<Box<dyn LogAppender>>,
-    pub level: log::Level,
+    pub level: LevelFilter,
     pub filter: Box<dyn Filter>,
     pub format: Box<dyn RecordFormat>,
 }
@@ -18,7 +18,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             appenders: vec![],
-            level: Level::Info,
+            level: LevelFilter::Info,
             filter: Box::new(NoFilter {}),
             format: Box::new(FastLogFormatRecord::new()),
         }
@@ -30,7 +30,7 @@ impl Config {
         Self::default()
     }
 
-    pub fn level(mut self, level: Level) -> Self {
+    pub fn level(mut self, level: LevelFilter) -> Self {
         self.level = level;
         self
     }
