@@ -228,35 +228,6 @@ impl FileSplitAppender {
 }
 
 impl LogAppender for FileSplitAppender {
-    fn do_logs(&self, records: &[Arc<FastLogRecord>]) {
-        if records.len() > 0 {
-            let mut first = FastLogRecord {
-                command: Command::CommandRecord,
-                level: log::Level::Info,
-                target: "".to_string(),
-                args: "".to_string(),
-                module_path: "".to_string(),
-                file: "".to_string(),
-                line: None,
-                now: SystemTime::now(),
-                formated: "".to_string(),
-            };
-            let mut buf = String::new();
-            for x in records {
-                buf.push_str(&x.formated);
-                match &x.command {
-                    Command::CommandRecord => {}
-                    Command::CommandExit => {}
-                    Command::CommandFlush(wg) => {
-                        first.command = CommandFlush(wg.clone());
-                    }
-                }
-            }
-            first.formated = buf;
-            self.do_log(&first);
-        }
-    }
-
     fn do_log(&self, record: &FastLogRecord) {
         let mut data = self.cell.borrow_mut();
         if data.temp_bytes >= data.max_split_bytes {
