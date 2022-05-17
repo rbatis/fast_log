@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicI64, AtomicUsize, Ordering};
 use log::{Level, LevelFilter};
 use crate::appender::{FastLogFormatRecord, LogAppender, RecordFormat};
 use crate::consts::LogSize;
@@ -12,6 +13,7 @@ pub struct Config {
     pub level: LevelFilter,
     pub filter: Box<dyn Filter>,
     pub format: Box<dyn RecordFormat>,
+    pub batch_len: AtomicUsize,
 }
 
 impl Default for Config {
@@ -21,6 +23,7 @@ impl Default for Config {
             level: LevelFilter::Info,
             filter: Box::new(NoFilter {}),
             format: Box::new(FastLogFormatRecord::new()),
+            batch_len: AtomicUsize::new(100),
         }
     }
 }
@@ -64,6 +67,11 @@ impl Config {
 
     pub fn custom<Appender: LogAppender + 'static>(mut self, arg: Appender) -> Self {
         self.appenders.push(Box::new(arg));
+        self
+    }
+
+    pub fn batch_len(mut self, len: usize) -> Self {
+        self.batch_len.store(len,Ordering::SeqCst);
         self
     }
 }

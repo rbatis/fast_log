@@ -1,4 +1,4 @@
-use std::sync::atomic::AtomicI32;
+use std::sync::atomic::{AtomicI32, Ordering};
 use log::{Level, LevelFilter, Log, Metadata, Record};
 
 use crate::appender::{Command, FastLogRecord};
@@ -117,6 +117,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     let appenders = config.appenders;
     let format = config.format;
     let level = config.level;
+    let batch_len = Arc::new(config.batch_len);
     std::thread::spawn(move || {
         let mut recever_vec = vec![];
         let mut sender_vec: Vec<Sender<Arc<FastLogRecord>>> = vec![];
@@ -126,8 +127,37 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
             recever_vec.push((r, a));
         }
         for (recever, appender) in recever_vec {
+            let batch_len = batch_len.clone();
             spawn(move || {
                 loop {
+                    //batch fetch
+                    if recever.len() > batch_len.load(Ordering::SeqCst) {
+                        let mut exit = false;
+                        let mut buf = vec![];
+                        loop {
+                            if let Ok(msg) = recever.try_recv() {
+                                match msg.command {
+                                    Command::CommandRecord => {}
+                                    Command::CommandExit => {
+                                        exit = true;
+                                        break;
+                                    }
+                                    Command::CommandFlush(_) => {
+                                        appender.flush();
+                                        continue;
+                                    }
+                                }
+                                buf.push(msg);
+                            } else {
+                                break;
+                            }
+                        }
+                        appender.do_logs(&buf);
+                        if exit {
+                            break;
+                        }
+                    }
+
                     if let Ok(msg) = recever.recv() {
                         match msg.command {
                             Command::CommandRecord => {}

@@ -2,6 +2,7 @@ use crate::appender::{FastLogRecord, LogAppender};
 use std::cell::RefCell;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
+use std::sync::Arc;
 
 /// only write append into file
 pub struct FileAppender {
@@ -28,6 +29,15 @@ impl FileAppender {
 }
 
 impl LogAppender for FileAppender {
+    fn do_logs(&self, records: &[Arc<FastLogRecord>]) {
+        let mut log_file = self.file.borrow_mut();
+        let mut buf = String::new();
+        for x in records {
+            buf.push_str(&x.formated);
+        }
+        log_file.write_all(buf.as_bytes());
+    }
+
     fn do_log(&self, record: &FastLogRecord) {
         let mut log_file = self.file.borrow_mut();
         log_file.write_all(record.formated.as_bytes());
