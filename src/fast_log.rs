@@ -131,7 +131,8 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
             spawn(move || {
                 loop {
                     //batch fetch
-                    if recever.len() > batch_len.load(Ordering::SeqCst) {
+                    let batch_len = batch_len.load(Ordering::SeqCst);
+                    if recever.len() > batch_len {
                         let mut exit = false;
                         let mut buf = vec![];
                         loop {
@@ -148,6 +149,9 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                                     }
                                 }
                                 buf.push(msg);
+                                if buf.len() >= batch_len {
+                                    break;
+                                }
                             } else {
                                 break;
                             }
