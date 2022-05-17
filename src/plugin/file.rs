@@ -30,11 +30,7 @@ impl FileAppender {
 impl LogAppender for FileAppender {
     fn do_log(&self, record: &FastLogRecord) {
         let mut log_file = self.file.borrow_mut();
-        let mut buf = vec![];
-        for x in record.formated.bytes() {
-            buf.push(x);
-        }
-        log_file.write_all(buf.as_slice());
+        log_file.write_all(record.formated.as_bytes());
     }
 
     fn flush(&self) {
