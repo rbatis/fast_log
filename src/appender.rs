@@ -9,7 +9,7 @@ use crate::appender::Command::CommandRecord;
 /// LogAppender append logs
 /// Appender will be running on single main thread,please do_log for new thread or new an Future
 pub trait LogAppender: Send {
-    /// do many logs
+    /// Batch write log, default loop call do_log function. And of course you can rewrite it
     fn do_logs(&self, records: &[Arc<FastLogRecord>]){
         for x in records {
             self.do_log(x);
