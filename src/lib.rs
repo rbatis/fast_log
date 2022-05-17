@@ -10,7 +10,6 @@ pub mod error;
 pub mod fast_log;
 pub mod filter;
 pub mod plugin;
-pub mod wait;
 pub mod runtime;
 pub mod config;
 

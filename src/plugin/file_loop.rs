@@ -1,7 +1,4 @@
 use crate::appender::{FastLogRecord, LogAppender};
-use std::cell::RefCell;
-use std::fs::{File, OpenOptions, DirBuilder};
-use std::io::Write;
 use crate::consts::LogSize;
 use crate::plugin::file_split::{FileSplitAppender, RollingType};
 use crate::plugin::packer::LogPacker;

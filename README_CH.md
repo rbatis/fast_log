@@ -80,7 +80,7 @@ fn  main(){
     for _ in 0..200000 {
             info!("Commencing yak shaving");
         }
-    sleep(Duration::from_secs(1));
+    log::logger().flush();
     }
 ```
 
@@ -98,7 +98,7 @@ use log::{error, info, warn};
 fn  main(){
     fast_log::init_custom_log(vec![Box::new(CustomLog {})],  log::Level::Info, Box::new(NoFilter {}));
     info!("Commencing yak shaving");
-    sleep(std::time::Duration::from_secs(1));
+    log::logger().flush();
 }
 ```
 

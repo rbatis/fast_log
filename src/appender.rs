@@ -1,13 +1,21 @@
-use chrono::{DateTime, Local, Utc, Timelike, Duration};
+use chrono::{DateTime, Utc, Duration};
 use log::{LevelFilter};
 use std::time::SystemTime;
 use std::ops::{Add, Sub};
+use std::sync::Arc;
 use crossbeam_utils::sync::WaitGroup;
 use crate::appender::Command::CommandRecord;
 
 /// LogAppender append logs
 /// Appender will be running on single main thread,please do_log for new thread or new an Future
 pub trait LogAppender: Send {
+    /// Batch write log, default loop call do_log function. And of course you can rewrite it
+    fn do_logs(&self, records: &[Arc<FastLogRecord>]){
+        for x in records {
+            self.do_log(x);
+        }
+    }
+
     /// this method use one coroutines run this(Multiple appenders share one Appender).
     fn do_log(&self, record: &FastLogRecord);
 

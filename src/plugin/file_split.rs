@@ -1,15 +1,17 @@
 use std::cell::RefCell;
-use std::fs::{DirBuilder, DirEntry, File, OpenOptions};
-use std::io::{BufRead, BufReader, Seek, SeekFrom, Write, Error};
+use std::fs::{DirEntry, File, OpenOptions};
+use std::io::{Seek, SeekFrom, Write};
 
 use chrono::{Local, NaiveDateTime};
 
 use crate::appender::{Command, FastLogRecord, LogAppender};
 use crate::consts::LogSize;
-use std::ops::Sub;
-use std::time::Duration;
+use std::ops::{Deref, Sub};
+use std::sync::Arc;
+use std::time::{Duration, SystemTime};
 use crate::error::LogError;
 use crate::{chan, Receiver, Sender};
+use crate::appender::Command::CommandFlush;
 
 /// .zip or .lz4 or any one packer
 pub trait Packer: Send {
@@ -172,13 +174,13 @@ impl FileSplitAppender {
     ) -> FileSplitAppender {
         let mut dir_path = file_path.to_owned();
         let mut temp_file_name = dir_path.to_string();
-        if dir_path.contains("/"){
-            let new_dir_path = dir_path[0..dir_path.rfind("/").unwrap_or_default()].to_string()+"/";
+        if dir_path.contains("/") {
+            let new_dir_path = dir_path[0..dir_path.rfind("/").unwrap_or_default()].to_string() + "/";
             std::fs::create_dir_all(&new_dir_path);
             temp_file_name = dir_path.trim_start_matches(&new_dir_path).to_string();
             dir_path = new_dir_path;
         }
-        if temp_file_name.is_empty(){
+        if temp_file_name.is_empty() {
             temp_file_name = "temp.log".to_string();
         }
         if !dir_path.is_empty() && dir_path.ends_with(".log") {
@@ -190,7 +192,7 @@ impl FileSplitAppender {
         if !dir_path.is_empty() {
             std::fs::create_dir_all(&dir_path);
         }
-        let mut file_name = temp_file_name.trim_end_matches(".log");
+        let file_name = temp_file_name.trim_end_matches(".log");
         let first_file_path = format!("{}{}.log", &dir_path, file_name);
         let file = OpenOptions::new()
             .create(true)
@@ -210,7 +212,7 @@ impl FileSplitAppender {
         }
         file.seek(SeekFrom::Start(temp_bytes as u64));
         let (sender, receiver) = chan();
-        spawn_saver(file_name,receiver, packer);
+        spawn_saver(file_name, receiver, packer);
         Self {
             cell: RefCell::new(FileSplitAppenderData {
                 max_split_bytes: max_temp_size.get_len(),
@@ -219,7 +221,7 @@ impl FileSplitAppender {
                 file: file,
                 sender: sender,
                 rolling_type: rolling_type,
-                temp_name: file_name.to_string()
+                temp_name: file_name.to_string(),
             }),
         }
     }
@@ -228,11 +230,11 @@ impl FileSplitAppender {
 impl LogAppender for FileSplitAppender {
     fn do_log(&self, record: &FastLogRecord) {
         let mut data = self.cell.borrow_mut();
-        if (data.temp_bytes >= data.max_split_bytes){
+        if data.temp_bytes >= data.max_split_bytes {
             data.send_pack();
             return;
         }
-        match record.command{
+        match record.command {
             Command::CommandRecord => {}
             Command::CommandExit => {}
             Command::CommandFlush(_) => {
@@ -249,6 +251,7 @@ impl LogAppender for FileSplitAppender {
         data.file.flush();
         data.temp_bytes += write_bytes;
     }
+
     fn flush(&self) {
         let mut data = self.cell.borrow_mut();
         data.file.flush();

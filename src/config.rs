@@ -1,4 +1,5 @@
-use log::Level;
+use std::sync::atomic::{AtomicI64, AtomicUsize, Ordering};
+use log::{Level, LevelFilter};
 use crate::appender::{FastLogFormatRecord, LogAppender, RecordFormat};
 use crate::consts::LogSize;
 use crate::filter::{Filter, NoFilter};
@@ -9,18 +10,20 @@ use crate::plugin::file_split::{FileSplitAppender, Packer, RollingType};
 
 pub struct Config {
     pub appenders: Vec<Box<dyn LogAppender>>,
-    pub level: log::Level,
+    pub level: LevelFilter,
     pub filter: Box<dyn Filter>,
     pub format: Box<dyn RecordFormat>,
+    pub batch_len: AtomicUsize,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
             appenders: vec![],
-            level: Level::Info,
+            level: LevelFilter::Info,
             filter: Box::new(NoFilter {}),
             format: Box::new(FastLogFormatRecord::new()),
+            batch_len: AtomicUsize::new(100),
         }
     }
 }
@@ -30,7 +33,7 @@ impl Config {
         Self::default()
     }
 
-    pub fn level(mut self, level: Level) -> Self {
+    pub fn level(mut self, level: LevelFilter) -> Self {
         self.level = level;
         self
     }
@@ -64,6 +67,11 @@ impl Config {
 
     pub fn custom<Appender: LogAppender + 'static>(mut self, arg: Appender) -> Self {
         self.appenders.push(Box::new(arg));
+        self
+    }
+
+    pub fn batch_len(mut self, len: usize) -> Self {
+        self.batch_len.store(len,Ordering::SeqCst);
         self
     }
 }

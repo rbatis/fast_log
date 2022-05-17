@@ -1,22 +1,12 @@
-use std::any::Any;
-use std::borrow::Borrow;
-use std::cell::UnsafeCell;
-use std::sync::atomic::AtomicI32;
-use log::{Level, Log, Metadata, Record};
-use parking_lot::RwLock;
+use std::sync::atomic::{AtomicI32, Ordering};
+use log::{Level, LevelFilter, Log, Metadata, Record};
 
-use crate::appender::{Command, FastLogFormatRecord, FastLogRecord, LogAppender, RecordFormat};
-use crate::consts::LogSize;
+use crate::appender::{Command, FastLogRecord};
 use crate::error::LogError;
-use crate::filter::{Filter, NoFilter};
-use crate::plugin::console::ConsoleAppender;
-use crate::plugin::file::FileAppender;
-use crate::plugin::file_split::{FileSplitAppender, RollingType, Packer};
-use crate::wait::FastLogWaitGroup;
+use crate::filter::{Filter};
 use std::result::Result::Ok;
-use std::time::{SystemTime, Duration};
+use std::time::{SystemTime};
 use std::sync::Arc;
-use std::sync::mpsc::SendError;
 use crossbeam_utils::sync::WaitGroup;
 use once_cell::sync::{Lazy, OnceCell};
 use crate::{chan, Receiver, Sender, spawn};
@@ -47,7 +37,7 @@ impl LoggerSender {
     }
 }
 
-fn set_log(level: log::Level, filter: Box<dyn Filter>) {
+fn set_log(level: log::LevelFilter, filter: Box<dyn Filter>) {
     LOGGER.set_level(level);
     LOG_SENDER.set_filter(filter);
 }
@@ -57,18 +47,19 @@ pub struct Logger {
 }
 
 impl Logger {
-    pub fn set_level(&self, level: log::Level) {
+    pub fn set_level(&self, level: LevelFilter) {
         self.level
             .swap(level as i32, std::sync::atomic::Ordering::Relaxed);
     }
 
-    pub fn get_level(&self) -> log::Level {
+    pub fn get_level(&self) -> LevelFilter {
         match self.level.load(std::sync::atomic::Ordering::Relaxed) {
-            1 => Level::Error,
-            2 => Level::Warn,
-            3 => Level::Info,
-            4 => Level::Debug,
-            5 => Level::Trace,
+            0 => LevelFilter::Off,
+            1 => LevelFilter::Error,
+            2 => LevelFilter::Warn,
+            3 => LevelFilter::Info,
+            4 => LevelFilter::Debug,
+            5 => LevelFilter::Trace,
             _ => panic!("error log level!"),
         }
     }
@@ -78,7 +69,7 @@ impl Logger {
     }
 }
 
-impl log::Log for Logger {
+impl Log for Logger {
     fn enabled(&self, metadata: &Metadata) -> bool {
         metadata.level() <= self.get_level()
     }
@@ -126,6 +117,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     let appenders = config.appenders;
     let format = config.format;
     let level = config.level;
+    let batch_len = Arc::new(config.batch_len);
     std::thread::spawn(move || {
         let mut recever_vec = vec![];
         let mut sender_vec: Vec<Sender<Arc<FastLogRecord>>> = vec![];
@@ -135,8 +127,41 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
             recever_vec.push((r, a));
         }
         for (recever, appender) in recever_vec {
+            let batch_len = batch_len.clone();
             spawn(move || {
                 loop {
+                    //batch fetch
+                    let batch_len = batch_len.load(Ordering::SeqCst);
+                    if recever.len() > batch_len {
+                        let mut exit = false;
+                        let mut buf = vec![];
+                        loop {
+                            if let Ok(msg) = recever.try_recv() {
+                                match msg.command {
+                                    Command::CommandRecord => {}
+                                    Command::CommandExit => {
+                                        exit = true;
+                                        break;
+                                    }
+                                    Command::CommandFlush(_) => {
+                                        appender.flush();
+                                        continue;
+                                    }
+                                }
+                                buf.push(msg);
+                                if buf.len() >= batch_len {
+                                    break;
+                                }
+                            } else {
+                                break;
+                            }
+                        }
+                        appender.do_logs(&buf);
+                        if exit {
+                            break;
+                        }
+                    }
+
                     if let Ok(msg) = recever.recv() {
                         match msg.command {
                             Command::CommandRecord => {}
@@ -172,7 +197,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
             }
         }
     });
-    let r = log::set_logger(&LOGGER).map(|()| log::set_max_level(level.to_level_filter()));
+    let r = log::set_logger(&LOGGER).map(|()| log::set_max_level(level));
     if r.is_err() {
         return Err(LogError::from(r.err().unwrap()));
     } else {

@@ -1,8 +1,7 @@
 use crate::plugin::file_split::Packer;
 use std::fs::File;
 use crate::error::LogError;
-use std::io::{BufReader, Write, BufRead, Error};
-use std::io::prelude::*;
+use std::io::{Write};
 
 /// keep temp{date}.log
 pub struct LogPacker {
@@ -13,7 +12,7 @@ impl Packer for LogPacker {
         "log"
     }
 
-    fn do_pack(&self, mut log_file: File, log_file_path: &str) -> Result<bool, LogError> {
+    fn do_pack(&self, log_file: File, log_file_path: &str) -> Result<bool, LogError> {
         //do nothing,and not remove file
         return Ok(false);
     }
@@ -103,7 +102,7 @@ impl Packer for LZ4Packer {
                 lz4_file.err().unwrap()
             )));
         }
-        let mut lz4_file = lz4_file.unwrap();
+        let lz4_file = lz4_file.unwrap();
         //write lz4 bytes data
 
         let mut encoder = EncoderBuilder::new()
@@ -150,9 +149,9 @@ impl Packer for GZipPacker{
                 zip_file.err().unwrap()
             )));
         }
-        let mut zip_file = zip_file.unwrap();
+        let zip_file = zip_file.unwrap();
         //write zip bytes data
-        let mut zip = GzEncoder::new(&zip_file,Compression::default());
+        let mut zip = GzEncoder::new(zip_file,Compression::default());
         std::io::copy(&mut log_file,&mut zip);
         zip.flush();
         let finish = zip.finish();
