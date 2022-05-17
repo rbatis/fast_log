@@ -54,14 +54,13 @@ log data->    | main channel(crossbeam)  |   ->
 
 // Win10 (PC 6 core, mechanical hard disk)
 
-* Use QPS: 525892 /s
+* QPS: 1127002 QPS/s
 
 
 
 // Win10 (PC 6 core, SSD)
 
-* USE QPS: 508215 pieces /s
-
+* QPS: 1092635 QPS/s
 
 
 > support Future mode,async await based on mpsc channel, tokio or async_std
@@ -71,13 +70,13 @@ log data->    | main channel(crossbeam)  |   ->
 
 ```toml
 log = "0.4"
-fast_log = {version = "1.4"}
+fast_log = {version = "1.5"}
 ```
 or enable zip/lz4/gzip Compression library
 ```toml
 log = "0.4"
 # "lz4","zip","gzip"
-fast_log = {version = "1.4" , features = ["lz4","zip","gzip"]}
+fast_log = {version = "1.5" , features = ["lz4","zip","gzip"]}
 ```
 
 
@@ -87,12 +86,10 @@ fast_log = {version = "1.4" , features = ["lz4","zip","gzip"]}
 #### Use Log(Console)
 
 ```rust
-use fast_log::{init_log};
 use log::{error, info, warn};
 fn  main(){
     fast_log::init(Config::new().console()).unwrap();
     log::info!("Commencing yak shaving{}", 0);
-    info!("Commencing yak shaving");
 }
 ```
 

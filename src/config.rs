@@ -23,7 +23,7 @@ impl Default for Config {
             level: LevelFilter::Info,
             filter: Box::new(NoFilter {}),
             format: Box::new(FastLogFormatRecord::new()),
-            batch_len: AtomicUsize::new(100),
+            batch_len: AtomicUsize::new(1000),
         }
     }
 }

@@ -47,10 +47,10 @@ log data->    | main channel(crossbeam)  |   ->
 > 有多快？
 
 //win10(PC 6核心,机械硬盘)
-* use QPS: 525892 条/s
+* QPS: 1127002 条/s
 
 //win10(PC 6核心,固态硬盘)
-* use QPS: 508215 条/s
+* QPS: 1092635 条/s
 
 > support Future mode,async await based on mpsc channel, tokio or async_std
 > support log split,zip_compress
@@ -58,45 +58,53 @@ log data->    | main channel(crossbeam)  |   ->
 * how to use?
 ```toml
 log = "0.4"
-fast_log="1.4"
+fast_log="1.5"
 ```
 
 
 #### use log 简单日志
 ```rust
-use fast_log::{init_log};
 use log::{error, info, warn};
 fn  main(){
-    fast_log::init_log("requests.log",  log::Level::Info, None,true);      
-    info!("Commencing yak shaving");
+    fast_log::init(Config::new().console()).unwrap();
+    log::info!("Commencing yak shaving{}", 0);
 }
 ```
 
-##### split log 分割日志，allow_zip_compress = Zip压缩
+##### split log 分割日志
 ```rust
+use fast_log::plugin::file_split::RollingType;
+use fast_log::consts::LogSize;
+use fast_log::plugin::packer::LogPacker;
+
 #[test]
-    pub fn test_file_compation() {
-    init_split_log("target/logs/",  LogSize::MB(1), false, log::Level::Info, None, true);
+pub fn test_file_compation() {
+    fast_log::init(Config::new()
+        .console()
+        .file_split("target/logs/",
+                    LogSize::MB(1),
+                    RollingType::All,
+                    LogPacker{})).unwrap();
     for _ in 0..200000 {
-            info!("Commencing yak shaving");
-        }
-    log::logger().flush();
+        info!("Commencing yak shaving");
     }
+    log::logger().flush();
+}
 ```
 
 ##### custom log 自定义日志
 ```rust
-use fast_log::{init_custom_log,LogAppender};
+use fast_log::{LogAppender};
 use log::{error, info, warn};
 
-    pub struct CustomLog{}
-    impl LogAppender for CustomLog{
-        fn do_log(&mut self, record: &FastLogRecord) {
-            print!("{}",record);
-        }
+pub struct CustomLog{}
+impl LogAppender for CustomLog{
+    fn do_log(&mut self, record: &FastLogRecord) {
+        print!("{}",record);
     }
+}
 fn  main(){
-    fast_log::init_custom_log(vec![Box::new(CustomLog {})],  log::Level::Info, Box::new(NoFilter {}));
+    let wait = fast_log::init(Config::new().custom(CustomLog {})).unwrap();
     info!("Commencing yak shaving");
     log::logger().flush();
 }
