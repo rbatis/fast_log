@@ -22,10 +22,6 @@ pub trait LogAppender: Send {
 
     /// flush or do nothing
     fn flush(&self) {}
-
-    fn type_name(&self) -> &'static str {
-        std::any::type_name::<Self>()
-    }
 }
 
 #[derive(Clone, Debug)]
