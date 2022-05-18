@@ -17,7 +17,7 @@ pub trait LogAppender: Send {
         }
     }
 
-    /// this method use one coroutines run this(Multiple appenders share one Appender).
+    /// write one log, you can use record.formated write to file or any storage
     fn do_log(&self, record: &FastLogRecord);
 
     /// flush or do nothing
