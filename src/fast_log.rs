@@ -118,7 +118,6 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     let appenders = config.appenders;
     let format = config.format;
     let level = config.level;
-    let batch_len = Arc::new(config.batch_len);
     std::thread::spawn(move || {
         let mut recever_vec = vec![];
         let mut sender_vec: Vec<Sender<Arc<FastLogRecord>>> = vec![];
@@ -128,12 +127,10 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
             recever_vec.push((r, a));
         }
         for (recever, appender) in recever_vec {
-            let batch_len = batch_len.clone();
             spawn(move || {
                 loop {
                     //batch fetch
-                    let batch_len = batch_len.load(Ordering::SeqCst);
-                    if recever.len() > batch_len {
+                    if recever.len() > 1 {
                         let mut exit = false;
                         let mut buf = vec![];
                         loop {
@@ -150,9 +147,6 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                                     }
                                 }
                                 buf.push(msg);
-                                if buf.len() >= batch_len {
-                                    break;
-                                }
                             } else {
                                 break;
                             }
