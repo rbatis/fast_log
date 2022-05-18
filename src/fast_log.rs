@@ -7,6 +7,7 @@ use crate::filter::{Filter};
 use std::result::Result::Ok;
 use std::time::{SystemTime};
 use std::sync::Arc;
+use crossbeam_channel::TryRecvError;
 use crossbeam_utils::sync::WaitGroup;
 use once_cell::sync::{Lazy, OnceCell};
 use crate::{chan, Receiver, Sender, spawn};
@@ -120,7 +121,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     let level = config.level;
     std::thread::spawn(move || {
         let mut recever_vec = vec![];
-        let mut sender_vec: Vec<Sender<Arc<FastLogRecord>>> = vec![];
+        let mut sender_vec: Vec<Sender<Arc<Vec<FastLogRecord>>>> = vec![];
         for a in appenders {
             let (s, r) = chan();
             sender_vec.push(s);
@@ -128,47 +129,27 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
         }
         for (recever, appender) in recever_vec {
             spawn(move || {
+                let mut exit = false;
                 loop {
                     //batch fetch
-                    if recever.len() > 1 {
-                        let mut exit = false;
-                        let mut buf = vec![];
-                        loop {
-                            if let Ok(msg) = recever.try_recv() {
-                                match msg.command {
-                                    Command::CommandRecord => {}
-                                    Command::CommandExit => {
-                                        exit = true;
-                                        break;
-                                    }
-                                    Command::CommandFlush(_) => {
-                                        appender.flush();
-                                        continue;
-                                    }
+                    if let Ok(msg) = recever.recv() {
+                        appender.do_logs(msg.as_ref());
+                        for x in msg.iter() {
+                            match x.command {
+                                Command::CommandRecord => {}
+                                Command::CommandExit => {
+                                    exit = true;
+                                    continue;
                                 }
-                                buf.push(msg);
-                            } else {
-                                break;
+                                Command::CommandFlush(_) => {
+                                    appender.flush();
+                                    continue;
+                                }
                             }
-                        }
-                        appender.do_logs(&buf);
-                        if exit {
-                            break;
                         }
                     }
-
-                    if let Ok(msg) = recever.recv() {
-                        match msg.command {
-                            Command::CommandRecord => {}
-                            Command::CommandExit => {
-                                break;
-                            }
-                            Command::CommandFlush(_) => {
-                                appender.flush();
-                                continue;
-                            }
-                        }
-                        appender.do_log(msg.as_ref());
+                    if exit {
+                        break;
                     }
                 }
             });
@@ -177,17 +158,31 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
             //recv
             let data = LOG_SENDER.recv.recv();
             if let Ok(mut data) = data {
-                data.formated = format.do_format(&mut data);
-                let data = Arc::new(data);
+                let mut remain;
+                if LOG_SENDER.recv.len() > 0 {
+                    remain = recv_all(&LOG_SENDER.recv);
+                    remain.insert(0, data);
+                } else {
+                    remain = vec![data];
+                }
+                let mut exit = false;
+                for x in &mut remain {
+                    x.formated = format.do_format(x);
+                    match x.command {
+                        Command::CommandRecord => {}
+                        Command::CommandExit => {
+                            exit = true;
+                            break;
+                        }
+                        Command::CommandFlush(_) => {}
+                    }
+                }
+                let data = Arc::new(remain);
                 for x in &sender_vec {
                     x.send(data.clone());
                 }
-                match data.command {
-                    Command::CommandRecord => {}
-                    Command::CommandExit => {
-                        break;
-                    }
-                    Command::CommandFlush(_) => {}
+                if exit {
+                    break;
                 }
             }
         }
@@ -199,6 +194,22 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
         return Ok(&LOGGER);
     }
 }
+
+fn recv_all<T>(recver: &Receiver<T>) -> Vec<T> {
+    let mut data = Vec::with_capacity(recver.len());
+    loop {
+        match recver.try_recv() {
+            Ok(v) => {
+                data.push(v);
+            }
+            Err(_) => {
+                break;
+            }
+        }
+    }
+    data
+}
+
 
 pub fn exit() -> Result<(), LogError> {
     let fast_log_record = FastLogRecord {

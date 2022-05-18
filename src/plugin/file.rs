@@ -29,7 +29,7 @@ impl FileAppender {
 }
 
 impl LogAppender for FileAppender {
-    fn do_logs(&self, records: &[Arc<FastLogRecord>]) {
+    fn do_logs(&self, records: &[FastLogRecord]) {
         let mut log_file = self.file.borrow_mut();
         let mut buf = String::new();
         for x in records {
