@@ -11,7 +11,7 @@ fn main() {
             //do nothing
         }
     }
-    fast_log::init(Config::new().file("test.log")).unwrap();
+    fast_log::init(Config::new().file("target/test.log")).unwrap();
     let total = 1000000;
     let now = Instant::now();
     for index in 0..total {
