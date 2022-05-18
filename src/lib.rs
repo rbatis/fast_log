@@ -12,6 +12,7 @@ pub mod filter;
 pub mod plugin;
 pub mod runtime;
 pub mod config;
+pub mod date;
 
 pub use fast_log::*;
 pub use runtime::*;

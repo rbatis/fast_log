@@ -46,6 +46,12 @@ impl Error for LogError {
     }
 }
 
+impl Default for LogError {
+    fn default() -> Self {
+        LogError::E(String::new())
+    }
+}
+
 pub trait AsStdResult<T>
 where
     T: Clone,

@@ -1,16 +1,17 @@
-use chrono::{DateTime, Utc, Duration};
+
 use log::{LevelFilter};
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 use std::ops::{Add, Sub};
 use std::sync::Arc;
 use crossbeam_utils::sync::WaitGroup;
 use crate::appender::Command::CommandRecord;
+use crate::date;
 
 /// LogAppender append logs
 /// Appender will be running on single main thread,please do_log for new thread or new an Future
 pub trait LogAppender: Send {
     /// Batch write log, default loop call do_log function. And of course you can rewrite it
-    fn do_logs(&self, records: &[FastLogRecord]){
+    fn do_logs(&self, records: &[FastLogRecord]) {
         for x in records {
             self.do_log(x);
         }
@@ -20,7 +21,7 @@ pub trait LogAppender: Send {
     fn do_log(&self, record: &FastLogRecord);
 
     /// flush or do nothing
-    fn flush(&self){}
+    fn flush(&self) {}
 
     fn type_name(&self) -> &'static str {
         std::any::type_name::<Self>()
@@ -60,11 +61,12 @@ pub struct FastLogFormatRecord {
 
 impl RecordFormat for FastLogFormatRecord {
     fn do_format(&self, arg: &mut FastLogRecord) -> String {
-        match arg.command{
+        match arg.command {
             CommandRecord => {
                 let data;
-                let now: DateTime<Utc> = chrono::DateTime::from(arg.now);
-                let now = now.add(self.duration).naive_utc().to_string();
+                let date = date::HttpDate::from(arg.now.add(self.duration));
+                //2022-05-18 13:25:14
+                let now = format!("{}-{:0>2}-{:0>2} {:0>2}:{:0>2}:{:0>2}",date.year,date.mon,date.day,date.hour,date.min,date.sec);
                 if arg.level.to_level_filter() <= self.display_file {
                     data = format!(
                         "{:26} {} {} - {}  {}:{}\n",
@@ -91,10 +93,11 @@ impl RecordFormat for FastLogFormatRecord {
 }
 
 impl FastLogFormatRecord {
+
     pub fn local_duration() -> Duration {
         let utc = chrono::Utc::now().naive_utc();
         let tz = chrono::Local::now().naive_local();
-        tz.sub(utc)
+        tz.sub(utc).to_std().unwrap_or_default()
     }
 
     pub fn new() -> FastLogFormatRecord {
