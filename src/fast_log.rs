@@ -50,6 +50,7 @@ impl Logger {
     pub fn set_level(&self, level: LevelFilter) {
         self.level
             .swap(level as i32, std::sync::atomic::Ordering::Relaxed);
+        log::set_max_level(level);
     }
 
     pub fn get_level(&self) -> LevelFilter {
