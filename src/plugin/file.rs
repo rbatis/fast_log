@@ -2,7 +2,6 @@ use crate::appender::{FastLogRecord, LogAppender};
 use std::cell::RefCell;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
-use std::sync::Arc;
 
 /// only write append into file
 pub struct FileAppender {

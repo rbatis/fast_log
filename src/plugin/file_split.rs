@@ -6,12 +6,10 @@ use chrono::{Local, NaiveDateTime};
 
 use crate::appender::{Command, FastLogRecord, LogAppender};
 use crate::consts::LogSize;
-use std::ops::{Deref, Sub};
-use std::sync::Arc;
-use std::time::{Duration, SystemTime};
+use std::ops::{Sub};
+use std::time::{Duration};
 use crate::error::LogError;
 use crate::{chan, Receiver, Sender};
-use crate::appender::Command::CommandFlush;
 
 /// .zip or .lz4 or any one packer
 pub trait Packer: Send {

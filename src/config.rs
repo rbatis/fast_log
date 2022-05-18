@@ -1,5 +1,4 @@
-use std::sync::atomic::{AtomicI64, AtomicUsize, Ordering};
-use log::{Level, LevelFilter};
+use log::{LevelFilter};
 use crate::appender::{FastLogFormatRecord, LogAppender, RecordFormat};
 use crate::consts::LogSize;
 use crate::filter::{Filter, NoFilter};

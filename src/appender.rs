@@ -1,7 +1,6 @@
 use log::{LevelFilter};
 use std::time::{Duration, SystemTime};
 use std::ops::{Add, Sub};
-use std::sync::Arc;
 use crossbeam_utils::sync::WaitGroup;
 use crate::appender::Command::CommandRecord;
 use crate::date;
@@ -71,13 +70,6 @@ pub struct FastLogFormatRecord {
     pub display_file: log::LevelFilter,
 }
 
-fn to_zero_left(arg: u8) -> String {
-    if arg <= 9 {
-        return format!("0{}", arg);
-    } else {
-        return arg.to_string();
-    }
-}
 
 impl RecordFormat for FastLogFormatRecord {
     fn do_format(&self, arg: &mut FastLogRecord) -> String {

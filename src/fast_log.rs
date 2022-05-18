@@ -1,5 +1,5 @@
-use std::sync::atomic::{AtomicI32, Ordering};
-use log::{Level, LevelFilter, Log, Metadata, Record};
+use std::sync::atomic::{AtomicI32};
+use log::{LevelFilter, Log, Metadata, Record};
 
 use crate::appender::{Command, FastLogRecord};
 use crate::error::LogError;
@@ -7,7 +7,6 @@ use crate::filter::{Filter};
 use std::result::Result::Ok;
 use std::time::{SystemTime};
 use std::sync::Arc;
-use crossbeam_channel::TryRecvError;
 use crossbeam_utils::sync::WaitGroup;
 use once_cell::sync::{Lazy, OnceCell};
 use crate::{chan, Receiver, Sender, spawn};
@@ -157,7 +156,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
         loop {
             //recv
             let data = LOG_SENDER.recv.recv();
-            if let Ok(mut data) = data {
+            if let Ok(data) = data {
                 let mut remain;
                 if LOG_SENDER.recv.len() > 0 {
                     remain = Vec::with_capacity(LOG_SENDER.recv.len()+1);
