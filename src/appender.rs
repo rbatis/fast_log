@@ -72,7 +72,7 @@ impl RecordFormat for FastLogFormatRecord {
         match arg.command {
             CommandRecord => {
                 let data;
-                let now = date::HttpDate::from(arg.now.add(self.duration));
+                let now = date::LogDate::from(arg.now.add(self.duration));
                 if arg.level.to_level_filter() <= self.display_file {
                     data = format!(
                         "{:26} {} {} - {}  {}:{}\n",

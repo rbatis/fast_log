@@ -12,7 +12,7 @@ use crate::error::LogError as Error;
 /// Convert timestamp into/from `SytemTime` to use.
 /// Supports comparsion and sorting.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub struct HttpDate {
+pub struct LogDate {
     /// 0...59
     pub sec: u8,
     /// 0...59
@@ -29,7 +29,7 @@ pub struct HttpDate {
     pub wday: u8,
 }
 
-impl HttpDate {
+impl LogDate {
     fn is_valid(&self) -> bool {
         self.sec < 60
             && self.min < 60
@@ -40,12 +40,12 @@ impl HttpDate {
             && self.mon <= 12
             && self.year >= 1970
             && self.year <= 9999
-            && &HttpDate::from(SystemTime::from(*self)) == self
+            && &LogDate::from(SystemTime::from(*self)) == self
     }
 }
 
-impl From<SystemTime> for HttpDate {
-    fn from(v: SystemTime) -> HttpDate {
+impl From<SystemTime> for LogDate {
+    fn from(v: SystemTime) -> LogDate {
         let dur = v
             .duration_since(UNIX_EPOCH)
             .expect("all times should be after the epoch");
@@ -115,7 +115,7 @@ impl From<SystemTime> for HttpDate {
             wday += 7
         };
 
-        HttpDate {
+        LogDate {
             sec: (secs_of_day % 60) as u8,
             min: ((secs_of_day % 3600) / 60) as u8,
             hour: (secs_of_day / 3600) as u8,
@@ -127,8 +127,8 @@ impl From<SystemTime> for HttpDate {
     }
 }
 
-impl From<HttpDate> for SystemTime {
-    fn from(v: HttpDate) -> SystemTime {
+impl From<LogDate> for SystemTime {
+    fn from(v: LogDate) -> SystemTime {
         let leap_years =
             ((v.year - 1) - 1968) / 4 - ((v.year - 1) - 1900) / 100 + ((v.year - 1) - 1600) / 400;
         let mut ydays = match v.mon {
@@ -158,10 +158,10 @@ impl From<HttpDate> for SystemTime {
     }
 }
 
-impl FromStr for HttpDate {
+impl FromStr for LogDate {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<HttpDate, Error> {
+    fn from_str(s: &str) -> Result<LogDate, Error> {
         if !s.is_ascii() {
             return Err(Error::default());
         }
@@ -176,7 +176,7 @@ impl FromStr for HttpDate {
     }
 }
 
-impl Display for HttpDate {
+impl Display for LogDate {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let mut buf: [u8; 19] =*b"0000-00-00 00:00:00";
 
@@ -250,14 +250,14 @@ impl Display for HttpDate {
     }
 }
 
-impl Ord for HttpDate {
-    fn cmp(&self, other: &HttpDate) -> cmp::Ordering {
+impl Ord for LogDate {
+    fn cmp(&self, other: &LogDate) -> cmp::Ordering {
         SystemTime::from(*self).cmp(&SystemTime::from(*other))
     }
 }
 
-impl PartialOrd for HttpDate {
-    fn partial_cmp(&self, other: &HttpDate) -> Option<cmp::Ordering> {
+impl PartialOrd for LogDate {
+    fn partial_cmp(&self, other: &LogDate) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
@@ -296,12 +296,12 @@ fn toint_4(s: &[u8]) -> Result<u16, Error> {
     }
 }
 
-fn parse_imf_fixdate(s: &[u8]) -> Result<HttpDate, Error> {
+fn parse_imf_fixdate(s: &[u8]) -> Result<LogDate, Error> {
     // Example: `Sun, 06 Nov 1994 08:49:37 GMT`
     if s.len() != 29 || &s[25..] != b" GMT" || s[16] != b' ' || s[19] != b':' || s[22] != b':' {
         return Err(Error::default());
     }
-    Ok(HttpDate {
+    Ok(LogDate {
         sec: toint_2(&s[23..25])?,
         min: toint_2(&s[20..22])?,
         hour: toint_2(&s[17..19])?,
@@ -335,7 +335,7 @@ fn parse_imf_fixdate(s: &[u8]) -> Result<HttpDate, Error> {
     })
 }
 
-fn parse_rfc850_date(s: &[u8]) -> Result<HttpDate, Error> {
+fn parse_rfc850_date(s: &[u8]) -> Result<LogDate, Error> {
     // Example: `Sunday, 06-Nov-94 08:49:37 GMT`
     if s.len() < 23 {
         return Err(Error::default());
@@ -364,7 +364,7 @@ fn parse_rfc850_date(s: &[u8]) -> Result<HttpDate, Error> {
     } else {
         year += 1900;
     }
-    Ok(HttpDate {
+    Ok(LogDate {
         sec: toint_2(&s[16..18])?,
         min: toint_2(&s[13..15])?,
         hour: toint_2(&s[10..12])?,
@@ -389,12 +389,12 @@ fn parse_rfc850_date(s: &[u8]) -> Result<HttpDate, Error> {
     })
 }
 
-fn parse_asctime(s: &[u8]) -> Result<HttpDate, Error> {
+fn parse_asctime(s: &[u8]) -> Result<LogDate, Error> {
     // Example: `Sun Nov  6 08:49:37 1994`
     if s.len() != 24 || s[10] != b' ' || s[13] != b':' || s[16] != b':' || s[19] != b' ' {
         return Err(Error::default());
     }
-    Ok(HttpDate {
+    Ok(LogDate {
         sec: toint_2(&s[17..19])?,
         min: toint_2(&s[14..16])?,
         hour: toint_2(&s[11..13])?,
