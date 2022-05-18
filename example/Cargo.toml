@@ -30,6 +30,9 @@ path = "src/wait_log.rs"
 name = "bench_test"
 path = "src/bench_test.rs"
 [[bin]]
+name = "bench_test_file"
+path = "src/bench_test_file.rs"
+[[bin]]
 name = "split_log_flush"
 path = "src/split_log_flush.rs"
 [[bin]]

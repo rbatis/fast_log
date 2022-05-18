@@ -3,15 +3,9 @@ use std::time::{Instant};
 use fast_log::bencher::QPS;
 use fast_log::config::Config;
 
-/// cargo run --release --package example --bin bench_test
+/// cargo run --release --package example --bin bench_test_file
 fn main() {
-    struct BenchRecvLog {}
-    impl LogAppender for BenchRecvLog {
-        fn do_log(&self, _: &FastLogRecord) {
-            //do nothing
-        }
-    }
-    fast_log::init(Config::new().custom(BenchRecvLog{})).unwrap();
+    fast_log::init(Config::new().file("target/test.log")).unwrap();
     let total = 1000000;
     let now = Instant::now();
     for index in 0..total {
