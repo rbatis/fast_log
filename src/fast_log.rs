@@ -160,7 +160,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
             if let Ok(mut data) = data {
                 let mut remain;
                 if LOG_SENDER.recv.len() > 0 {
-                    remain = Vec::with_capacity(LOG_SENDER.recv.len());
+                    remain = Vec::with_capacity(LOG_SENDER.recv.len()+1);
                     remain.push(data);
                     recv_all(&mut remain,&LOG_SENDER.recv);
                 } else {
