@@ -160,8 +160,9 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
             if let Ok(mut data) = data {
                 let mut remain;
                 if LOG_SENDER.recv.len() > 0 {
-                    remain = recv_all(&LOG_SENDER.recv);
-                    remain.insert(0, data);
+                    remain = Vec::with_capacity(LOG_SENDER.recv.len());
+                    remain.push(data);
+                    recv_all(&mut remain,&LOG_SENDER.recv);
                 } else {
                     remain = vec![data];
                 }
@@ -190,8 +191,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     }
 }
 
-fn recv_all<T>(recver: &Receiver<T>) -> Vec<T> {
-    let mut data = Vec::with_capacity(recver.len());
+fn recv_all<T>(data: &mut Vec<T>,recver: &Receiver<T>) {
     loop {
         match recver.try_recv() {
             Ok(v) => {
@@ -202,7 +202,6 @@ fn recv_all<T>(recver: &Receiver<T>) -> Vec<T> {
             }
         }
     }
-    data
 }
 
 
