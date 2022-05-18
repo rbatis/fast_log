@@ -48,10 +48,10 @@ log data->    | main channel(crossbeam)  |   ->
 > 有多快？
 
 //win10(PC 6核心,机械硬盘)
-* QPS: 1127002 条/s
+* QPS: 1895767 QPS/s
 
 //win10(PC 6核心,固态硬盘)
-* QPS: 1092635 条/s
+* QPS: 1927177 QPS/s
 
 > support Future mode,async await based on mpsc channel, tokio or async_std
 > support log split,zip_compress

@@ -56,13 +56,13 @@ log data->    | main channel(crossbeam)  |   ->
 
 // Win10 (PC 6 core, mechanical hard disk)
 
-* QPS: 1127002 QPS/s
+* QPS: 1895767 QPS/s
 
 
 
 // Win10 (PC 6 core, SSD)
 
-* QPS: 1092635 QPS/s
+* QPS: 1927177 QPS/s
 
 
 > support Future mode,async await based on mpsc channel, tokio or async_std
