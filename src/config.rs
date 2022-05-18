@@ -8,7 +8,7 @@ use crate::plugin::file_loop::FileLoopAppender;
 use crate::plugin::file_split::{FileSplitAppender, Packer, RollingType};
 
 pub struct Config {
-    pub appenders: Vec<Box<dyn LogAppender>>,
+    pub appends: Vec<Box<dyn LogAppender>>,
     pub level: LevelFilter,
     pub filter: Box<dyn Filter>,
     pub format: Box<dyn RecordFormat>,
@@ -17,7 +17,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            appenders: vec![],
+            appends: vec![],
             level: LevelFilter::Info,
             filter: Box::new(NoFilter {}),
             format: Box::new(FastLogFormatRecord::new()),
@@ -47,17 +47,17 @@ impl Config {
     }
     /// add a ConsoleAppender
     pub fn console(mut self) -> Self {
-        self.appenders.push(Box::new(ConsoleAppender {}));
+        self.appends.push(Box::new(ConsoleAppender {}));
         self
     }
     /// add a FileAppender
     pub fn file(mut self, file: &str) -> Self {
-        self.appenders.push(Box::new(FileAppender::new(file)));
+        self.appends.push(Box::new(FileAppender::new(file)));
         self
     }
     /// add a FileLoopAppender
     pub fn file_loop(mut self, file: &str, max_temp_size: LogSize) -> Self {
-        self.appenders.push(Box::new(FileLoopAppender::new(file, max_temp_size)));
+        self.appends.push(Box::new(FileLoopAppender::new(file, max_temp_size)));
         self
     }
     /// add a FileSplitAppender
@@ -65,12 +65,12 @@ impl Config {
                                            max_temp_size: LogSize,
                                            rolling_type: RollingType,
                                            packer: P, ) -> Self {
-        self.appenders.push(Box::new(FileSplitAppender::new(file_path, max_temp_size, rolling_type, Box::new(packer))));
+        self.appends.push(Box::new(FileSplitAppender::new(file_path, max_temp_size, rolling_type, Box::new(packer))));
         self
     }
     /// add a custom LogAppender
     pub fn custom<Appender: LogAppender + 'static>(mut self, arg: Appender) -> Self {
-        self.appenders.push(Box::new(arg));
+        self.appends.push(Box::new(arg));
         self
     }
 }

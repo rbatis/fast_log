@@ -110,12 +110,12 @@ static LOGGER: Logger = Logger {
 
 
 pub fn init(config: Config) -> Result<&'static Logger, LogError> {
-    if config.appenders.is_empty() {
+    if config.appends.is_empty() {
         return Err(LogError::from("[fast_log] appenders can not be empty!"));
     }
     set_log(config.level.clone(), config.filter);
     //main recv data
-    let appenders = config.appenders;
+    let appenders = config.appends;
     let format = config.format;
     let level = config.level;
     std::thread::spawn(move || {
