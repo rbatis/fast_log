@@ -59,14 +59,20 @@ pub struct FastLogFormatRecord {
     pub display_file: log::LevelFilter,
 }
 
+fn to_zero_left(arg:u8)->String{
+    if arg<=9{
+        return format!("0{}",arg);
+    }else{
+        return arg.to_string();
+    }
+}
+
 impl RecordFormat for FastLogFormatRecord {
     fn do_format(&self, arg: &mut FastLogRecord) -> String {
         match arg.command {
             CommandRecord => {
                 let data;
-                let date = date::HttpDate::from(arg.now.add(self.duration));
-                //2022-05-18 13:25:14
-                let now = format!("{}-{:0>2}-{:0>2} {:0>2}:{:0>2}:{:0>2}",date.year,date.mon,date.day,date.hour,date.min,date.sec);
+                let now = date::HttpDate::from(arg.now.add(self.duration));
                 if arg.level.to_level_filter() <= self.display_file {
                     data = format!(
                         "{:26} {} {} - {}  {}:{}\n",
