@@ -15,6 +15,8 @@ A log implementation for extreme speed, using Crossbeam to double the efficiency
 
 * Full APPEND mode file writing, high efficiency for solid state/mechanical disk (solid state and mechanical disk sequential write performance is better than random write)
 
+* When channel pressure increases, logs can be written in batches at a time
+
 * Built-in ZIP compression, compressed file name date + serial number, no need to worry about the log file is too large
 
 * Built-in log segmentation, custom log full number of immediately split
