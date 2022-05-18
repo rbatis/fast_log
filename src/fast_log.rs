@@ -168,12 +168,8 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                 let mut exit = false;
                 for x in &mut remain {
                     x.formated = format.do_format(x);
-                    match x.command {
-                        Command::CommandRecord => {}
-                        Command::CommandExit => {
-                            exit = true;
-                        }
-                        Command::CommandFlush(_) => {}
+                    if x.command.eq(&Command::CommandExit){
+                        exit = true;
                     }
                 }
                 let data = Arc::new(remain);

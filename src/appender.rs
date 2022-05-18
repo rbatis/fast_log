@@ -1,4 +1,3 @@
-
 use log::{LevelFilter};
 use std::time::{Duration, SystemTime};
 use std::ops::{Add, Sub};
@@ -32,6 +31,23 @@ pub enum Command {
     CommandFlush(WaitGroup),
 }
 
+impl Command {
+    pub fn to_i32(&self) -> i32 {
+        match self {
+            Command::CommandRecord => { 1 }
+            Command::CommandExit => { 2 }
+            Command::CommandFlush(_) => { 3 }
+        }
+    }
+}
+
+impl PartialEq for Command {
+    fn eq(&self, other: &Self) -> bool {
+        self.to_i32().eq(&other.to_i32())
+    }
+}
+impl Eq for Command{}
+
 #[derive(Clone, Debug)]
 pub struct FastLogRecord {
     pub command: Command,
@@ -55,10 +71,10 @@ pub struct FastLogFormatRecord {
     pub display_file: log::LevelFilter,
 }
 
-fn to_zero_left(arg:u8)->String{
-    if arg<=9{
-        return format!("0{}",arg);
-    }else{
+fn to_zero_left(arg: u8) -> String {
+    if arg <= 9 {
+        return format!("0{}", arg);
+    } else {
         return arg.to_string();
     }
 }
@@ -95,7 +111,6 @@ impl RecordFormat for FastLogFormatRecord {
 }
 
 impl FastLogFormatRecord {
-
     pub fn local_duration() -> Duration {
         let utc = chrono::Utc::now().naive_utc();
         let tz = chrono::Local::now().naive_local();
