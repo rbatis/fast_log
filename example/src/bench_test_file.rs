@@ -1,4 +1,3 @@
-use fast_log::appender::{LogAppender, FastLogRecord};
 use std::time::{Instant};
 use fast_log::bencher::QPS;
 use fast_log::config::Config;
