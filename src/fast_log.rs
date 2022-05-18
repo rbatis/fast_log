@@ -172,7 +172,6 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                         Command::CommandRecord => {}
                         Command::CommandExit => {
                             exit = true;
-                            break;
                         }
                         Command::CommandFlush(_) => {}
                     }
