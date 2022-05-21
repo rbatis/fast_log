@@ -54,15 +54,9 @@ log data->    | main channel(crossbeam)  |   ->
 
 > How fast is >?
 
-// Win10 (PC 6 core, mechanical hard disk)
-
-* QPS: 1895767 QPS/s
-
-
-
-// Win10 (PC 6 core, SSD)
-
-* QPS: 1927177 QPS/s
+//MACOS(Apple M1MAX-32GB)
+Time: 221.079ms ,each:221 ns/op
+QPS: 4523139 TPS/s
 
 
 > support Future mode,async await based on mpsc channel, tokio or async_std
