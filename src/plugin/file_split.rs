@@ -233,33 +233,46 @@ impl LogAppender for FileSplitAppender {
             data.send_pack();
         }
         //if temp_bytes is full,must send pack
-        let mut temp_log = String::with_capacity(records.len() * 100);
-        for x in records {
-            match x.command {
-                Command::CommandRecord => {}
-                Command::CommandExit => {}
-                Command::CommandFlush(_) => {
-                    data.send_pack();
+        let mut temp_log = {
+            let mut limit = data.max_split_bytes - data.temp_bytes;
+            let mut temp = String::with_capacity(limit);
+            for x in records {
+                match x.command {
+                    Command::CommandRecord => {
+                        if ((temp.as_bytes().len() + x.formated.as_bytes().len())) < limit {
+                            temp.push_str(&x.formated);
+                        } else {
+                            //do pack
+                            data.file.write(temp.as_bytes());
+                            data.send_pack();
+                            limit = data.max_split_bytes;
+                            temp.clear();
+                            temp.push_str(&x.formated);
+                        }
+                    }
+                    Command::CommandExit => {}
+                    Command::CommandFlush(_) => {}
                 }
             }
-            temp_log.push_str(&x.formated);
-            if data.temp_bytes >= data.max_split_bytes {
-                data.file.write(temp_log.as_bytes());
-                temp_log.clear();
+            temp
+        };
+        if !temp_log.is_empty() {
+            if (data.temp_bytes + temp_log.as_bytes().len()) > data.max_split_bytes {
                 data.send_pack();
             }
             data.temp_bytes += {
-                temp_log.as_bytes().len()
+                let bytes = temp_log.as_bytes();
+                let w = data.file.write(bytes);
+                if let Ok(w) = w {
+                    w
+                } else {
+                    0
+                }
             };
-        }
-        data.temp_bytes += {
-            let w = data.file.write(temp_log.as_bytes());
-            if let Ok(w) = w {
-                w
-            }else{
-                0
+            if data.temp_bytes > data.max_split_bytes {
+                data.send_pack();
             }
-        };
+        }
     }
 
     fn do_log(&self, record: &FastLogRecord) {
