@@ -134,6 +134,7 @@ pub struct FileSplitAppenderData {
 }
 
 impl FileSplitAppenderData {
+    /// send data make an pack,and truncate data when finish.
     pub fn send_pack(&mut self) {
         let first_file_path = format!("{}{}.log", self.dir_path, &self.temp_name);
         let new_log_name = format!(
@@ -226,28 +227,43 @@ impl FileSplitAppender {
 }
 
 impl LogAppender for FileSplitAppender {
-    fn do_log(&self, record: &FastLogRecord) {
+    fn do_logs(&self, records: &[FastLogRecord]) {
         let mut data = self.cell.borrow_mut();
         if data.temp_bytes >= data.max_split_bytes {
             data.send_pack();
-            return;
         }
-        match record.command {
-            Command::CommandRecord => {}
-            Command::CommandExit => {}
-            Command::CommandFlush(_) => {
-                data.send_pack();
-                return;
+        //if temp_bytes is full,must send pack
+        let mut temp_log = String::with_capacity(records.len() * 100);
+        for x in records {
+            match x.command {
+                Command::CommandRecord => {}
+                Command::CommandExit => {}
+                Command::CommandFlush(_) => {
+                    data.send_pack();
+                }
             }
+            temp_log.push_str(&x.formated);
+            if data.temp_bytes >= data.max_split_bytes {
+                data.file.write(temp_log.as_bytes());
+                temp_log.clear();
+                data.send_pack();
+            }
+            data.temp_bytes += {
+                temp_log.as_bytes().len()
+            };
         }
+        data.temp_bytes += {
+            let w = data.file.write(temp_log.as_bytes());
+            if let Ok(w) = w {
+                w
+            }else{
+                0
+            }
+        };
+    }
 
-        let mut write_bytes = 0;
-        let w = data.file.write(record.formated.as_bytes());
-        if let Ok(w) = w {
-            write_bytes = write_bytes + w;
-        }
-        data.file.flush();
-        data.temp_bytes += write_bytes;
+    fn do_log(&self, record: &FastLogRecord) {
+        //impl do_logs(),so this method do nothing.
     }
 
     fn flush(&self) {
