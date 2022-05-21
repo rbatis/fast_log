@@ -235,7 +235,7 @@ impl LogAppender for FileSplitAppender {
         //if temp_bytes is full,must send pack
         let temp_log = {
             let mut limit = data.max_split_bytes - data.temp_bytes;
-            let mut temp = String::with_capacity(limit);
+            let mut temp = String::with_capacity(100);
             for x in records {
                 match x.command {
                     Command::CommandRecord => {
