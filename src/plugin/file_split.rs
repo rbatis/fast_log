@@ -76,7 +76,7 @@ impl RollingType {
             RollingType::KeepNum(n) => {
                 let paths_vec = self.read_paths(dir, temp_name);
                 for index in 0..paths_vec.len() {
-                    if index >= *n as usize {
+                    if index >= (*n) as usize {
                         let item = &paths_vec[index];
                         std::fs::remove_file(item.path());
                     }

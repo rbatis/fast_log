@@ -11,14 +11,17 @@ pub struct FileLoopAppender {
 impl FileLoopAppender {
     pub fn new(log_file_path: &str, max_temp_size: LogSize) -> FileLoopAppender {
         Self {
-            file: FileSplitAppender::new(log_file_path, max_temp_size, RollingType::KeepNum(0), Box::new(LogPacker {}))
+            file: FileSplitAppender::new(log_file_path, max_temp_size, RollingType::KeepNum(1), Box::new(LogPacker {}))
         }
     }
 }
 
 impl LogAppender for FileLoopAppender {
+    fn do_logs(&self, records: &[FastLogRecord]) {
+        self.file.do_logs(records);
+    }
     fn do_log(&self, record: &FastLogRecord) {
-        self.file.do_log(record);
+        //nothing to do
     }
     fn flush(&self) {
         self.file.flush();
