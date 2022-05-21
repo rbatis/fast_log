@@ -47,9 +47,11 @@ log data->    | main channel(crossbeam)  |   ->
 
 > 有多快？
 
+```
 //MACOS(Apple M1MAX-32GB)
 Time: 221.079ms ,each:221 ns/op
 QPS: 4523139 TPS/s
+```
 
 > support Future mode,async await based on mpsc channel, tokio or async_std
 > support log split,zip_compress
