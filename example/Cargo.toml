@@ -47,6 +47,9 @@ path = "src/custom_appender_tokio.rs"
 [[bin]]
 name = "custom_appender_meilisearch"
 path = "src/custom_appender_meilisearch.rs"
+[[bin]]
+name = "format_log"
+path = "src/format_log.rs"
 [dependencies]
 log = { version = "0.4", features = ["std"] }
 crossbeam-channel = "0.5"

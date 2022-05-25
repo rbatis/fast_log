@@ -1,5 +1,5 @@
 use log::{LevelFilter};
-use crate::appender::{FastLogFormatRecord, LogAppender, RecordFormat};
+use crate::appender::{FastLogFormat, LogAppender, RecordFormat};
 use crate::consts::LogSize;
 use crate::filter::{Filter, NoFilter};
 use crate::plugin::console::ConsoleAppender;
@@ -20,7 +20,7 @@ impl Default for Config {
             appends: vec![],
             level: LevelFilter::Info,
             filter: Box::new(NoFilter {}),
-            format: Box::new(FastLogFormatRecord::new()),
+            format: Box::new(FastLogFormat::new()),
         }
     }
 }

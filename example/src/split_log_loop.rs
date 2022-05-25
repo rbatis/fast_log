@@ -3,7 +3,7 @@ use fast_log::plugin::file_split::RollingType;
 use fast_log::plugin::packer::{LogPacker};
 use std::thread::sleep;
 use std::time::Duration;
-use fast_log::appender::FastLogFormatRecord;
+use fast_log::appender::FastLogFormat;
 use fast_log::config::Config;
 use fast_log::filter::NoFilter;
 use fast_log::plugin::file_loop::FileLoopAppender;

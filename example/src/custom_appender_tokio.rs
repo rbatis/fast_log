@@ -1,5 +1,5 @@
 use std::time::Duration;
-use fast_log::appender::{FastLogFormatRecord, LogAppender, FastLogRecord};
+use fast_log::appender::{FastLogFormat, LogAppender, FastLogRecord};
 use fast_log::filter::NoFilter;
 use log::Level;
 use std::thread::sleep;
