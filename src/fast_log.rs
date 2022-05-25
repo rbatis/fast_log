@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::sync::atomic::{AtomicI32};
 use log::{LevelFilter, Log, Metadata, Record};
 
@@ -12,20 +13,16 @@ use once_cell::sync::{Lazy, OnceCell};
 use crate::{chan, Receiver, Sender, spawn};
 use crate::config::Config;
 
-pub static LOG_SENDER: Lazy<LoggerSender> = Lazy::new(|| {
-    LoggerSender::new()
-});
-
-pub struct LoggerSender {
+pub struct Chan {
     pub filter: OnceCell<Box<dyn Filter>>,
     pub send: Sender<FastLogRecord>,
     pub recv: Receiver<FastLogRecord>,
 }
 
-impl LoggerSender {
+impl Chan {
     pub fn new() -> Self {
         let (s, r) = chan();
-        LoggerSender {
+        Chan {
             filter: OnceCell::new(),
             send: s,
             recv: r,
@@ -39,11 +36,12 @@ impl LoggerSender {
 
 fn set_log(level: log::LevelFilter, filter: Box<dyn Filter>) {
     LOGGER.set_level(level);
-    LOG_SENDER.set_filter(filter);
+    LOGGER.chan.set_filter(filter);
 }
 
 pub struct Logger {
     level: AtomicI32,
+    pub chan: Chan,
 }
 
 impl Logger {
@@ -76,7 +74,7 @@ impl Log for Logger {
     }
     fn log(&self, record: &Record) {
         //send
-        let f = LOG_SENDER.filter.get();
+        let f = LOGGER.chan.filter.get();
         if f.is_some() {
             if !f.as_ref().unwrap().filter(record) {
                 let fast_log_record = FastLogRecord {
@@ -90,7 +88,7 @@ impl Log for Logger {
                     now: SystemTime::now(),
                     formated: String::new(),
                 };
-                LOG_SENDER.send.send(fast_log_record);
+                LOGGER.chan.send.send(fast_log_record);
             }
         }
     }
@@ -104,9 +102,12 @@ impl Log for Logger {
     }
 }
 
-static LOGGER: Logger = Logger {
-    level: AtomicI32::new(1),
-};
+static LOGGER: Lazy<Logger> = Lazy::new(|| {
+    Logger {
+        level: AtomicI32::new(1),
+        chan: Chan::new(),
+    }
+});
 
 
 pub fn init(config: Config) -> Result<&'static Logger, LogError> {
@@ -155,20 +156,20 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
         }
         loop {
             //recv
-            let data = LOG_SENDER.recv.recv();
+            let data = LOGGER.chan.recv.recv();
             if let Ok(data) = data {
                 let mut remain;
-                if LOG_SENDER.recv.len() > 0 {
-                    remain = Vec::with_capacity(LOG_SENDER.recv.len()+1);
+                if LOGGER.chan.recv.len() > 0 {
+                    remain = Vec::with_capacity(LOGGER.chan.recv.len() + 1);
                     remain.push(data);
-                    recv_all(&mut remain,&LOG_SENDER.recv);
+                    recv_all(&mut remain, &LOGGER.chan.recv);
                 } else {
                     remain = vec![data];
                 }
                 let mut exit = false;
                 for x in &mut remain {
                     x.formated = format.do_format(x);
-                    if x.command.eq(&Command::CommandExit){
+                    if x.command.eq(&Command::CommandExit) {
                         exit = true;
                     }
                 }
@@ -182,15 +183,15 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
             }
         }
     });
-    let r = log::set_logger(&LOGGER).map(|()| log::set_max_level(level));
+    let r = log::set_logger(LOGGER.deref()).map(|()| log::set_max_level(level));
     if r.is_err() {
         return Err(LogError::from(r.err().unwrap()));
     } else {
-        return Ok(&LOGGER);
+        return Ok(LOGGER.deref());
     }
 }
 
-fn recv_all<T>(data: &mut Vec<T>,recver: &Receiver<T>) {
+fn recv_all<T>(data: &mut Vec<T>, recver: &Receiver<T>) {
     loop {
         match recver.try_recv() {
             Ok(v) => {
@@ -216,7 +217,7 @@ pub fn exit() -> Result<(), LogError> {
         now: SystemTime::now(),
         formated: String::new(),
     };
-    let result = LOG_SENDER.send.send(fast_log_record);
+    let result = LOGGER.chan.send.send(fast_log_record);
     match result {
         Ok(()) => {
             return Ok(());
@@ -240,7 +241,7 @@ pub fn flush() -> Result<WaitGroup, LogError> {
         now: SystemTime::now(),
         formated: String::new(),
     };
-    let result = LOG_SENDER.send.send(fast_log_record);
+    let result = LOGGER.chan.send.send(fast_log_record);
     match result {
         Ok(()) => {
             return Ok(wg);
