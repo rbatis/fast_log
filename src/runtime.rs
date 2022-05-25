@@ -18,7 +18,7 @@ pub type WaitGroup = crossbeam_utils::sync::WaitGroup;
 
 #[cfg(feature = "runtime_thread")]
 pub fn chan<T>() -> (Sender<T>, Receiver<T>) {
-    crossbeam::channel::bounded(10000)
+    crossbeam::channel::unbounded()
 }
 
 #[cfg(feature = "runtime_thread")]

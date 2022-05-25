@@ -13,7 +13,7 @@ use crate::{chan, Receiver, Sender, spawn};
 use crate::config::Config;
 
 pub static LOG_SENDER: Lazy<LoggerSender> = Lazy::new(|| {
-    LoggerSender::new_def()
+    LoggerSender::new()
 });
 
 pub struct LoggerSender {
@@ -23,7 +23,7 @@ pub struct LoggerSender {
 }
 
 impl LoggerSender {
-    pub fn new_def() -> Self {
+    pub fn new() -> Self {
         let (s, r) = chan();
         LoggerSender {
             filter: OnceCell::new(),
