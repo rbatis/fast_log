@@ -76,6 +76,7 @@ impl Config {
         self
     }
 
+    /// if none=> unbounded() channel,if Some =>  bounded(len) channel
     pub fn chan_len(mut self, len: Option<usize>) -> Self {
         self.chan_len = len;
         self
