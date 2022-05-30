@@ -10,8 +10,15 @@ pub type JoinHandle<T> = std::thread::JoinHandle<T>;
 pub type WaitGroup = crossbeam_utils::sync::WaitGroup;
 
 #[cfg(feature = "runtime_thread")]
-pub fn chan<T>() -> (Sender<T>, Receiver<T>) {
-    crossbeam::channel::bounded(100000)
+pub fn chan<T>(len:Option<usize>) -> (Sender<T>, Receiver<T>) {
+    match len{
+        None => {
+            crossbeam::channel::unbounded()
+        }
+        Some(len) => {
+            crossbeam::channel::bounded(len)
+        }
+    }
 }
 
 #[cfg(feature = "runtime_thread")]
