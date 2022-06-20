@@ -7,11 +7,12 @@ use fast_log::config::Config;
 fn main() {
     struct BenchRecvLog {}
     impl LogAppender for BenchRecvLog {
-        fn do_log(&self, _: &FastLogRecord) {
-            //do nothing
+        fn do_logs(&self, records: &[FastLogRecord]) {
+            //nothing
         }
     }
-    fast_log::init(Config::new().custom(BenchRecvLog{})).unwrap();
+   // fast_log::init(Config::new().custom(BenchRecvLog{})).unwrap();
+    fast_log::init(Config::new().console()).unwrap();
     let total = 1000000;
     let now = Instant::now();
     for index in 0..total {

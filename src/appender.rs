@@ -9,14 +9,7 @@ use crate::date;
 /// Appender will be running on single main thread,please do_log for new thread or new an Future
 pub trait LogAppender: Send {
     /// Batch write log, or do nothing
-    fn do_logs(&self, records: &[FastLogRecord]) {
-        for x in records {
-            self.do_log(x);
-        }
-    }
-
-    /// write one log, you can use record.formated write to file or any storage
-    fn do_log(&self, record: &FastLogRecord);
+    fn do_logs(&self, records: &[FastLogRecord]);
 
     /// flush or do nothing
     fn flush(&self) {}

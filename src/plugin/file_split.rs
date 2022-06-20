@@ -275,10 +275,6 @@ impl LogAppender for FileSplitAppender {
         }
     }
 
-    fn do_log(&self, record: &FastLogRecord) {
-        //impl do_logs(),so this method do nothing.
-    }
-
     fn flush(&self) {
         let mut data = self.cell.borrow_mut();
         data.file.flush();

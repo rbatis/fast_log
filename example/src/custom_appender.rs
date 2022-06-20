@@ -1,36 +1,35 @@
-use std::time::Duration;
-use fast_log::appender::{FastLogFormat, LogAppender, FastLogRecord};
-use fast_log::filter::NoFilter;
+use fast_log::appender::{LogAppender, FastLogRecord};
 use log::Level;
-use std::thread::sleep;
 use chrono::{DateTime, Local};
 use fast_log::config::Config;
 
 struct CustomLog {}
 
 impl LogAppender for CustomLog {
-    fn do_log(&self, record: &FastLogRecord) {
-        let now: DateTime<Local> = chrono::DateTime::from(record.now);
-        let data;
-        match record.level {
-            Level::Warn | Level::Error => {
-                data = format!(
-                    "{} {} {} - {}  {}\n",
-                    now,
-                    record.level,
-                    record.module_path,
-                    record.args,
-                    record.formated
-                );
+    fn do_logs(&self, records: &[FastLogRecord]) {
+        for record in records {
+            let now: DateTime<Local> = chrono::DateTime::from(record.now);
+            let data;
+            match record.level {
+                Level::Warn | Level::Error => {
+                    data = format!(
+                        "{} {} {} - {}  {}\n",
+                        now,
+                        record.level,
+                        record.module_path,
+                        record.args,
+                        record.formated
+                    );
+                }
+                _ => {
+                    data = format!(
+                        "{} {} {} - {}\n",
+                        &now, record.level, record.module_path, record.args
+                    );
+                }
             }
-            _ => {
-                data = format!(
-                    "{} {} {} - {}\n",
-                    &now, record.level, record.module_path, record.args
-                );
-            }
+            print!("{}", data);
         }
-        print!("{}", data);
     }
 }
 
