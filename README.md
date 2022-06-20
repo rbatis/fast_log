@@ -7,7 +7,7 @@
 
 the fast log . This crate uses #! [forbid(unsafe_code)] to ensure everything is implemented in 100% Safe Rust.
 
-A log implementation for extreme speed, using Crossbeam/channel ,once Batch write logs,fast log date, Appender architecture
+A log implementation for extreme speed, using Crossbeam/channel ,once Batch write logs,fast log date, Appender architecture, appender per thread
 
 * Low overhead, based on thread
 
