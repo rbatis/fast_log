@@ -58,8 +58,6 @@ crossbeam = "0.8"
 chrono = { version = "0.4", features = ["serde"] }
 # features=["lz4"] or add features=["zip","lz4"] if you need lz4 packer
 fast_log = { path = "../", features = ["lz4","zip","gzip"]}
-
-tokio = {version="1.17",features = ["full"]}
-
+tokio = {version="1",features = ["rt-multi-thread","macros"]}
 meilisearch-sdk = "0.15.0"
 serde = { version = "1.0", features = ["derive"] }
