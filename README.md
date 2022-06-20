@@ -27,6 +27,8 @@ A log implementation for extreme speed, using Crossbeam to double the efficiency
 
 * Support use ```log::logger().flush()``` method wait to flush disk
 
+* Simple and efficient Appender architecture.Both configuration and customization are simple
+
 
 ```
 
