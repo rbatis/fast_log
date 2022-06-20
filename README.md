@@ -25,7 +25,7 @@ A log implementation for extreme speed, using Crossbeam to double the efficiency
 
 * Support custom compression algorithms, such as ZIP and LZ4
 
-* Support use ```log::flush()``` method wait to flush disk
+* Support use ```log::logger().flush()``` method wait to flush disk
 
 
 ```
