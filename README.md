@@ -7,7 +7,7 @@
 
 the fast log . This crate uses #! [forbid(unsafe_code)] to ensure everything is implemented in 100% Safe Rust.
 
-A log implementation for extreme speed, using Crossbeam to double the efficiency (as opposed to the standard library MPSC) with a lockless channel, using a channel to write logs asynchronously. Completely use the safe code to achieve, without unsafe code
+A log implementation for extreme speed, using Crossbeam/channel ,once Batch write logs,fast log date, Appender architecture
 
 * Low overhead, based on thread
 
