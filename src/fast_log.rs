@@ -1,5 +1,5 @@
 use std::ops::Deref;
-use std::sync::atomic::{AtomicI32, AtomicI64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicI32, AtomicI64, Ordering};
 use log::{LevelFilter, Log, Metadata, Record};
 
 use crate::appender::{Command, FastLogRecord};
