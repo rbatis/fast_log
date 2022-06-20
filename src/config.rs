@@ -12,6 +12,7 @@ pub struct Config {
     pub level: LevelFilter,
     pub filter: Box<dyn Filter>,
     pub format: Box<dyn RecordFormat>,
+    pub chan_len: Option<usize>,
 }
 
 impl Default for Config {
@@ -21,6 +22,7 @@ impl Default for Config {
             level: LevelFilter::Info,
             filter: Box::new(NoFilter {}),
             format: Box::new(FastLogFormat::new()),
+            chan_len: Some(100000),
         }
     }
 }
@@ -71,6 +73,12 @@ impl Config {
     /// add a custom LogAppender
     pub fn custom<Appender: LogAppender + 'static>(mut self, arg: Appender) -> Self {
         self.appends.push(Box::new(arg));
+        self
+    }
+
+    /// if none=> unbounded() channel,if Some =>  bounded(len) channel
+    pub fn chan_len(mut self, len: Option<usize>) -> Self {
+        self.chan_len = len;
         self
     }
 }

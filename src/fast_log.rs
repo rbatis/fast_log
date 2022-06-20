@@ -1,5 +1,5 @@
 use std::ops::Deref;
-use std::sync::atomic::{AtomicI32};
+use std::sync::atomic::{AtomicI32, AtomicI64, AtomicUsize, Ordering};
 use log::{LevelFilter, Log, Metadata, Record};
 
 use crate::appender::{Command, FastLogRecord};
@@ -20,8 +20,8 @@ pub struct Chan {
 }
 
 impl Chan {
-    pub fn new() -> Self {
-        let (s, r) = chan();
+    pub fn new(len: Option<usize>) -> Self {
+        let (s, r) = chan(len);
         Chan {
             filter: OnceCell::new(),
             send: s,
@@ -32,11 +32,6 @@ impl Chan {
         self.filter.get_or_init(|| f);
         self.filter.get();
     }
-}
-
-fn set_log(level: log::LevelFilter, filter: Box<dyn Filter>) {
-    LOGGER.set_level(level);
-    LOGGER.chan.set_filter(filter);
 }
 
 pub struct Logger {
@@ -102,10 +97,21 @@ impl Log for Logger {
     }
 }
 
+static CHAN_LEN: AtomicI64 = AtomicI64::new(-1);
 static LOGGER: Lazy<Logger> = Lazy::new(|| {
     Logger {
         level: AtomicI32::new(1),
-        chan: Chan::new(),
+        chan: Chan::new({
+            let len = CHAN_LEN.load(Ordering::SeqCst);
+            match len {
+                -1 => {
+                    None
+                }
+                v => {
+                    Some(v as usize)
+                }
+            }
+        }),
     }
 });
 
@@ -114,16 +120,26 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     if config.appends.is_empty() {
         return Err(LogError::from("[fast_log] appenders can not be empty!"));
     }
-    set_log(config.level.clone(), config.filter);
+    match config.chan_len {
+        None => {
+            CHAN_LEN.store(-1, Ordering::SeqCst);
+        }
+        Some(v) => {
+            CHAN_LEN.store(v as i64, Ordering::SeqCst);
+        }
+    }
+    LOGGER.set_level(config.level);
+    LOGGER.chan.set_filter(config.filter);
     //main recv data
     let appenders = config.appends;
     let format = config.format;
     let level = config.level;
+    let chan_len = config.chan_len;
     std::thread::spawn(move || {
         let mut recever_vec = vec![];
         let mut sender_vec: Vec<Sender<Arc<Vec<FastLogRecord>>>> = vec![];
         for a in appenders {
-            let (s, r) = chan();
+            let (s, r) = chan(chan_len);
             sender_vec.push(s);
             recever_vec.push((r, a));
         }
