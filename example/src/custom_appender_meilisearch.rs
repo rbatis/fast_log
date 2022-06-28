@@ -1,13 +1,9 @@
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use fast_log::appender::{FastLogFormat, LogAppender, FastLogRecord};
-use fast_log::filter::NoFilter;
+use fast_log::appender::{LogAppender, FastLogRecord};
 use log::Level;
 use chrono::{DateTime, Local};
 use meilisearch_sdk::client::Client;
 use meilisearch_sdk::document::Document;
-use meilisearch_sdk::indexes::Index;
-use tokio::runtime::Runtime;
 use fast_log::config::Config;
 use serde::{Serialize, Deserialize};
 
@@ -50,7 +46,7 @@ async fn main() {
 
 struct CustomLog {
     c: Arc<Client>,
-    rt: Runtime,
+    rt: tokio::runtime::Runtime,
 }
 
 impl LogAppender for CustomLog {
