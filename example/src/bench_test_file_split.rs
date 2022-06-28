@@ -1,4 +1,4 @@
-use std::time::{Instant};
+use std::time::Instant;
 use fast_log::bencher::QPS;
 use fast_log::config::Config;
 use fast_log::consts::LogSize;
@@ -8,7 +8,7 @@ use fast_log::plugin::packer::LogPacker;
 /// cargo run --release --package example --bin bench_test_file_split
 fn main() {
     //clear data
-    std::fs::remove_dir("target/logs/");
+    let _=std::fs::remove_dir("target/logs/");
     fast_log::init(Config::new().file_split("target/logs/",
                                              LogSize::MB(1),
                                              RollingType::All,

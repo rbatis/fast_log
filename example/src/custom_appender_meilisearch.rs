@@ -32,7 +32,7 @@ impl Document for LogDoc {
 #[tokio::main]
 async fn main() {
     let client = Client::new("http://localhost:7700", "masterKey");
-    let logger = fast_log::init(Config::new().custom(CustomLog {
+    fast_log::init(Config::new().custom(CustomLog {
         c: Arc::new(client),
         rt: tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap(),
     })).unwrap();
