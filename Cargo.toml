@@ -6,7 +6,7 @@ members = [
 
 [package]
 name = "fast_log"
-version = "1.5.17"
+version = "1.5.18"
 description = "Rust async log High-performance asynchronous logging"
 readme = "Readme.md"
 authors = ["ce <zhuxiujia@qq.com>"]
