@@ -13,6 +13,7 @@ use crate::error::LogError as Error;
 /// Supports comparsion and sorting.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct LogDate {
+    /// 0...999999999
     pub nano: u32,
     /// 0...59
     pub sec: u8,
