@@ -63,7 +63,7 @@ impl Logger {
     pub fn print(&self, log: String) -> Result<(), SendError<FastLogRecord>> {
         let fast_log_record = FastLogRecord {
             command: Command::CommandRecord,
-            level: log::Level::Error,
+            level: log::Level::Info,
             target: "".to_string(),
             args: "".to_string(),
             module_path: "".to_string(),
