@@ -9,7 +9,7 @@ the fast log . This crate uses #! [forbid(unsafe_code)] to ensure everything is 
 
 A log implementation for extreme speed, using Crossbeam/channel ,once Batch write logs,fast log date, Appender architecture, appender per thread
 
-* Low overhead, based on thread
+* Low overhead, log write based on thread, also support tokio
 
 * High performance, use lockless message queue, log is stored in queue, then flush disk. It does not block the caller
 
