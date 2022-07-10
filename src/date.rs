@@ -13,6 +13,7 @@ use crate::error::LogError as Error;
 /// Supports comparsion and sorting.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct LogDate {
+    pub nano: u128,
     /// 0...59
     pub sec: u8,
     /// 0...59
@@ -116,6 +117,7 @@ impl From<SystemTime> for LogDate {
         };
 
         LogDate {
+            nano: (dur - Duration::from_secs(dur.as_secs())).as_nanos(),
             sec: (secs_of_day % 60) as u8,
             min: ((secs_of_day % 3600) / 60) as u8,
             hour: (secs_of_day / 3600) as u8,
@@ -198,7 +200,17 @@ impl Display for LogDate {
         buf[15] = b'0' + (self.min % 10) as u8;
         buf[17] = b'0' + (self.sec / 10) as u8;
         buf[18] = b'0' + (self.sec % 10) as u8;
-        f.write_str(std::str::from_utf8(&buf[..]).unwrap())
+        f.write_str(std::str::from_utf8(&buf[..]).unwrap())?;
+        if self.nano == 0 {
+            Ok(())
+        } else if self.nano % 1_000_000 == 0 {
+            write!(f, ".{:03}", self.nano / 1_000_000)
+        } else if self.nano % 1_000 == 0 {
+            write!(f, ".{:06}", self.nano / 1_000)
+        } else {
+            write!(f, ".{:09}", self.nano)
+        }
+
 
         // let wday = match self.wday {
         //     1 => b"Mon",
@@ -302,6 +314,7 @@ fn parse_imf_fixdate(s: &[u8]) -> Result<LogDate, Error> {
         return Err(Error::default());
     }
     Ok(LogDate {
+        nano: 0,
         sec: toint_2(&s[23..25])?,
         min: toint_2(&s[20..22])?,
         hour: toint_2(&s[17..19])?,
@@ -365,6 +378,7 @@ fn parse_rfc850_date(s: &[u8]) -> Result<LogDate, Error> {
         year += 1900;
     }
     Ok(LogDate {
+        nano: 0,
         sec: toint_2(&s[16..18])?,
         min: toint_2(&s[13..15])?,
         hour: toint_2(&s[10..12])?,
@@ -395,6 +409,7 @@ fn parse_asctime(s: &[u8]) -> Result<LogDate, Error> {
         return Err(Error::default());
     }
     Ok(LogDate {
+        nano: 0,
         sec: toint_2(&s[17..19])?,
         min: toint_2(&s[14..16])?,
         hour: toint_2(&s[11..13])?,
