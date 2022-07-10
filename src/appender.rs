@@ -75,7 +75,7 @@ impl RecordFormat for FastLogFormat {
                 let now = date::LogDate::from(arg.now.add(self.duration_zone));
                 if arg.level.to_level_filter() <= self.display_line_level {
                     data = format!(
-                        "{:26} {} {} - {}  {}:{}\n",
+                        "{:29} {} {} - {}  {}:{}\n",
                         &now,
                         arg.level,
                         arg.module_path,
@@ -85,7 +85,7 @@ impl RecordFormat for FastLogFormat {
                     );
                 } else {
                     data = format!(
-                        "{:26} {} {} - {}\n",
+                        "{:29} {} {} - {}\n",
                         &now, arg.level, arg.module_path, arg.args
                     );
                 }
