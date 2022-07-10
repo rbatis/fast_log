@@ -1,13 +1,14 @@
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicI32, AtomicI64, Ordering};
 use log::{LevelFilter, Log, Metadata, Record};
 
-use crate::appender::{Command, FastLogRecord};
+use crate::appender::{Command, FastLogRecord, RecordFormat};
 use crate::error::LogError;
 use crate::filter::{Filter};
 use std::result::Result::Ok;
 use std::time::{SystemTime};
 use std::sync::Arc;
+use crossbeam_channel::SendError;
 use crossbeam_utils::sync::WaitGroup;
 use once_cell::sync::{Lazy, OnceCell};
 use crate::{chan, Receiver, Sender, spawn};
@@ -56,6 +57,22 @@ impl Logger {
             5 => LevelFilter::Trace,
             _ => panic!("error log level!"),
         }
+    }
+
+    /// print no other info
+    pub fn print(&self, log: String) -> Result<(), SendError<FastLogRecord>> {
+        let fast_log_record = FastLogRecord {
+            command: Command::CommandRecord,
+            level: log::Level::Error,
+            target: "".to_string(),
+            args: "".to_string(),
+            module_path: "".to_string(),
+            file: "".to_string(),
+            line: None,
+            now: SystemTime::now(),
+            formated: log,
+        };
+        LOGGER.chan.send.send(fast_log_record)
     }
 
     pub fn wait(&self) {
@@ -132,7 +149,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     LOGGER.chan.set_filter(config.filter);
     //main recv data
     let appenders = config.appends;
-    let format = config.format;
+    let format = Arc::new(config.format);
     let level = config.level;
     let chan_len = config.chan_len;
     std::thread::spawn(move || {
@@ -184,7 +201,9 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                 }
                 let mut exit = false;
                 for x in &mut remain {
-                    x.formated = format.do_format(x);
+                    if x.formated.is_empty() {
+                        x.formated = format.do_format(x);
+                    }
                     if x.command.eq(&Command::CommandExit) {
                         exit = true;
                     }
@@ -265,4 +284,8 @@ pub fn flush() -> Result<WaitGroup, LogError> {
         _ => {}
     }
     return Err(LogError::E("[fast_log] flush fail!".to_string()));
+}
+
+pub fn print(log: String) -> Result<(), SendError<FastLogRecord>> {
+    LOGGER.print(log)
 }

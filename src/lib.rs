@@ -3,6 +3,8 @@
 #![allow(unused_assignments)]
 #![allow(unused_must_use)]
 
+extern crate core;
+
 pub mod appender;
 pub mod bencher;
 pub mod consts;
