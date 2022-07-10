@@ -1,5 +1,5 @@
 use std::cmp;
-use std::fmt::{self, Display, Formatter};
+use std::fmt::{self, Display, Formatter, Pointer};
 use std::str::FromStr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -13,7 +13,7 @@ use crate::error::LogError as Error;
 /// Supports comparsion and sorting.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct LogDate {
-    pub nano: u128,
+    pub nano: u32,
     /// 0...59
     pub sec: u8,
     /// 0...59
@@ -117,7 +117,7 @@ impl From<SystemTime> for LogDate {
         };
 
         LogDate {
-            nano: (dur - Duration::from_secs(dur.as_secs())).as_nanos(),
+            nano: (dur - Duration::from_secs(dur.as_secs())).as_nanos() as u32,
             sec: (secs_of_day % 60) as u8,
             min: ((secs_of_day % 3600) / 60) as u8,
             hour: (secs_of_day / 3600) as u8,
@@ -155,8 +155,8 @@ impl From<LogDate> for SystemTime {
         let days = (v.year as u64 - 1970) * 365 + leap_years as u64 + ydays;
         UNIX_EPOCH
             + Duration::from_secs(
-                v.sec as u64 + v.min as u64 * 60 + v.hour as u64 * 3600 + days * 86400,
-            )
+            v.sec as u64 + v.min as u64 * 60 + v.hour as u64 * 3600 + days * 86400,
+        )
     }
 }
 
@@ -180,7 +180,7 @@ impl FromStr for LogDate {
 
 impl Display for LogDate {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let mut buf: [u8; 19] =*b"0000-00-00 00:00:00";
+        let mut buf: [u8; 20] = *b"0000-00-00 00:00:00.";
 
         buf[0] = b'0' + (self.year / 1000) as u8;
         buf[1] = b'0' + (self.year / 100 % 10) as u8;
@@ -200,17 +200,11 @@ impl Display for LogDate {
         buf[15] = b'0' + (self.min % 10) as u8;
         buf[17] = b'0' + (self.sec / 10) as u8;
         buf[18] = b'0' + (self.sec % 10) as u8;
-        f.write_str(std::str::from_utf8(&buf[..]).unwrap())?;
-        if self.nano == 0 {
-            Ok(())
-        } else if self.nano % 1_000_000 == 0 {
-            write!(f, ".{:03}", self.nano / 1_000_000)
-        } else if self.nano % 1_000 == 0 {
-            write!(f, ".{:06}", self.nano / 1_000)
-        } else {
-            write!(f, ".{:09}", self.nano)
-        }
 
+        buf[19] = b'.';
+
+        f.write_str(std::str::from_utf8(&buf[..]).unwrap())?;
+        write!(f, "{:9}", self.nano)
 
         // let wday = match self.wday {
         //     1 => b"Mon",
