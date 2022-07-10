@@ -83,6 +83,15 @@ fast_log = {version = "1.5" , features = ["lz4","zip","gzip"]}
 
 
 
+#### Use Log(Just Print)
+
+```rust
+use log::{error, info, warn};
+fn  main(){
+    fast_log::init(Config::new().console()).unwrap();
+    fast_log::print("Commencing print\n".into());
+}
+```
 
 #### Use Log(Console)
 
