@@ -198,7 +198,7 @@ impl FromStr for LogDate {
 
 impl Display for LogDate {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let mut buf: [u8; 20] = *b"0000-00-00 00:00:00.";
+        let mut buf: [u8; 29] = *b"0000-00-00 00:00:00.000000000";
 
         buf[0] = b'0' + (self.year / 1000) as u8;
         buf[1] = b'0' + (self.year / 100 % 10) as u8;
@@ -221,8 +221,17 @@ impl Display for LogDate {
 
         buf[19] = b'.';
 
-        f.write_str(std::str::from_utf8(&buf[..]).unwrap())?;
-        write!(f, "{:09}", self.nano)
+        buf[20] = b'0' + (self.nano / 100000000) as u8;
+        buf[21] = b'0' + (self.nano / 10000000 % 10) as u8;
+        buf[22] = b'0' + (self.nano / 1000000 % 10) as u8;
+        buf[23] = b'0' + (self.nano / 100000 % 10) as u8;
+        buf[24] = b'0' + (self.nano / 10000 % 10) as u8;
+        buf[25] = b'0' + (self.nano / 1000 % 10) as u8;
+        buf[26] = b'0' + (self.nano / 100 % 10) as u8;
+        buf[27] = b'0' + (self.nano / 10 % 10) as u8;
+        buf[28] = b'0' + (self.nano % 10) as u8;
+
+        f.write_str(std::str::from_utf8(&buf[..]).unwrap())
     }
 }
 
@@ -315,7 +324,7 @@ mod test {
     fn test_date() {
         let d = LogDate::from_str("1234-12-13 11:12:13.112345678").unwrap();
         println!("{}", d);
-        assert_eq!("1234-12-13 11:12:13.112345678".to_string(),d.to_string());
+        assert_eq!("1234-12-13 11:12:13.112345678".to_string(), d.to_string());
     }
 }
 
