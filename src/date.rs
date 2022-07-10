@@ -205,7 +205,7 @@ impl Display for LogDate {
         buf[19] = b'.';
 
         f.write_str(std::str::from_utf8(&buf[..]).unwrap())?;
-        write!(f, "{:9}", self.nano)
+        write!(f, "{:09}", self.nano)
 
         // let wday = match self.wday {
         //     1 => b"Mon",
