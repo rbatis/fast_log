@@ -5,7 +5,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::error::LogError as Error;
 
-/// HTTP timestamp type.
+/// Log timestamp type.
 ///
 /// Parse using `FromStr` impl.
 /// Format using the `Display` trait.
