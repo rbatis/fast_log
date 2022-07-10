@@ -27,8 +27,6 @@ pub struct LogDate {
     pub mon: u8,
     /// 1970...9999
     pub year: u16,
-    /// 1...7
-    pub wday: u8,
 }
 
 impl LogDate {
@@ -112,11 +110,6 @@ impl From<SystemTime> for LogDate {
             mon + 2
         };
 
-        let mut wday = (3 + days) % 7;
-        if wday <= 0 {
-            wday += 7
-        };
-
         LogDate {
             nano: (dur - Duration::from_secs(dur.as_secs())).as_nanos() as u32,
             sec: (secs_of_day % 60) as u8,
@@ -125,7 +118,6 @@ impl From<SystemTime> for LogDate {
             day: mday as u8,
             mon: mon as u8,
             year: year as u16,
-            wday: wday as u8,
         }
     }
 }
@@ -165,19 +157,44 @@ impl FromStr for LogDate {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<LogDate, Error> {
-        if !s.is_ascii() {
-            return Err(Error::default());
-        }
-        let x = s.trim().as_bytes();
-        let date = parse_imf_fixdate(x)
-            .or_else(|_| parse_rfc850_date(x))
-            .or_else(|_| parse_asctime(x))?;
-        if !date.is_valid() {
-            return Err(Error::default());
+        //"0000-00-00 00:00:00.000000000";
+        let mut date = LogDate {
+            nano: 0,
+            sec: 0,
+            min: 0,
+            hour: 0,
+            day: 0,
+            mon: 0,
+            year: 0,
+        };
+        let bytes = s.as_bytes();
+        if bytes.len() > 4 {
+            if let Ok(year) = std::str::from_utf8(&bytes[0..4]).unwrap_or_default().parse::<u16>() {
+                date.year = year;
+            }
+            if let Ok(mon) = std::str::from_utf8(&bytes[5..7]).unwrap_or_default().parse::<u8>() {
+                date.mon = mon;
+            }
+            if let Ok(day) = std::str::from_utf8(&bytes[8..10]).unwrap_or_default().parse::<u8>() {
+                date.day = day;
+            }
+            if let Ok(hour) = std::str::from_utf8(&bytes[11..13]).unwrap_or_default().parse::<u8>() {
+                date.hour = hour;
+            }
+            if let Ok(min) = std::str::from_utf8(&bytes[14..16]).unwrap_or_default().parse::<u8>() {
+                date.min = min;
+            }
+            if let Ok(sec) = std::str::from_utf8(&bytes[17..19]).unwrap_or_default().parse::<u8>() {
+                date.sec = sec;
+            }
+            if let Ok(ns) = std::str::from_utf8(&bytes[20..29]).unwrap_or_default().parse::<u32>() {
+                date.nano = ns;
+            }
         }
         Ok(date)
     }
 }
+
 
 impl Display for LogDate {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -206,54 +223,6 @@ impl Display for LogDate {
 
         f.write_str(std::str::from_utf8(&buf[..]).unwrap())?;
         write!(f, "{:09}", self.nano)
-
-        // let wday = match self.wday {
-        //     1 => b"Mon",
-        //     2 => b"Tue",
-        //     3 => b"Wed",
-        //     4 => b"Thu",
-        //     5 => b"Fri",
-        //     6 => b"Sat",
-        //     7 => b"Sun",
-        //     _ => unreachable!(),
-        // };
-        //
-        // let mon = match self.mon {
-        //     1 => b"Jan",
-        //     2 => b"Feb",
-        //     3 => b"Mar",
-        //     4 => b"Apr",
-        //     5 => b"May",
-        //     6 => b"Jun",
-        //     7 => b"Jul",
-        //     8 => b"Aug",
-        //     9 => b"Sep",
-        //     10 => b"Oct",
-        //     11 => b"Nov",
-        //     12 => b"Dec",
-        //     _ => unreachable!(),
-        // };
-        //
-        // let mut buf: [u8; 29] = *b"   , 00     0000 00:00:00 GMT";
-        // buf[0] = wday[0];
-        // buf[1] = wday[1];
-        // buf[2] = wday[2];
-        // buf[5] = b'0' + (self.day / 10) as u8;
-        // buf[6] = b'0' + (self.day % 10) as u8;
-        // buf[8] = mon[0];
-        // buf[9] = mon[1];
-        // buf[10] = mon[2];
-        // buf[12] = b'0' + (self.year / 1000) as u8;
-        // buf[13] = b'0' + (self.year / 100 % 10) as u8;
-        // buf[14] = b'0' + (self.year / 10 % 10) as u8;
-        // buf[15] = b'0' + (self.year % 10) as u8;
-        // buf[17] = b'0' + (self.hour / 10) as u8;
-        // buf[18] = b'0' + (self.hour % 10) as u8;
-        // buf[20] = b'0' + (self.min / 10) as u8;
-        // buf[21] = b'0' + (self.min % 10) as u8;
-        // buf[23] = b'0' + (self.sec / 10) as u8;
-        // buf[24] = b'0' + (self.sec % 10) as u8;
-        // f.write_str(std::str::from_utf8(&buf[..]).unwrap())
     }
 }
 
@@ -330,123 +299,24 @@ fn parse_imf_fixdate(s: &[u8]) -> Result<LogDate, Error> {
             _ => return Err(Error::default()),
         },
         year: toint_4(&s[12..16])?,
-        wday: match &s[..5] {
-            b"Mon, " => 1,
-            b"Tue, " => 2,
-            b"Wed, " => 3,
-            b"Thu, " => 4,
-            b"Fri, " => 5,
-            b"Sat, " => 6,
-            b"Sun, " => 7,
-            _ => return Err(Error::default()),
-        },
-    })
-}
-
-fn parse_rfc850_date(s: &[u8]) -> Result<LogDate, Error> {
-    // Example: `Sunday, 06-Nov-94 08:49:37 GMT`
-    if s.len() < 23 {
-        return Err(Error::default());
-    }
-
-    fn wday<'a>(s: &'a [u8], wday: u8, name: &'static [u8]) -> Option<(u8, &'a [u8])> {
-        if &s[0..name.len()] == name {
-            return Some((wday, &s[name.len()..]));
-        }
-        None
-    }
-    let (wday, s) = wday(s, 1, b"Monday, ")
-        .or_else(|| wday(s, 2, b"Tuesday, "))
-        .or_else(|| wday(s, 3, b"Wednesday, "))
-        .or_else(|| wday(s, 4, b"Thursday, "))
-        .or_else(|| wday(s, 5, b"Friday, "))
-        .or_else(|| wday(s, 6, b"Saturday, "))
-        .or_else(|| wday(s, 7, b"Sunday, "))
-        .ok_or(Error::default())?;
-    if s.len() != 22 || s[12] != b':' || s[15] != b':' || &s[18..22] != b" GMT" {
-        return Err(Error::default());
-    }
-    let mut year = u16::from(toint_2(&s[7..9])?);
-    if year < 70 {
-        year += 2000;
-    } else {
-        year += 1900;
-    }
-    Ok(LogDate {
-        nano: 0,
-        sec: toint_2(&s[16..18])?,
-        min: toint_2(&s[13..15])?,
-        hour: toint_2(&s[10..12])?,
-        day: toint_2(&s[0..2])?,
-        mon: match &s[2..7] {
-            b"-Jan-" => 1,
-            b"-Feb-" => 2,
-            b"-Mar-" => 3,
-            b"-Apr-" => 4,
-            b"-May-" => 5,
-            b"-Jun-" => 6,
-            b"-Jul-" => 7,
-            b"-Aug-" => 8,
-            b"-Sep-" => 9,
-            b"-Oct-" => 10,
-            b"-Nov-" => 11,
-            b"-Dec-" => 12,
-            _ => return Err(Error::default()),
-        },
-        year,
-        wday,
-    })
-}
-
-fn parse_asctime(s: &[u8]) -> Result<LogDate, Error> {
-    // Example: `Sun Nov  6 08:49:37 1994`
-    if s.len() != 24 || s[10] != b' ' || s[13] != b':' || s[16] != b':' || s[19] != b' ' {
-        return Err(Error::default());
-    }
-    Ok(LogDate {
-        nano: 0,
-        sec: toint_2(&s[17..19])?,
-        min: toint_2(&s[14..16])?,
-        hour: toint_2(&s[11..13])?,
-        day: {
-            let x = &s[8..10];
-            {
-                if x[0] == b' ' {
-                    toint_1(x[1])
-                } else {
-                    toint_2(x)
-                }
-            }?
-        },
-        mon: match &s[4..8] {
-            b"Jan " => 1,
-            b"Feb " => 2,
-            b"Mar " => 3,
-            b"Apr " => 4,
-            b"May " => 5,
-            b"Jun " => 6,
-            b"Jul " => 7,
-            b"Aug " => 8,
-            b"Sep " => 9,
-            b"Oct " => 10,
-            b"Nov " => 11,
-            b"Dec " => 12,
-            _ => return Err(Error::default()),
-        },
-        year: toint_4(&s[20..24])?,
-        wday: match &s[0..4] {
-            b"Mon " => 1,
-            b"Tue " => 2,
-            b"Wed " => 3,
-            b"Thu " => 4,
-            b"Fri " => 5,
-            b"Sat " => 6,
-            b"Sun " => 7,
-            _ => return Err(Error::default()),
-        },
     })
 }
 
 fn is_leap_year(y: u16) -> bool {
     y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)
 }
+
+#[cfg(test)]
+mod test {
+    use std::str::FromStr;
+    use crate::date::LogDate;
+
+    #[test]
+    fn test_date() {
+        let d = LogDate::from_str("1234-12-13 11:12:13.112345678").unwrap();
+        println!("{}", d);
+        assert_eq!("1234-12-13 11:12:13.112345678".to_string(),d.to_string());
+    }
+}
+
+
