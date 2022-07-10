@@ -281,36 +281,6 @@ fn toint_4(s: &[u8]) -> Result<u16, Error> {
     }
 }
 
-fn parse_imf_fixdate(s: &[u8]) -> Result<LogDate, Error> {
-    // Example: `Sun, 06 Nov 1994 08:49:37 GMT`
-    if s.len() != 29 || &s[25..] != b" GMT" || s[16] != b' ' || s[19] != b':' || s[22] != b':' {
-        return Err(Error::default());
-    }
-    Ok(LogDate {
-        nano: 0,
-        sec: toint_2(&s[23..25])?,
-        min: toint_2(&s[20..22])?,
-        hour: toint_2(&s[17..19])?,
-        day: toint_2(&s[5..7])?,
-        mon: match &s[7..12] {
-            b" Jan " => 1,
-            b" Feb " => 2,
-            b" Mar " => 3,
-            b" Apr " => 4,
-            b" May " => 5,
-            b" Jun " => 6,
-            b" Jul " => 7,
-            b" Aug " => 8,
-            b" Sep " => 9,
-            b" Oct " => 10,
-            b" Nov " => 11,
-            b" Dec " => 12,
-            _ => return Err(Error::default()),
-        },
-        year: toint_4(&s[12..16])?,
-    })
-}
-
 fn is_leap_year(y: u16) -> bool {
     y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)
 }
