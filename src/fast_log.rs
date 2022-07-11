@@ -1,18 +1,18 @@
+use log::{LevelFilter, Log, Metadata, Record};
 use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicI32, AtomicI64, Ordering};
-use log::{LevelFilter, Log, Metadata, Record};
 
 use crate::appender::{Command, FastLogRecord, RecordFormat};
+use crate::config::Config;
 use crate::error::LogError;
-use crate::filter::{Filter};
-use std::result::Result::Ok;
-use std::time::{SystemTime};
-use std::sync::Arc;
+use crate::filter::Filter;
+use crate::{chan, spawn, Receiver, Sender};
 use crossbeam_channel::SendError;
 use crossbeam_utils::sync::WaitGroup;
 use once_cell::sync::{Lazy, OnceCell};
-use crate::{chan, Receiver, Sender, spawn};
-use crate::config::Config;
+use std::result::Result::Ok;
+use std::sync::Arc;
+use std::time::SystemTime;
 
 pub struct Chan {
     pub filter: OnceCell<Box<dyn Filter>>,
@@ -115,23 +115,16 @@ impl Log for Logger {
 }
 
 static CHAN_LEN: AtomicI64 = AtomicI64::new(-1);
-static LOGGER: Lazy<Logger> = Lazy::new(|| {
-    Logger {
-        level: AtomicI32::new(1),
-        chan: Chan::new({
-            let len = CHAN_LEN.load(Ordering::SeqCst);
-            match len {
-                -1 => {
-                    None
-                }
-                v => {
-                    Some(v as usize)
-                }
-            }
-        }),
-    }
+static LOGGER: Lazy<Logger> = Lazy::new(|| Logger {
+    level: AtomicI32::new(1),
+    chan: Chan::new({
+        let len = CHAN_LEN.load(Ordering::SeqCst);
+        match len {
+            -1 => None,
+            v => Some(v as usize),
+        }
+    }),
 });
-
 
 pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     if config.appends.is_empty() {
@@ -239,7 +232,6 @@ fn recv_all<T>(data: &mut Vec<T>, recver: &Receiver<T>) {
     }
 }
 
-
 pub fn exit() -> Result<(), LogError> {
     let fast_log_record = FastLogRecord {
         command: Command::CommandExit,
@@ -261,7 +253,6 @@ pub fn exit() -> Result<(), LogError> {
     }
     return Err(LogError::E("[fast_log] exit fail!".to_string()));
 }
-
 
 pub fn flush() -> Result<WaitGroup, LogError> {
     let wg = WaitGroup::new();

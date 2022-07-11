@@ -10,14 +10,10 @@ pub type JoinHandle<T> = std::thread::JoinHandle<T>;
 pub type WaitGroup = crossbeam_utils::sync::WaitGroup;
 
 #[cfg(feature = "runtime_thread")]
-pub fn chan<T>(len:Option<usize>) -> (Sender<T>, Receiver<T>) {
-    match len{
-        None => {
-            crossbeam::channel::unbounded()
-        }
-        Some(len) => {
-            crossbeam::channel::bounded(len)
-        }
+pub fn chan<T>(len: Option<usize>) -> (Sender<T>, Receiver<T>) {
+    match len {
+        None => crossbeam::channel::unbounded(),
+        Some(len) => crossbeam::channel::bounded(len),
     }
 }
 
@@ -27,11 +23,17 @@ pub fn sleep(d: Duration) {
 }
 
 #[cfg(feature = "runtime_thread")]
-pub fn spawn<F>(f: F) -> JoinHandle<()> where F: FnOnce() + std::marker::Send + 'static {
+pub fn spawn<F>(f: F) -> JoinHandle<()>
+where
+    F: FnOnce() + std::marker::Send + 'static,
+{
     std::thread::spawn(f)
 }
 
 #[cfg(feature = "runtime_thread")]
-pub fn spawn_stack_size<F>(f: F, stack_size:usize) -> JoinHandle<()> where F: FnOnce() + std::marker::Send + 'static {
+pub fn spawn_stack_size<F>(f: F, stack_size: usize) -> JoinHandle<()>
+where
+    F: FnOnce() + std::marker::Send + 'static,
+{
     std::thread::spawn(f)
 }

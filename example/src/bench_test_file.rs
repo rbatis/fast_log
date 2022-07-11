@@ -1,6 +1,6 @@
-use std::time::{Instant};
 use fast_log::bencher::QPS;
 use fast_log::config::Config;
+use std::time::Instant;
 
 /// cargo run --release --package example --bin bench_test_file
 fn main() {

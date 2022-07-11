@@ -1,7 +1,7 @@
-use fast_log::appender::{LogAppender, FastLogRecord};
-use log::Level;
 use chrono::{DateTime, Local};
+use fast_log::appender::{FastLogRecord, LogAppender};
 use fast_log::config::Config;
+use log::Level;
 
 struct CustomLog {}
 
@@ -14,11 +14,7 @@ impl LogAppender for CustomLog {
                 Level::Warn | Level::Error => {
                     data = format!(
                         "{} {} {} - {}  {}\n",
-                        now,
-                        record.level,
-                        record.module_path,
-                        record.args,
-                        record.formated
+                        now, record.level, record.module_path, record.args, record.formated
                     );
                 }
                 _ => {

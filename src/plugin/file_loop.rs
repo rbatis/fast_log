@@ -11,7 +11,12 @@ pub struct FileLoopAppender {
 impl FileLoopAppender {
     pub fn new(log_file_path: &str, max_temp_size: LogSize) -> FileLoopAppender {
         Self {
-            file: FileSplitAppender::new(log_file_path, max_temp_size, RollingType::KeepNum(1), Box::new(LogPacker {}))
+            file: FileSplitAppender::new(
+                log_file_path,
+                max_temp_size,
+                RollingType::KeepNum(1),
+                Box::new(LogPacker {}),
+            ),
         }
     }
 }

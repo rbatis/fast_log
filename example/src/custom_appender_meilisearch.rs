@@ -1,11 +1,11 @@
-use std::sync::Arc;
-use fast_log::appender::{LogAppender, FastLogRecord};
-use log::Level;
 use chrono::{DateTime, Local};
+use fast_log::appender::{FastLogRecord, LogAppender};
+use fast_log::config::Config;
+use log::Level;
 use meilisearch_sdk::client::Client;
 use meilisearch_sdk::document::Document;
-use fast_log::config::Config;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct LogDoc {
@@ -22,7 +22,6 @@ impl Document for LogDoc {
     }
 }
 
-
 /// you should download run  [download](https://github.com/meilisearch/Meilisearch/releases)
 ///
 /// or use docker command run meilisearch
@@ -32,17 +31,22 @@ impl Document for LogDoc {
 #[tokio::main]
 async fn main() {
     let client = Client::new("http://localhost:7700", "masterKey");
-    fast_log::init(Config::new().custom(CustomLog {
-        c: Arc::new(client),
-        rt: tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap(),
-    })).unwrap();
+    fast_log::init(
+        Config::new().custom(CustomLog {
+            c: Arc::new(client),
+            rt: tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .unwrap(),
+        }),
+    )
+    .unwrap();
     for index in 0..1000 {
-        log::info!("Commencing yak shaving:{}",index);
-        log::error!("Commencing error:{}",index);
+        log::info!("Commencing yak shaving:{}", index);
+        log::error!("Commencing error:{}", index);
     }
     log::logger().flush();
 }
-
 
 struct CustomLog {
     c: Arc<Client>,
@@ -58,11 +62,7 @@ impl LogAppender for CustomLog {
                 Level::Warn | Level::Error => {
                     data = format!(
                         "{} {} {} - {}  {}\n",
-                        now,
-                        record.level,
-                        record.module_path,
-                        record.args,
-                        record.formated
+                        now, record.level, record.module_path, record.args, record.formated
                     );
                 }
                 _ => {
@@ -75,7 +75,7 @@ impl LogAppender for CustomLog {
             let id = now.timestamp_millis() as usize;
             let c = self.c.clone();
             self.rt.block_on(async move {
-                println!("id:{}",id);
+                println!("id:{}", id);
                 let doc = c.index("LogDoc");
                 //send to web,file,any way
                 let log = LogDoc {

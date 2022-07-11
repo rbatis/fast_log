@@ -7,16 +7,15 @@ extern crate core;
 
 pub mod appender;
 pub mod bencher;
+pub mod config;
 pub mod consts;
+pub mod date;
 pub mod error;
 pub mod fast_log;
 pub mod filter;
 pub mod plugin;
 pub mod runtime;
-pub mod config;
-pub mod date;
 
+pub use crate::config::Config;
 pub use crate::fast_log::*;
 pub use runtime::*;
-pub use crate::config::Config;
-

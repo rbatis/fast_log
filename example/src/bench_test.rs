@@ -1,7 +1,7 @@
-use fast_log::appender::{LogAppender, FastLogRecord};
-use std::time::{Instant};
+use fast_log::appender::{FastLogRecord, LogAppender};
 use fast_log::bencher::QPS;
 use fast_log::config::Config;
+use std::time::Instant;
 
 /// cargo run --release --package example --bin bench_test
 fn main() {
@@ -11,7 +11,7 @@ fn main() {
             //nothing
         }
     }
-    fast_log::init(Config::new().custom(BenchRecvLog{})).unwrap();
+    fast_log::init(Config::new().custom(BenchRecvLog {})).unwrap();
     let total = 1000000;
     let now = Instant::now();
     for index in 0..total {
