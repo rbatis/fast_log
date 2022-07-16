@@ -156,6 +156,7 @@ impl From<LogDate> for SystemTime {
 impl FromStr for LogDate {
     type Err = Error;
 
+    /// from RFC3339Nano = "2006-01-02T15:04:05.999999999"
     fn from_str(s: &str) -> Result<LogDate, Error> {
         //"0000-00-00 00:00:00.000000000";
         let mut date = LogDate {
@@ -197,6 +198,7 @@ impl FromStr for LogDate {
 
 
 impl Display for LogDate {
+    /// fmt RFC3339Nano = "2006-01-02T15:04:05.999999999"
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let mut buf: [u8; 29] = *b"0000-00-00 00:00:00.000000000";
 
