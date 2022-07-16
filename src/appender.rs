@@ -1,9 +1,9 @@
-use log::{LevelFilter};
-use std::time::{Duration, SystemTime};
-use std::ops::{Add, Sub};
-use crossbeam_utils::sync::WaitGroup;
 use crate::appender::Command::CommandRecord;
 use crate::date;
+use crossbeam_utils::sync::WaitGroup;
+use log::LevelFilter;
+use std::ops::{Add, Sub};
+use std::time::{Duration, SystemTime};
 
 /// LogAppender append logs
 /// Appender will be running on single main thread,please do_log for new thread or new an Future
@@ -26,9 +26,9 @@ pub enum Command {
 impl Command {
     pub fn to_i32(&self) -> i32 {
         match self {
-            Command::CommandRecord => { 1 }
-            Command::CommandExit => { 2 }
-            Command::CommandFlush(_) => { 3 }
+            Command::CommandRecord => 1,
+            Command::CommandExit => 2,
+            Command::CommandFlush(_) => 3,
         }
     }
 }
@@ -65,7 +65,6 @@ pub struct FastLogFormat {
     // show line level
     pub display_line_level: log::LevelFilter,
 }
-
 
 impl RecordFormat for FastLogFormat {
     fn do_format(&self, arg: &mut FastLogRecord) -> String {

@@ -1,12 +1,10 @@
+use crate::error::LogError;
 use crate::plugin::file_split::Packer;
 use std::fs::File;
-use crate::error::LogError;
-use std::io::{Write};
+use std::io::Write;
 
 /// keep temp{date}.log
-pub struct LogPacker {
-
-}
+pub struct LogPacker {}
 impl Packer for LogPacker {
     fn pack_name(&self) -> &'static str {
         "log"
@@ -18,12 +16,10 @@ impl Packer for LogPacker {
     }
 }
 
-
-
-#[cfg(feature = "zip")]
-use zip::write::FileOptions;
 #[cfg(feature = "zip")]
 use zip::result::ZipResult;
+#[cfg(feature = "zip")]
+use zip::write::FileOptions;
 
 /// you need enable fast_log = { ... ,features=["zip"]}
 /// the zip compress
@@ -55,17 +51,19 @@ impl Packer for ZipPacker {
         let mut zip = zip::ZipWriter::new(zip_file);
         zip.start_file(log_name, FileOptions::default());
         //buf reader
-        std::io::copy(&mut log_file,&mut zip);
+        std::io::copy(&mut log_file, &mut zip);
         zip.flush();
         let finish: ZipResult<File> = zip.finish();
         if finish.is_err() {
             //println!("[fast_log] try zip fail{:?}", finish.err());
-            return Err(LogError::from(format!("[fast_log] try zip fail{:?}", finish.err())));
+            return Err(LogError::from(format!(
+                "[fast_log] try zip fail{:?}",
+                finish.err()
+            )));
         }
         return Ok(true);
     }
 }
-
 
 /// you need enable fast_log = { ... ,features=["lz4"]}
 #[cfg(feature = "lz4")]
@@ -105,32 +103,31 @@ impl Packer for LZ4Packer {
         let lz4_file = lz4_file.unwrap();
         //write lz4 bytes data
 
-        let mut encoder = EncoderBuilder::new()
-            .level(0)
-            .build(lz4_file)?;
+        let mut encoder = EncoderBuilder::new().level(0).build(lz4_file)?;
         // io::copy(&mut lz4_file, &mut encoder)?;
         //buf reader
-        std::io::copy(&mut log_file,&mut encoder);
+        std::io::copy(&mut log_file, &mut encoder);
         let (_output, result) = encoder.finish();
         if result.is_err() {
-            return Err(LogError::from(format!("[fast_log] try zip fail{:?}", result.err())));
+            return Err(LogError::from(format!(
+                "[fast_log] try zip fail{:?}",
+                result.err()
+            )));
         }
         return Ok(true);
     }
 }
-
 
 #[cfg(feature = "gzip")]
 use flate2::write::GzEncoder;
 #[cfg(feature = "gzip")]
 use flate2::Compression;
 
-
 #[cfg(feature = "gzip")]
 pub struct GZipPacker {}
 
 #[cfg(feature = "gzip")]
-impl Packer for GZipPacker{
+impl Packer for GZipPacker {
     fn pack_name(&self) -> &'static str {
         "gz"
     }
@@ -151,12 +148,15 @@ impl Packer for GZipPacker{
         }
         let zip_file = zip_file.unwrap();
         //write zip bytes data
-        let mut zip = GzEncoder::new(zip_file,Compression::default());
-        std::io::copy(&mut log_file,&mut zip);
+        let mut zip = GzEncoder::new(zip_file, Compression::default());
+        std::io::copy(&mut log_file, &mut zip);
         zip.flush();
         let finish = zip.finish();
         if finish.is_err() {
-            return Err(LogError::from(format!("[fast_log] try zip fail{:?}", finish.err())));
+            return Err(LogError::from(format!(
+                "[fast_log] try zip fail{:?}",
+                finish.err()
+            )));
         }
         return Ok(true);
     }

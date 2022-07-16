@@ -148,8 +148,8 @@ impl From<LogDate> for SystemTime {
         let days = (v.year as u64 - 1970) * 365 + leap_years as u64 + ydays;
         UNIX_EPOCH
             + Duration::from_secs(
-            v.sec as u64 + v.min as u64 * 60 + v.hour as u64 * 3600 + days * 86400,
-        )
+                v.sec as u64 + v.min as u64 * 60 + v.hour as u64 * 3600 + days * 86400,
+            )
     }
 }
 
@@ -170,32 +170,52 @@ impl FromStr for LogDate {
         };
         let bytes = s.as_bytes();
         if bytes.len() > 4 {
-            if let Ok(year) = std::str::from_utf8(&bytes[0..4]).unwrap_or_default().parse::<u16>() {
+            if let Ok(year) = std::str::from_utf8(&bytes[0..4])
+                .unwrap_or_default()
+                .parse::<u16>()
+            {
                 date.year = year;
             }
-            if let Ok(mon) = std::str::from_utf8(&bytes[5..7]).unwrap_or_default().parse::<u8>() {
+            if let Ok(mon) = std::str::from_utf8(&bytes[5..7])
+                .unwrap_or_default()
+                .parse::<u8>()
+            {
                 date.mon = mon;
             }
-            if let Ok(day) = std::str::from_utf8(&bytes[8..10]).unwrap_or_default().parse::<u8>() {
+            if let Ok(day) = std::str::from_utf8(&bytes[8..10])
+                .unwrap_or_default()
+                .parse::<u8>()
+            {
                 date.day = day;
             }
-            if let Ok(hour) = std::str::from_utf8(&bytes[11..13]).unwrap_or_default().parse::<u8>() {
+            if let Ok(hour) = std::str::from_utf8(&bytes[11..13])
+                .unwrap_or_default()
+                .parse::<u8>()
+            {
                 date.hour = hour;
             }
-            if let Ok(min) = std::str::from_utf8(&bytes[14..16]).unwrap_or_default().parse::<u8>() {
+            if let Ok(min) = std::str::from_utf8(&bytes[14..16])
+                .unwrap_or_default()
+                .parse::<u8>()
+            {
                 date.min = min;
             }
-            if let Ok(sec) = std::str::from_utf8(&bytes[17..19]).unwrap_or_default().parse::<u8>() {
+            if let Ok(sec) = std::str::from_utf8(&bytes[17..19])
+                .unwrap_or_default()
+                .parse::<u8>()
+            {
                 date.sec = sec;
             }
-            if let Ok(ns) = std::str::from_utf8(&bytes[20..29]).unwrap_or_default().parse::<u32>() {
+            if let Ok(ns) = std::str::from_utf8(&bytes[20..29])
+                .unwrap_or_default()
+                .parse::<u32>()
+            {
                 date.nano = ns;
             }
         }
         Ok(date)
     }
 }
-
 
 impl Display for LogDate {
     /// fmt RFC3339Nano = "2006-01-02T15:04:05.999999999"
@@ -206,7 +226,6 @@ impl Display for LogDate {
         buf[1] = b'0' + (self.year / 100 % 10) as u8;
         buf[2] = b'0' + (self.year / 10 % 10) as u8;
         buf[3] = b'0' + (self.year % 10) as u8;
-
 
         buf[5] = b'0' + (self.mon / 10) as u8;
         buf[6] = b'0' + (self.mon % 10) as u8;
@@ -249,48 +268,14 @@ impl PartialOrd for LogDate {
     }
 }
 
-fn toint_1(x: u8) -> Result<u8, Error> {
-    let result = x.wrapping_sub(b'0');
-    if result < 10 {
-        Ok(result)
-    } else {
-        Err(Error::default())
-    }
-}
-
-fn toint_2(s: &[u8]) -> Result<u8, Error> {
-    let high = s[0].wrapping_sub(b'0');
-    let low = s[1].wrapping_sub(b'0');
-
-    if high < 10 && low < 10 {
-        Ok(high * 10 + low)
-    } else {
-        Err(Error::default())
-    }
-}
-
-#[allow(clippy::many_single_char_names)]
-fn toint_4(s: &[u8]) -> Result<u16, Error> {
-    let a = u16::from(s[0].wrapping_sub(b'0'));
-    let b = u16::from(s[1].wrapping_sub(b'0'));
-    let c = u16::from(s[2].wrapping_sub(b'0'));
-    let d = u16::from(s[3].wrapping_sub(b'0'));
-
-    if a < 10 && b < 10 && c < 10 && d < 10 {
-        Ok(a * 1000 + b * 100 + c * 10 + d)
-    } else {
-        Err(Error::default())
-    }
-}
-
 fn is_leap_year(y: u16) -> bool {
     y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)
 }
 
 #[cfg(test)]
 mod test {
-    use std::str::FromStr;
     use crate::date::LogDate;
+    use std::str::FromStr;
 
     #[test]
     fn test_date() {
@@ -299,5 +284,3 @@ mod test {
         assert_eq!("1234-12-13 11:12:13.112345678".to_string(), d.to_string());
     }
 }
-
-

@@ -1,4 +1,3 @@
-use log::{LevelFilter};
 use crate::appender::{FastLogFormat, LogAppender, RecordFormat};
 use crate::consts::LogSize;
 use crate::filter::{Filter, NoFilter};
@@ -6,6 +5,7 @@ use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
 use crate::plugin::file_loop::FileLoopAppender;
 use crate::plugin::file_split::{FileSplitAppender, Packer, RollingType};
+use log::LevelFilter;
 
 pub struct Config {
     pub appends: Vec<Box<dyn LogAppender>>,
@@ -59,15 +59,24 @@ impl Config {
     }
     /// add a FileLoopAppender
     pub fn file_loop(mut self, file: &str, max_temp_size: LogSize) -> Self {
-        self.appends.push(Box::new(FileLoopAppender::new(file, max_temp_size)));
+        self.appends
+            .push(Box::new(FileLoopAppender::new(file, max_temp_size)));
         self
     }
     /// add a FileSplitAppender
-    pub fn file_split<P: Packer + 'static>(mut self, file_path: &str,
-                                           max_temp_size: LogSize,
-                                           rolling_type: RollingType,
-                                           packer: P, ) -> Self {
-        self.appends.push(Box::new(FileSplitAppender::new(file_path, max_temp_size, rolling_type, Box::new(packer))));
+    pub fn file_split<P: Packer + 'static>(
+        mut self,
+        file_path: &str,
+        max_temp_size: LogSize,
+        rolling_type: RollingType,
+        packer: P,
+    ) -> Self {
+        self.appends.push(Box::new(FileSplitAppender::new(
+            file_path,
+            max_temp_size,
+            rolling_type,
+            Box::new(packer),
+        )));
         self
     }
     /// add a custom LogAppender
