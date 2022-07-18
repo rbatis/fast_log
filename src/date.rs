@@ -13,8 +13,8 @@ use crate::error::LogError as Error;
 /// Supports comparsion and sorting.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct LogDate {
-    /// 0...999999999
-    pub nano: u32,
+    /// 0...999999
+    pub micro: u32,
     /// 0...59
     pub sec: u8,
     /// 0...59
@@ -111,7 +111,7 @@ impl From<SystemTime> for LogDate {
         };
 
         LogDate {
-            nano: (dur - Duration::from_secs(dur.as_secs())).as_nanos() as u32,
+            micro: (dur - Duration::from_secs(dur.as_secs())).as_micros() as u32,
             sec: (secs_of_day % 60) as u8,
             min: ((secs_of_day % 3600) / 60) as u8,
             hour: (secs_of_day / 3600) as u8,
@@ -158,9 +158,9 @@ impl FromStr for LogDate {
 
     /// from RFC3339Nano = "2006-01-02T15:04:05.999999999"
     fn from_str(s: &str) -> Result<LogDate, Error> {
-        //"0000-00-00 00:00:00.000000000";
+        //"0000-00-00 00:00:00.000000";
         let mut date = LogDate {
-            nano: 0,
+            micro: 0,
             sec: 0,
             min: 0,
             hour: 0,
@@ -206,11 +206,11 @@ impl FromStr for LogDate {
             {
                 date.sec = sec;
             }
-            if let Ok(ns) = std::str::from_utf8(&bytes[20..29])
+            if let Ok(ns) = std::str::from_utf8(&bytes[20..26])
                 .unwrap_or_default()
                 .parse::<u32>()
             {
-                date.nano = ns;
+                date.micro = ns;
             }
         }
         Ok(date)
@@ -220,7 +220,7 @@ impl FromStr for LogDate {
 impl Display for LogDate {
     /// fmt RFC3339Nano = "2006-01-02T15:04:05.999999999"
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let mut buf: [u8; 29] = *b"0000-00-00 00:00:00.000000000";
+        let mut buf: [u8; 26] = *b"0000-00-00 00:00:00.000000";
 
         buf[0] = b'0' + (self.year / 1000) as u8;
         buf[1] = b'0' + (self.year / 100 % 10) as u8;
@@ -240,17 +240,12 @@ impl Display for LogDate {
         buf[17] = b'0' + (self.sec / 10) as u8;
         buf[18] = b'0' + (self.sec % 10) as u8;
 
-        buf[19] = b'.';
-
-        buf[20] = b'0' + (self.nano / 100000000) as u8;
-        buf[21] = b'0' + (self.nano / 10000000 % 10) as u8;
-        buf[22] = b'0' + (self.nano / 1000000 % 10) as u8;
-        buf[23] = b'0' + (self.nano / 100000 % 10) as u8;
-        buf[24] = b'0' + (self.nano / 10000 % 10) as u8;
-        buf[25] = b'0' + (self.nano / 1000 % 10) as u8;
-        buf[26] = b'0' + (self.nano / 100 % 10) as u8;
-        buf[27] = b'0' + (self.nano / 10 % 10) as u8;
-        buf[28] = b'0' + (self.nano % 10) as u8;
+        buf[20] = b'0' + (self.micro / 100000 % 10) as u8;
+        buf[21] = b'0' + (self.micro / 10000 % 10) as u8;
+        buf[22] = b'0' + (self.micro / 1000 % 10) as u8;
+        buf[23] = b'0' + (self.micro / 100 % 10) as u8;
+        buf[24] = b'0' + (self.micro / 10 % 10) as u8;
+        buf[25] = b'0' + (self.micro % 10) as u8;
 
         f.write_str(std::str::from_utf8(&buf[..]).unwrap())
     }
@@ -279,8 +274,8 @@ mod test {
 
     #[test]
     fn test_date() {
-        let d = LogDate::from_str("1234-12-13 11:12:13.112345678").unwrap();
+        let d = LogDate::from_str("1234-12-13 11:12:13.123456").unwrap();
         println!("{}", d);
-        assert_eq!("1234-12-13 11:12:13.112345678".to_string(), d.to_string());
+        assert_eq!("1234-12-13 11:12:13.123456".to_string(), d.to_string());
     }
 }
