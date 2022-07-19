@@ -2,13 +2,12 @@ use std::cell::RefCell;
 use std::fs::{DirEntry, File, OpenOptions};
 use std::io::{Seek, SeekFrom, Write};
 
-use chrono::{Local, NaiveDateTime};
-
 use crate::appender::{Command, FastLogRecord, LogAppender};
 use crate::consts::LogSize;
 use crate::error::LogError;
 use crate::{chan, Receiver, Sender};
 use std::ops::Sub;
+use std::str::FromStr;
 use std::time::Duration;
 
 /// .zip or .lz4 or any one packer
@@ -87,20 +86,15 @@ impl RollingType {
                     }
                 }
             }
-            RollingType::KeepTime(t) => {
+            RollingType::KeepTime(duration) => {
                 let paths_vec = self.read_paths(dir, temp_name);
-                let duration = chrono::Duration::from_std(t.clone());
-                if duration.is_err() {
-                    return;
-                }
-                let duration = duration.unwrap();
-                let now = Local::now().naive_local();
+                let now = fastdate::DateTime::now();
                 for index in 0..paths_vec.len() {
                     let item = &paths_vec[index];
                     let file_name = item.file_name();
                     let name = file_name.to_str().unwrap_or("").to_string();
                     if let Some(time) = self.file_name_parse_time(&name, temp_name) {
-                        if now.sub(time) > duration {
+                        if now.sub(duration.clone()) > time {
                             std::fs::remove_file(item.path());
                         }
                     }
@@ -110,13 +104,13 @@ impl RollingType {
         }
     }
 
-    fn file_name_parse_time(&self, name: &str, temp_name: &str) -> Option<NaiveDateTime> {
+    fn file_name_parse_time(&self, name: &str, temp_name: &str) -> Option<fastdate::DateTime> {
         if name.starts_with(temp_name) {
             let mut time_str = name.replace(temp_name, "");
             if let Some(v) = time_str.find(".") {
                 time_str = time_str[0..v].to_string();
             }
-            let time = chrono::NaiveDateTime::parse_from_str(&time_str, "%Y_%m_%dT%H_%M_%S");
+            let time = fastdate::DateTime::from_str(&time_str);
             if let Ok(time) = time {
                 return Some(time);
             }
@@ -146,7 +140,7 @@ impl FileSplitAppenderData {
             "{}{}{}.log",
             self.dir_path,
             &self.temp_name,
-            format!("{:29}", Local::now().format("%Y_%m_%dT%H_%M_%S%.f")).replace(" ", "_")
+            format!("{:29}", fastdate::DateTime::now())
         );
         std::fs::copy(&first_file_path, &new_log_name);
         self.sender.send(LogPack {

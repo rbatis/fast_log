@@ -60,8 +60,6 @@ pub trait RecordFormat: Send + Sync {
 }
 
 pub struct FastLogFormat {
-    // Time zone Interval hour
-    pub duration_zone: Duration,
     // show line level
     pub display_line_level: log::LevelFilter,
 }
@@ -71,7 +69,7 @@ impl RecordFormat for FastLogFormat {
         match arg.command {
             CommandRecord => {
                 let data;
-                let now = date::LogDate::from(arg.now.add(self.duration_zone));
+                let now = fastdate::DateTime::now();
                 if arg.level.to_level_filter() <= self.display_line_level {
                     data = format!(
                         "{:29} {} {} - {}  {}:{}\n",
@@ -98,15 +96,8 @@ impl RecordFormat for FastLogFormat {
 }
 
 impl FastLogFormat {
-    pub fn local_duration() -> Duration {
-        let utc = chrono::Utc::now().naive_utc();
-        let tz = chrono::Local::now().naive_local();
-        tz.sub(utc).to_std().unwrap_or_default()
-    }
-
     pub fn new() -> FastLogFormat {
         Self {
-            duration_zone: Self::local_duration(),
             display_line_level: LevelFilter::Warn,
         }
     }
@@ -114,12 +105,6 @@ impl FastLogFormat {
     ///show line level
     pub fn set_display_line_level(mut self, level: LevelFilter) -> Self {
         self.display_line_level = level;
-        self
-    }
-
-    /// Time zone Interval hour
-    pub fn set_duration(mut self, duration: Duration) -> Self {
-        self.duration_zone = duration;
         self
     }
 }
