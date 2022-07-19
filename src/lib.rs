@@ -9,7 +9,6 @@ pub mod appender;
 pub mod bencher;
 pub mod config;
 pub mod consts;
-pub mod date;
 pub mod error;
 pub mod fast_log;
 pub mod filter;

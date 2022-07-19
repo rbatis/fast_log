@@ -1,5 +1,4 @@
 use crate::appender::Command::CommandRecord;
-use crate::date;
 use crossbeam_utils::sync::WaitGroup;
 use log::LevelFilter;
 use std::ops::{Add, Sub};
