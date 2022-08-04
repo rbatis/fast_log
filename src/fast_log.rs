@@ -115,7 +115,7 @@ impl Log for Logger {
 }
 
 static CHAN_LEN: AtomicI64 = AtomicI64::new(-1);
-static LOGGER: Lazy<Logger> = Lazy::new(|| Logger {
+pub static LOGGER: Lazy<Logger> = Lazy::new(|| Logger {
     level: AtomicI32::new(1),
     chan: Chan::new({
         let len = CHAN_LEN.load(Ordering::SeqCst);
