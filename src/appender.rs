@@ -1,9 +1,7 @@
 use crate::appender::Command::CommandRecord;
-use crate::date;
 use crossbeam_utils::sync::WaitGroup;
 use log::LevelFilter;
-use std::ops::{Add, Sub};
-use std::time::{Duration, SystemTime};
+use std::time::{SystemTime};
 
 /// LogAppender append logs
 /// Appender will be running on single main thread,please do_log for new thread or new an Future

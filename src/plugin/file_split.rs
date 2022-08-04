@@ -6,7 +6,6 @@ use crate::appender::{Command, FastLogRecord, LogAppender};
 use crate::consts::LogSize;
 use crate::error::LogError;
 use crate::{chan, Receiver, Sender};
-use std::ops::Sub;
 use std::str::FromStr;
 use std::time::Duration;
 
