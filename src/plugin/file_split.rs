@@ -93,7 +93,7 @@ impl RollingType {
                     let file_name = item.file_name();
                     let name = file_name.to_str().unwrap_or("").to_string();
                     if let Some(time) = self.file_name_parse_time(&name, temp_name) {
-                        if now.sub(duration.clone()) > time {
+                        if now.clone().sub(duration.clone()) > time {
                             std::fs::remove_file(item.path());
                         }
                     }
