@@ -3,9 +3,8 @@ use std::fmt;
 use std::fmt::Display;
 
 use log::SetLoggerError;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub enum LogError {
     E(String),
 }

@@ -58,14 +58,18 @@ impl RecordFormat for FastLogFormatJson {
         match &arg.command {
             Command::CommandRecord => {
                 let now = fastdate::DateTime::now();
-                let js = serde_json::json!({
-                    "date":now,
-                    "level":arg.level.to_string(),
-                    "args":arg.args,
-                    "file":arg.file,
-                    "line":arg.line
-                });
-                return js.to_string() + "\n";
+                //{"args":"Commencing yak shaving","date":"2022-08-19 09:53:47.798674","file":"example/src/split_log.rs","level":"INFO","line":21}
+                let js = format!(
+                    "{}\"args\":\"{}\",\"date\":\"{}\",\"file\":\"{}\",\"level\":\"{}\",\"line\":{}{}",
+                    "{",
+                    arg.args,
+                    now,
+                    arg.level,
+                    arg.file,
+                    arg.line.unwrap_or_default(),
+                    "}\n"
+                );
+                return js;
             }
             Command::CommandExit => {}
             Command::CommandFlush(_) => {}
