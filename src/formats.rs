@@ -64,8 +64,8 @@ impl RecordFormat for FastLogFormatJson {
                     "{",
                     arg.args,
                     now,
-                    arg.level,
                     arg.file,
+                    arg.level,
                     arg.line.unwrap_or_default(),
                     "}\n"
                 );
