@@ -1,4 +1,3 @@
-use crate::appender::Command::CommandRecord;
 use crossbeam_utils::sync::WaitGroup;
 use std::time::SystemTime;
 

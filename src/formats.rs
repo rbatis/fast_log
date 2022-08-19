@@ -9,7 +9,7 @@ pub struct FastLogFormat {
 impl RecordFormat for FastLogFormat {
     fn do_format(&self, arg: &mut FastLogRecord) -> String {
         match &arg.command {
-            CommandRecord => {
+            Command::CommandRecord => {
                 let data;
                 let now = fastdate::DateTime::now();
                 if arg.level.to_level_filter() <= self.display_line_level {
@@ -56,16 +56,16 @@ pub struct FastLogFormatJson {}
 impl RecordFormat for FastLogFormatJson {
     fn do_format(&self, arg: &mut FastLogRecord) -> String {
         match &arg.command {
-            CommandRecord => {
+            Command::CommandRecord => {
                 let now = fastdate::DateTime::now();
                 let js = serde_json::json!({
                     "date":now,
-                    "module_path":arg.module_path,
+                    "level":arg.level.to_string(),
                     "args":arg.args,
                     "file":arg.file,
                     "line":arg.line
                 });
-                return js.to_string();
+                return js.to_string() + "\n";
             }
             Command::CommandExit => {}
             Command::CommandFlush(_) => {}
