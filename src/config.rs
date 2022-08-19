@@ -1,10 +1,11 @@
-use crate::appender::{FastLogFormat, LogAppender, RecordFormat};
+use crate::appender::{LogAppender, RecordFormat};
 use crate::consts::LogSize;
 use crate::filter::{Filter, NoFilter};
 use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
 use crate::plugin::file_loop::FileLoopAppender;
 use crate::plugin::file_split::{FileSplitAppender, Packer, RollingType};
+use crate::FastLogFormat;
 use log::LevelFilter;
 
 pub struct Config {

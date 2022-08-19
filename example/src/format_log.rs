@@ -1,5 +1,5 @@
-use fast_log::appender::FastLogFormat;
 use fast_log::config::Config;
+use fast_log::FastLogFormat;
 use log::LevelFilter;
 
 fn main() {

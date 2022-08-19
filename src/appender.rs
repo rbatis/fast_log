@@ -1,7 +1,6 @@
 use crate::appender::Command::CommandRecord;
 use crossbeam_utils::sync::WaitGroup;
-use log::LevelFilter;
-use std::time::{SystemTime};
+use std::time::SystemTime;
 
 /// LogAppender append logs
 /// Appender will be running on single main thread,please do_log for new thread or new an Future
@@ -55,54 +54,4 @@ pub struct FastLogRecord {
 /// format record data
 pub trait RecordFormat: Send + Sync {
     fn do_format(&self, arg: &mut FastLogRecord) -> String;
-}
-
-pub struct FastLogFormat {
-    // show line level
-    pub display_line_level: log::LevelFilter,
-}
-
-impl RecordFormat for FastLogFormat {
-    fn do_format(&self, arg: &mut FastLogRecord) -> String {
-        match arg.command {
-            CommandRecord => {
-                let data;
-                let now = fastdate::DateTime::now();
-                if arg.level.to_level_filter() <= self.display_line_level {
-                    data = format!(
-                        "{:29} {} {} - {}  {}:{}\n",
-                        &now,
-                        arg.level,
-                        arg.module_path,
-                        arg.args,
-                        arg.file,
-                        arg.line.unwrap_or_default()
-                    );
-                } else {
-                    data = format!(
-                        "{:29} {} {} - {}\n",
-                        &now, arg.level, arg.module_path, arg.args
-                    );
-                }
-                return data;
-            }
-            Command::CommandExit => {}
-            Command::CommandFlush(_) => {}
-        }
-        return String::new();
-    }
-}
-
-impl FastLogFormat {
-    pub fn new() -> FastLogFormat {
-        Self {
-            display_line_level: LevelFilter::Warn,
-        }
-    }
-
-    ///show line level
-    pub fn set_display_line_level(mut self, level: LevelFilter) -> Self {
-        self.display_line_level = level;
-        self
-    }
 }
