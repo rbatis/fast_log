@@ -45,9 +45,6 @@ path = "src/split_log_loop.rs"
 name = "custom_appender_tokio"
 path = "src/custom_appender_tokio.rs"
 [[bin]]
-name = "custom_appender_meilisearch"
-path = "src/custom_appender_meilisearch.rs"
-[[bin]]
 name = "format_log"
 path = "src/format_log.rs"
 [dependencies]
