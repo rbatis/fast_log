@@ -47,6 +47,9 @@ path = "src/custom_appender_tokio.rs"
 [[bin]]
 name = "format_log"
 path = "src/format_log.rs"
+[[bin]]
+name = "format_log_json"
+path = "src/format_log_json.rs"
 [dependencies]
 log = { version = "0.4", features = ["std"] }
 crossbeam-channel = "0.5"

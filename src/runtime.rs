@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 #[cfg(feature = "runtime_thread")]
 pub type Receiver<T> = crossbeam::channel::Receiver<T>;
 #[cfg(feature = "runtime_thread")]
@@ -15,11 +13,6 @@ pub fn chan<T>(len: Option<usize>) -> (Sender<T>, Receiver<T>) {
         None => crossbeam::channel::unbounded(),
         Some(len) => crossbeam::channel::bounded(len),
     }
-}
-
-#[cfg(feature = "runtime_thread")]
-pub fn sleep(d: Duration) {
-    std::thread::sleep(d)
 }
 
 #[cfg(feature = "runtime_thread")]
