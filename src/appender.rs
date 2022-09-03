@@ -1,5 +1,5 @@
-use crossbeam_utils::sync::WaitGroup;
 use std::time::SystemTime;
+use crate::WaitGroup;
 
 /// LogAppender append logs
 /// Appender will be running on single main thread,please do_log for new thread or new an Future
