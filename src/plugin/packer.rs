@@ -1,7 +1,6 @@
 use crate::error::LogError;
 use crate::plugin::file_split::Packer;
 use std::fs::File;
-use std::io::Write;
 
 /// keep temp{date}.log
 pub struct LogPacker {}
