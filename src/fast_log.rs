@@ -1,13 +1,12 @@
 use log::{LevelFilter, Log, Metadata, Record};
-use std::ops::{Deref};
+use std::ops::Deref;
 use std::sync::atomic::{AtomicI32, AtomicI64, Ordering};
 
 use crate::appender::{Command, FastLogRecord};
 use crate::config::Config;
 use crate::error::LogError;
 use crate::filter::Filter;
-use crate::{chan, spawn, Receiver, Sender};
-use crossbeam_channel::SendError;
+use crate::{chan, spawn, Receiver, SendError, Sender};
 use crossbeam_utils::sync::WaitGroup;
 use once_cell::sync::{Lazy, OnceCell};
 use std::result::Result::Ok;
