@@ -13,7 +13,7 @@ authors = ["ce <zhuxiujia@qq.com>"]
 edition = "2018"
 license = "MIT"
 categories = ["logging"]
-keywords = ["logging", "metrics", "async", "tracing"]
+keywords = ["metrics", "async", "tracing"]
 
 [features]
 default = ["runtime_thread"]
