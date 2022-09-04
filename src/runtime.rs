@@ -39,7 +39,7 @@ pub fn spawn_stack_size<F>(f: F, stack_size: usize) -> JoinHandle<()>
 pub fn try_send_num<T>(sender: &Sender<T>, num: usize, mut target: T) {
     let mut trys = 0;
     loop {
-        if trys > 3 {
+        if trys > num {
             sender.send(target);
             break;
         }
