@@ -19,16 +19,33 @@ pub fn chan<T>(len: Option<usize>) -> (Sender<T>, Receiver<T>) {
 
 #[cfg(feature = "runtime_thread")]
 pub fn spawn<F>(f: F) -> JoinHandle<()>
-where
-    F: FnOnce() + Send + 'static,
+    where
+        F: FnOnce() + Send + 'static,
 {
     std::thread::spawn(f)
 }
 
 #[cfg(feature = "runtime_thread")]
 pub fn spawn_stack_size<F>(f: F, stack_size: usize) -> JoinHandle<()>
-where
-    F: FnOnce() + Send + 'static,
+    where
+        F: FnOnce() + Send + 'static,
 {
     std::thread::spawn(f)
+}
+
+
+pub fn try_send_num<T>(sender: &Sender<T>, num: usize, mut target: T) {
+    let mut trys = 0;
+    loop {
+        if trys > 3 {
+            sender.send(target);
+            break;
+        }
+        if let Err(e) = sender.try_send(target) {
+            trys += 1;
+            target = e.into_inner();
+        } else {
+            break;
+        }
+    }
 }

@@ -6,7 +6,7 @@ use crate::appender::{Command, FastLogRecord};
 use crate::config::Config;
 use crate::error::LogError;
 use crate::filter::Filter;
-use crate::{chan, spawn, Receiver, SendError, Sender, WaitGroup};
+use crate::{chan, spawn, Receiver, SendError, Sender, WaitGroup, try_send_num};
 use once_cell::sync::{Lazy, OnceCell};
 use std::result::Result::Ok;
 use std::sync::Arc;
@@ -98,7 +98,7 @@ impl Log for Logger {
                     now: SystemTime::now(),
                     formated: String::new(),
                 };
-                LOGGER.chan.send.send(fast_log_record);
+                try_send_num(&LOGGER.chan.send,3,fast_log_record);
             }
         }
     }
