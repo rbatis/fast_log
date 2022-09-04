@@ -52,5 +52,5 @@ pub struct FastLogRecord {
 
 /// format record data
 pub trait RecordFormat: Send + Sync {
-    fn do_format(&self, arg: &mut FastLogRecord) -> String;
+    fn do_format(&self, arg: &mut FastLogRecord);
 }

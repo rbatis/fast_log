@@ -7,13 +7,12 @@ pub struct FastLogFormat {
 }
 
 impl RecordFormat for FastLogFormat {
-    fn do_format(&self, arg: &mut FastLogRecord) -> String {
+    fn do_format(&self, arg: &mut FastLogRecord) {
         match &arg.command {
             Command::CommandRecord => {
-                let data;
                 let now = fastdate::DateTime::now();
                 if arg.level.to_level_filter() <= self.display_line_level {
-                    data = format!(
+                    arg.formated = format!(
                         "{:29} {} {} - {}  {}:{}\n",
                         &now,
                         arg.level,
@@ -23,17 +22,15 @@ impl RecordFormat for FastLogFormat {
                         arg.line.unwrap_or_default()
                     );
                 } else {
-                    data = format!(
+                    arg.formated = format!(
                         "{:29} {} {} - {}\n",
                         &now, arg.level, arg.module_path, arg.args
                     );
                 }
-                return data;
             }
             Command::CommandExit => {}
             Command::CommandFlush(_) => {}
         }
-        return String::new();
     }
 }
 
@@ -54,12 +51,12 @@ impl FastLogFormat {
 pub struct FastLogFormatJson {}
 
 impl RecordFormat for FastLogFormatJson {
-    fn do_format(&self, arg: &mut FastLogRecord) -> String {
+    fn do_format(&self, arg: &mut FastLogRecord) {
         match &arg.command {
             Command::CommandRecord => {
                 let now = fastdate::DateTime::now();
                 //{"args":"Commencing yak shaving","date":"2022-08-19 09:53:47.798674","file":"example/src/split_log.rs","level":"INFO","line":21}
-                let js = format!(
+                arg.formated = format!(
                     "{}\"args\":\"{}\",\"date\":\"{}\",\"file\":\"{}\",\"level\":\"{}\",\"line\":{}{}",
                     "{",
                     arg.args,
@@ -69,12 +66,10 @@ impl RecordFormat for FastLogFormatJson {
                     arg.line.unwrap_or_default(),
                     "}\n"
                 );
-                return js;
             }
             Command::CommandExit => {}
             Command::CommandFlush(_) => {}
         }
-        return String::new();
     }
 }
 

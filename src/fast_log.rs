@@ -199,7 +199,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                 let mut exit = false;
                 for x in &mut remain {
                     if x.formated.is_empty() {
-                        x.formated = format.do_format(x);
+                        format.do_format(x);
                     }
                     if x.command.eq(&Command::CommandExit) {
                         exit = true;
