@@ -6,7 +6,7 @@ use crate::appender::{Command, FastLogRecord};
 use crate::config::Config;
 use crate::error::LogError;
 use crate::filter::Filter;
-use crate::{chan, spawn, Receiver, SendError, Sender, WaitGroup, try_send_num};
+use crate::{chan, spawn, Receiver, SendError, Sender, WaitGroup, try_send_num, RecvError};
 use once_cell::sync::{Lazy, OnceCell};
 use std::result::Result::Ok;
 use std::sync::Arc;
@@ -98,7 +98,7 @@ impl Log for Logger {
                     now: SystemTime::now(),
                     formated: String::new(),
                 };
-                try_send_num(&LOGGER.chan.send,3,fast_log_record);
+                try_send_num(&LOGGER.chan.send, 3, fast_log_record);
             }
         }
     }
@@ -180,7 +180,13 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
         }
         loop {
             //recv
-            let data = LOGGER.chan.recv.recv();
+            let data = {
+                if LOGGER.chan.recv.len() == 0 {
+                    LOGGER.chan.recv.recv()
+                } else {
+                    LOGGER.chan.recv.try_recv().map_err(|e| RecvError {})
+                }
+            };
             if let Ok(data) = data {
                 let mut remain;
                 if LOGGER.chan.recv.len() > 0 {
