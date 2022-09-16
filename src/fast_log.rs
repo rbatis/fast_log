@@ -143,82 +143,82 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     let format = Arc::new(config.format);
     let level = config.level;
     let chan_len = config.chan_len;
-    std::thread::spawn(move || {
-        let mut recever_vec = vec![];
-        let mut sender_vec: Vec<Sender<Arc<Vec<FastLogRecord>>>> = vec![];
-        for a in appenders {
-            let (s, r) = chan(chan_len);
-            sender_vec.push(s);
-            recever_vec.push((r, a));
-        }
-        for (recever, appender) in recever_vec {
-            spawn(move || {
-                let mut exit = false;
-                loop {
-                    //batch fetch
-                    if let Ok(msg) = recever.recv() {
-                        appender.do_logs(msg.as_ref());
-                        for x in msg.iter() {
-                            match x.command {
-                                Command::CommandRecord => {}
-                                Command::CommandExit => {
-                                    exit = true;
-                                    continue;
-                                }
-                                Command::CommandFlush(_) => {
-                                    appender.flush();
-                                    continue;
+    let r = log::set_logger(LOGGER.deref()).map(|()| log::set_max_level(level));
+    if r.is_err() {
+        return Err(LogError::from(r.err().unwrap()));
+    } else {
+        std::thread::spawn(move || {
+            let mut recever_vec = vec![];
+            let mut sender_vec: Vec<Sender<Arc<Vec<FastLogRecord>>>> = vec![];
+            for a in appenders {
+                let (s, r) = chan(chan_len);
+                sender_vec.push(s);
+                recever_vec.push((r, a));
+            }
+            for (recever, appender) in recever_vec {
+                spawn(move || {
+                    let mut exit = false;
+                    loop {
+                        //batch fetch
+                        if let Ok(msg) = recever.recv() {
+                            appender.do_logs(msg.as_ref());
+                            for x in msg.iter() {
+                                match x.command {
+                                    Command::CommandRecord => {}
+                                    Command::CommandExit => {
+                                        exit = true;
+                                        continue;
+                                    }
+                                    Command::CommandFlush(_) => {
+                                        appender.flush();
+                                        continue;
+                                    }
                                 }
                             }
                         }
+                        if exit {
+                            break;
+                        }
+                    }
+                });
+            }
+            loop {
+                //recv
+                let data = {
+                    if LOGGER.chan.recv.len() == 0 {
+                        LOGGER.chan.recv.recv()
+                    } else {
+                        LOGGER.chan.recv.try_recv().map_err(|e| RecvError {})
+                    }
+                };
+                if let Ok(data) = data {
+                    let mut remain;
+                    if LOGGER.chan.recv.len() > 0 {
+                        remain = Vec::with_capacity(LOGGER.chan.recv.len() + 1);
+                        remain.push(data);
+                        recv_all(&mut remain, &LOGGER.chan.recv);
+                    } else {
+                        remain = vec![data];
+                    }
+                    let mut exit = false;
+                    for x in &mut remain {
+                        if x.formated.is_empty() {
+                            format.do_format(x);
+                        }
+                        if x.command.eq(&Command::CommandExit) {
+                            exit = true;
+                        }
+                    }
+                    let data = Arc::new(remain);
+                    for x in &sender_vec {
+                        x.send(data.clone());
                     }
                     if exit {
                         break;
                     }
                 }
-            });
-        }
-        loop {
-            //recv
-            let data = {
-                if LOGGER.chan.recv.len() == 0 {
-                    LOGGER.chan.recv.recv()
-                } else {
-                    LOGGER.chan.recv.try_recv().map_err(|e| RecvError {})
-                }
-            };
-            if let Ok(data) = data {
-                let mut remain;
-                if LOGGER.chan.recv.len() > 0 {
-                    remain = Vec::with_capacity(LOGGER.chan.recv.len() + 1);
-                    remain.push(data);
-                    recv_all(&mut remain, &LOGGER.chan.recv);
-                } else {
-                    remain = vec![data];
-                }
-                let mut exit = false;
-                for x in &mut remain {
-                    if x.formated.is_empty() {
-                        format.do_format(x);
-                    }
-                    if x.command.eq(&Command::CommandExit) {
-                        exit = true;
-                    }
-                }
-                let data = Arc::new(remain);
-                for x in &sender_vec {
-                    x.send(data.clone());
-                }
-                if exit {
-                    break;
-                }
             }
-        }
-    });
-    let r = log::set_logger(LOGGER.deref()).map(|()| log::set_max_level(level));
-    if r.is_err() {
-        return Err(LogError::from(r.err().unwrap()));
-    } else {
+        });
         return Ok(LOGGER.deref());
     }
 }
