@@ -135,7 +135,7 @@ impl FileSplitAppenderData {
     /// send data make an pack,and truncate data when finish.
     pub fn send_pack(&mut self) {
         let now = fastdate::DateTime::now();
-        let now_string = format!("{}-{}-{}T{}-{}-{}-{}", now.get_year(), now.get_mon(), now.get_day(), now.get_hour(), now.get_min(), now.get_sec(), now.get_micro());
+        let now_string = format!("{}-{:02}-{:02}T{:02}-{:02}-{:02}-{:6}", now.get_year(), now.get_mon(), now.get_day(), now.get_hour(), now.get_min(), now.get_sec(), now.get_micro());
         let first_file_path = format!("{}{}.log", self.dir_path, &self.temp_name);
         let new_log_name = format!(
             "{}{}{}.log",
