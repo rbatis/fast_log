@@ -134,12 +134,14 @@ pub struct FileSplitAppenderData {
 impl FileSplitAppenderData {
     /// send data make an pack,and truncate data when finish.
     pub fn send_pack(&mut self) {
+        let now = fastdate::DateTime::now();
+        let now_string = format!("{}-{}-{}T{}-{}-{}-{}", now.get_year(), now.get_mon(), now.get_day(), now.get_hour(), now.get_min(), now.get_sec(), now.get_micro());
         let first_file_path = format!("{}{}.log", self.dir_path, &self.temp_name);
         let new_log_name = format!(
             "{}{}{}.log",
             self.dir_path,
             &self.temp_name,
-            format!("{:29}", fastdate::DateTime::now())
+            now_string
         );
         std::fs::copy(&first_file_path, &new_log_name);
         self.sender.send(LogPack {
