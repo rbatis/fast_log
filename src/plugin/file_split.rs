@@ -1,11 +1,11 @@
-use std::cell::RefCell;
-use std::fs::{DirEntry, File, OpenOptions};
-use std::io::{Seek, SeekFrom, Write};
-
 use crate::appender::{Command, FastLogRecord, LogAppender};
 use crate::consts::LogSize;
 use crate::error::LogError;
 use crate::{chan, Receiver, Sender};
+use fastdate::DateTime;
+use std::cell::RefCell;
+use std::fs::{DirEntry, File, OpenOptions};
+use std::io::{Seek, SeekFrom, Write};
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -22,7 +22,7 @@ pub trait Packer: Send {
 
 /// split log file allow compress log
 pub struct FileSplitAppender {
-    cell: RefCell<FileSplitAppenderData>,
+    pub cell: RefCell<FileSplitAppenderData>,
 }
 
 ///log data pack
@@ -74,7 +74,8 @@ impl RollingType {
         return vec![];
     }
 
-    pub fn do_rolling(&self, temp_name: &str, dir: &str) {
+    pub fn do_rolling(&self, temp_name: &str, dir: &str) -> i64 {
+        let mut removed = 0;
         match self {
             RollingType::KeepNum(n) => {
                 let paths_vec = self.read_paths(dir, temp_name);
@@ -82,6 +83,7 @@ impl RollingType {
                     if index >= (*n) as usize {
                         let item = &paths_vec[index];
                         std::fs::remove_file(item.path());
+                        removed += 1;
                     }
                 }
             }
@@ -95,12 +97,14 @@ impl RollingType {
                     if let Some(time) = self.file_name_parse_time(&name, temp_name) {
                         if now.clone().sub(duration.clone()) > time {
                             std::fs::remove_file(item.path());
+                            removed += 1;
                         }
                     }
                 }
             }
             _ => {}
         }
+        removed
     }
 
     fn file_name_parse_time(&self, name: &str, temp_name: &str) -> Option<fastdate::DateTime> {
@@ -134,14 +138,15 @@ pub struct FileSplitAppenderData {
 impl FileSplitAppenderData {
     /// send data make an pack,and truncate data when finish.
     pub fn send_pack(&mut self) {
-        let now = fastdate::DateTime::now();
-        let now_string = format!("{}-{:02}-{:02}T{:02}-{:02}-{:02}-{:6}", now.get_year(), now.get_mon(), now.get_day(), now.get_hour(), now.get_min(), now.get_sec(), now.get_micro());
         let first_file_path = format!("{}{}.log", self.dir_path, &self.temp_name);
         let new_log_name = format!(
             "{}{}{}.log",
             self.dir_path,
             &self.temp_name,
-            now_string
+            DateTime::now()
+                .to_string()
+                .replace(" ", "T")
+                .replace(":", "-")
         );
         std::fs::copy(&first_file_path, &new_log_name);
         self.sender.send(LogPack {
@@ -230,39 +235,43 @@ impl FileSplitAppender {
 impl LogAppender for FileSplitAppender {
     fn do_logs(&self, records: &[FastLogRecord]) {
         let mut data = self.cell.borrow_mut();
-        if data.temp_bytes >= data.max_split_bytes {
+        if data.temp_bytes > data.max_split_bytes {
             data.send_pack();
         }
         //if temp_bytes is full,must send pack
-        let temp_log = {
-            let mut limit = data.max_split_bytes - data.temp_bytes;
-            let mut temp = String::with_capacity(100);
-            for x in records {
-                match x.command {
-                    Command::CommandRecord => {
-                        if (temp.as_bytes().len() + x.formated.as_bytes().len()) < limit {
-                            temp.push_str(&x.formated);
-                        } else {
-                            //do pack
-                            data.file.write(temp.as_bytes());
-                            data.send_pack();
-                            limit = data.max_split_bytes;
-                            temp.clear();
-                            temp.push_str(&x.formated);
-                        }
+        let mut limit = data.max_split_bytes - data.temp_bytes;
+        let mut temp = String::with_capacity(100);
+        for x in records {
+            match x.command {
+                Command::CommandRecord => {
+                    if (temp.as_bytes().len() + x.formated.as_bytes().len()) < limit {
+                        temp.push_str(&x.formated);
+                        limit = data.max_split_bytes - data.temp_bytes;
+                    } else {
+                        //full
+                        data.temp_bytes += {
+                            let bytes = temp.as_bytes();
+                            let w = data.file.write(bytes);
+                            if let Ok(w) = w {
+                                w
+                            } else {
+                                0
+                            }
+                        };
+                        data.send_pack();
+                        temp.clear();
+                        //push
+                        temp.push_str(&x.formated);
+                        limit = data.max_split_bytes - data.temp_bytes;
                     }
-                    Command::CommandExit => {}
-                    Command::CommandFlush(_) => {}
                 }
+                Command::CommandExit => {}
+                Command::CommandFlush(_) => {}
             }
-            temp
-        };
-        if !temp_log.is_empty() {
-            if (data.temp_bytes + temp_log.as_bytes().len()) > data.max_split_bytes {
-                data.send_pack();
-            }
+        }
+        if !temp.is_empty() {
             data.temp_bytes += {
-                let bytes = temp_log.as_bytes();
+                let bytes = temp.as_bytes();
                 let w = data.file.write(bytes);
                 if let Ok(w) = w {
                     w
@@ -270,9 +279,6 @@ impl LogAppender for FileSplitAppender {
                     0
                 }
             };
-            if data.temp_bytes > data.max_split_bytes {
-                data.send_pack();
-            }
         }
     }
 

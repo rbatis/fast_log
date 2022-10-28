@@ -1,5 +1,5 @@
 use fast_log::appender::{FastLogRecord, LogAppender};
-use fast_log::bencher::QPS;
+use fast_log::bencher::TPS;
 use fast_log::config::Config;
 use std::time::Instant;
 
@@ -20,5 +20,5 @@ fn main() {
     //wait log finish write all
     log::logger().flush();
     now.time(total);
-    now.qps(total);
+    now.tps(total);
 }

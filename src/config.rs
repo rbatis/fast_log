@@ -20,7 +20,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             appends: vec![],
-            level: LevelFilter::Info,
+            level: LevelFilter::Trace,
             filter: Box::new(NoFilter {}),
             format: Box::new(FastLogFormat::new()),
             chan_len: Some(100000),
