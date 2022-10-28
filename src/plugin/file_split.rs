@@ -7,7 +7,7 @@ use crate::appender::{Command, FastLogRecord, LogAppender};
 use crate::consts::LogSize;
 use crate::error::LogError;
 use crate::{chan, Receiver, Sender};
-use fastdate::{DateTime, Time};
+use fastdate::{Date, DateTime, Time};
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -133,16 +133,6 @@ pub struct FileSplitAppenderData {
     temp_name: String,
 }
 
-pub struct DateTimeFile(DateTime);
-impl Display for DateTimeFile {
-    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "{:4}-{:2}-{:2}T{:2}-{:2}-{:2}.{:9}",
-            self.0.year, self.0.mon, self.0.day, self.0.hour, self.0.min, self.0.sec, self.0.nano
-        ))
-    }
-}
-
 impl FileSplitAppenderData {
     /// send data make an pack,and truncate data when finish.
     pub fn send_pack(&mut self) {
@@ -151,7 +141,10 @@ impl FileSplitAppenderData {
             "{}{}{}.log",
             self.dir_path,
             &self.temp_name,
-            DateTimeFile(fastdate::DateTime::now())
+            DateTime::now()
+                .to_string()
+                .replace(" ", "T")
+                .replace(":", "-")
         );
         std::fs::copy(&first_file_path, &new_log_name);
         self.sender.send(LogPack {
