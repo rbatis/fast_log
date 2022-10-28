@@ -228,39 +228,40 @@ impl FileSplitAppender {
 impl LogAppender for FileSplitAppender {
     fn do_logs(&self, records: &[FastLogRecord]) {
         let mut data = self.cell.borrow_mut();
-        if data.temp_bytes >= data.max_split_bytes {
-            data.send_pack();
-        }
         //if temp_bytes is full,must send pack
-        let temp_log = {
-            let mut limit = data.max_split_bytes - data.temp_bytes;
-            let mut temp = String::with_capacity(100);
-            for x in records {
-                match x.command {
-                    Command::CommandRecord => {
-                        if (temp.as_bytes().len() + x.formated.as_bytes().len()) < limit {
-                            temp.push_str(&x.formated);
-                        } else {
-                            //do pack
-                            data.file.write(temp.as_bytes());
-                            data.send_pack();
-                            limit = data.max_split_bytes;
-                            temp.clear();
-                            temp.push_str(&x.formated);
-                        }
+        let mut limit = data.max_split_bytes - data.temp_bytes;
+        let mut temp = String::with_capacity(100);
+        for x in records {
+            match x.command {
+                Command::CommandRecord => {
+                    if (temp.as_bytes().len() + x.formated.as_bytes().len()) < limit {
+                        temp.push_str(&x.formated);
+                        limit = data.max_split_bytes - data.temp_bytes;
+                    } else {
+                        //full
+                        data.temp_bytes += {
+                            let bytes = temp.as_bytes();
+                            let w = data.file.write(bytes);
+                            if let Ok(w) = w {
+                                w
+                            } else {
+                                0
+                            }
+                        };
+                        data.send_pack();
+                        temp.clear();
+                        //push
+                        temp.push_str(&x.formated);
+                        limit = data.max_split_bytes - data.temp_bytes;
                     }
-                    Command::CommandExit => {}
-                    Command::CommandFlush(_) => {}
                 }
+                Command::CommandExit => {}
+                Command::CommandFlush(_) => {}
             }
-            temp
-        };
-        if !temp_log.is_empty() {
-            if (data.temp_bytes + temp_log.as_bytes().len()) > data.max_split_bytes {
-                data.send_pack();
-            }
+        }
+        if !temp.is_empty() {
             data.temp_bytes += {
-                let bytes = temp_log.as_bytes();
+                let bytes = temp.as_bytes();
                 let w = data.file.write(bytes);
                 if let Ok(w) = w {
                     w
@@ -268,9 +269,6 @@ impl LogAppender for FileSplitAppender {
                     0
                 }
             };
-            if data.temp_bytes > data.max_split_bytes {
-                data.send_pack();
-            }
         }
     }
 
