@@ -136,18 +136,10 @@ pub struct FileSplitAppenderData {
 pub struct DateTimeFile(DateTime);
 impl Display for DateTimeFile {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        let mut buf: [u8; 29] = *b"0000-00-00_00:00:00.000000000";
-        buf[0] = b'0' + (self.0.year / 1000) as u8;
-        buf[1] = b'0' + (self.0.year / 100 % 10) as u8;
-        buf[2] = b'0' + (self.0.year / 10 % 10) as u8;
-        buf[3] = b'0' + (self.0.year % 10) as u8;
-        buf[5] = b'0' + (self.0.mon / 10) as u8;
-        buf[6] = b'0' + (self.0.mon % 10) as u8;
-        buf[8] = b'0' + (self.0.day / 10) as u8;
-        buf[9] = b'0' + (self.0.day % 10) as u8;
-        let time = Time::from(self.0.clone());
-        let len = time.display_time(11, &mut buf);
-        f.write_str(std::str::from_utf8(&buf[..len]).unwrap())
+        f.write_fmt(format_args!(
+            "{:4}-{:2}-{:2}T{:2}-{:2}-{:2}.{:9}",
+            self.0.year, self.0.mon, self.0.day, self.0.hour, self.0.min, self.0.sec, self.0.nano
+        ))
     }
 }
 
