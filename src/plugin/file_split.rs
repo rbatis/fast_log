@@ -1,13 +1,11 @@
-use std::cell::RefCell;
-use std::fmt::{Display, Formatter};
-use std::fs::{DirEntry, File, OpenOptions};
-use std::io::{Seek, SeekFrom, Write};
-
 use crate::appender::{Command, FastLogRecord, LogAppender};
 use crate::consts::LogSize;
 use crate::error::LogError;
 use crate::{chan, Receiver, Sender};
-use fastdate::{Date, DateTime, Time};
+use fastdate::DateTime;
+use std::cell::RefCell;
+use std::fs::{DirEntry, File, OpenOptions};
+use std::io::{Seek, SeekFrom, Write};
 use std::str::FromStr;
 use std::time::Duration;
 
