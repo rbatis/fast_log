@@ -22,7 +22,7 @@ pub trait Packer: Send {
 
 /// split log file allow compress log
 pub struct FileSplitAppender {
-    cell: RefCell<FileSplitAppenderData>,
+    pub cell: RefCell<FileSplitAppenderData>,
 }
 
 ///log data pack
@@ -74,7 +74,8 @@ impl RollingType {
         return vec![];
     }
 
-    pub fn do_rolling(&self, temp_name: &str, dir: &str) {
+    pub fn do_rolling(&self, temp_name: &str, dir: &str) -> i64 {
+        let mut removed = 0;
         match self {
             RollingType::KeepNum(n) => {
                 let paths_vec = self.read_paths(dir, temp_name);
@@ -82,6 +83,7 @@ impl RollingType {
                     if index >= (*n) as usize {
                         let item = &paths_vec[index];
                         std::fs::remove_file(item.path());
+                        removed += 1;
                     }
                 }
             }
@@ -95,12 +97,14 @@ impl RollingType {
                     if let Some(time) = self.file_name_parse_time(&name, temp_name) {
                         if now.clone().sub(duration.clone()) > time {
                             std::fs::remove_file(item.path());
+                            removed += 1;
                         }
                     }
                 }
             }
             _ => {}
         }
+        removed
     }
 
     fn file_name_parse_time(&self, name: &str, temp_name: &str) -> Option<fastdate::DateTime> {
