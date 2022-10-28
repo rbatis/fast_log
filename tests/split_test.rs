@@ -5,7 +5,7 @@ mod test {
     use fast_log::plugin::file_split::{FileSplitAppender, RollingType};
     use fast_log::plugin::packer::LogPacker;
     use log::Level;
-    use std::fs::{remove_dir, remove_dir_all};
+    use std::fs::remove_dir_all;
     use std::time::SystemTime;
 
     #[test]
