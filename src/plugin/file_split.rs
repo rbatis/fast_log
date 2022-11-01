@@ -237,11 +237,7 @@ impl LogAppender for FileSplitAppender {
                     data.send_pack();
                 }
             }
-            SplitType::Custom(f) => {
-                if (f)() {
-                    data.send_pack();
-                }
-            }
+            SplitType::Fn(f) => {}
         }
         //if temp_bytes is full,must send pack
         let mut limit = usize::MAX;
@@ -251,7 +247,7 @@ impl LogAppender for FileSplitAppender {
                     limit = s.get_len() - data.temp_bytes
                 }
             }
-            SplitType::Custom(_) => {}
+            SplitType::Fn(_) => {}
         }
         let mut temps = Vec::with_capacity(100);
         for x in records {
@@ -269,7 +265,7 @@ impl LogAppender for FileSplitAppender {
                             }
                             temps.last_mut().unwrap().push_str(x.formated.as_str());
                         }
-                        SplitType::Custom(_) => {}
+                        SplitType::Fn(_) => {}
                     }
                 }
                 Command::CommandExit => {}
