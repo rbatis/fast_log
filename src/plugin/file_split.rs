@@ -1,5 +1,5 @@
 use crate::appender::{Command, FastLogRecord, LogAppender};
-use crate::consts::{LogSize, SplitType};
+use crate::consts::SplitType;
 use crate::error::LogError;
 use crate::{chan, Receiver, Sender};
 use fastdate::DateTime;
