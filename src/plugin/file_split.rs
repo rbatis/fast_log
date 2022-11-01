@@ -1,5 +1,5 @@
 use crate::appender::{Command, FastLogRecord, LogAppender};
-use crate::consts::LogSize;
+use crate::consts::{LogSize, SplitType};
 use crate::error::LogError;
 use crate::{chan, Receiver, Sender};
 use fastdate::DateTime;
@@ -125,10 +125,10 @@ impl RollingType {
 /// split log file allow pack compress log
 /// Memory space swop running time , reduces the number of repeated queries for IO
 pub struct FileSplitAppenderData {
-    max_split_bytes: usize,
     dir_path: String,
     file: File,
     sender: Sender<LogPack>,
+    split_type: SplitType,
     rolling_type: RollingType,
     //cache data
     temp_bytes: usize,
@@ -166,13 +166,9 @@ impl FileSplitAppenderData {
 }
 
 impl FileSplitAppender {
-    ///split_log_bytes:  log file data bytes(MB) splite
-    ///file_path:         the log dir or file name
-    ///log_pack_cap:     pack(zip,lz4 or more...) or log Waiting cap
-    /// packer: default is zip packer
     pub fn new(
         file_path: &str,
-        max_temp_size: LogSize,
+        split_type: SplitType,
         rolling_type: RollingType,
         packer: Box<dyn Packer>,
     ) -> FileSplitAppender {
@@ -220,13 +216,13 @@ impl FileSplitAppender {
         spawn_saver(file_name, receiver, packer);
         Self {
             cell: RefCell::new(FileSplitAppenderData {
-                max_split_bytes: max_temp_size.get_len(),
                 temp_bytes: temp_bytes,
                 dir_path: dir_path.to_string(),
                 file: file,
                 sender: sender,
-                rolling_type: rolling_type,
+                split_type: split_type,
                 temp_name: file_name.to_string(),
+                rolling_type: rolling_type,
             }),
         }
     }
@@ -235,50 +231,64 @@ impl FileSplitAppender {
 impl LogAppender for FileSplitAppender {
     fn do_logs(&self, records: &[FastLogRecord]) {
         let mut data = self.cell.borrow_mut();
-        if data.temp_bytes > data.max_split_bytes {
-            data.send_pack();
+        match &data.split_type {
+            SplitType::Size(size) => {
+                if data.temp_bytes > size.get_len() {
+                    data.send_pack();
+                }
+            }
+            SplitType::Custom(f) => {
+                if (f)() {
+                    data.send_pack();
+                }
+            }
         }
         //if temp_bytes is full,must send pack
-        let mut limit = data.max_split_bytes - data.temp_bytes;
-        let mut temp = String::with_capacity(100);
+        let mut limit = usize::MAX;
+        match &data.split_type {
+            SplitType::Size(s) => {
+                if s.get_len() > data.temp_bytes {
+                    limit = s.get_len() - data.temp_bytes
+                }
+            }
+            SplitType::Custom(_) => {}
+        }
+        let mut temps = Vec::with_capacity(100);
         for x in records {
             match x.command {
                 Command::CommandRecord => {
-                    if (temp.as_bytes().len() + x.formated.as_bytes().len()) < limit {
-                        temp.push_str(&x.formated);
-                        limit = data.max_split_bytes - data.temp_bytes;
-                    } else {
-                        //full
-                        data.temp_bytes += {
-                            let bytes = temp.as_bytes();
-                            let w = data.file.write(bytes);
-                            if let Ok(w) = w {
-                                w
-                            } else {
-                                0
+                    if temps.len() == 0 {
+                        temps.push(String::with_capacity(100));
+                    }
+                    match &data.split_type {
+                        SplitType::Size(s) => {
+                            if temps.last().unwrap().as_bytes().len() + x.formated.as_bytes().len()
+                                > s.get_len()
+                            {
+                                temps.push(String::with_capacity(100));
                             }
-                        };
-                        data.send_pack();
-                        temp.clear();
-                        //push
-                        temp.push_str(&x.formated);
-                        limit = data.max_split_bytes - data.temp_bytes;
+                            temps.last_mut().unwrap().push_str(x.formated.as_str());
+                        }
+                        SplitType::Custom(_) => {}
                     }
                 }
                 Command::CommandExit => {}
                 Command::CommandFlush(_) => {}
             }
         }
-        if !temp.is_empty() {
-            data.temp_bytes += {
-                let bytes = temp.as_bytes();
-                let w = data.file.write(bytes);
-                if let Ok(w) = w {
-                    w
-                } else {
-                    0
+        if !temps.is_empty() {
+            for temp in temps {
+                if !temp.is_empty() {
+                    data.temp_bytes += {
+                        let w = data.file.write(temp.as_bytes());
+                        if let Ok(w) = w {
+                            w
+                        } else {
+                            0
+                        }
+                    };
                 }
-            };
+            }
         }
     }
 

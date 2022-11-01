@@ -1,3 +1,12 @@
+use fastdate::DateTime;
+
+pub enum SplitType {
+    // when log size > SplitType::Size, do pack
+    Size(LogSize),
+    //Custom Split,return true to do pack
+    Custom(fn() -> bool),
+}
+
 pub enum LogSize {
     KB(usize),
     MB(usize),
