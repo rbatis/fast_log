@@ -231,14 +231,6 @@ impl FileSplitAppender {
 impl LogAppender for FileSplitAppender {
     fn do_logs(&self, records: &[FastLogRecord]) {
         let mut data = self.cell.borrow_mut();
-        match &data.split_type {
-            SplitType::Size(size) => {
-                if data.temp_bytes > size.get_len() {
-                    data.send_pack();
-                }
-            }
-            SplitType::Fn(f) => {}
-        }
         //if temp_bytes is full,must send pack
         let mut temp = String::with_capacity(100);
         for x in records {
