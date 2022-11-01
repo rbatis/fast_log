@@ -240,51 +240,42 @@ impl LogAppender for FileSplitAppender {
             SplitType::Fn(f) => {}
         }
         //if temp_bytes is full,must send pack
-        let mut limit = usize::MAX;
-        match &data.split_type {
-            SplitType::Size(s) => {
-                if s.get_len() > data.temp_bytes {
-                    limit = s.get_len() - data.temp_bytes
-                }
-            }
-            SplitType::Fn(_) => {}
-        }
-        let mut temps = Vec::with_capacity(100);
+        let mut temp = String::with_capacity(100);
         for x in records {
             match x.command {
-                Command::CommandRecord => {
-                    if temps.len() == 0 {
-                        temps.push(String::with_capacity(100));
-                    }
-                    match &data.split_type {
-                        SplitType::Size(s) => {
-                            if temps.last().unwrap().as_bytes().len() + x.formated.as_bytes().len()
-                                > s.get_len()
-                            {
-                                temps.push(String::with_capacity(100));
-                            }
-                            temps.last_mut().unwrap().push_str(x.formated.as_str());
+                Command::CommandRecord => match &data.split_type {
+                    SplitType::Size(s) => {
+                        if (data.temp_bytes + temp.as_bytes().len() + x.formated.as_bytes().len())
+                            > s.get_len()
+                        {
+                            data.temp_bytes += {
+                                let w = data.file.write(temp.as_bytes());
+                                if let Ok(w) = w {
+                                    w
+                                } else {
+                                    0
+                                }
+                            };
+                            data.send_pack();
+                            temp.clear();
                         }
-                        SplitType::Fn(_) => {}
+                        temp.push_str(x.formated.as_str());
                     }
-                }
+                    SplitType::Fn(_) => {}
+                },
                 Command::CommandExit => {}
                 Command::CommandFlush(_) => {}
             }
         }
-        if !temps.is_empty() {
-            for temp in temps {
-                if !temp.is_empty() {
-                    data.temp_bytes += {
-                        let w = data.file.write(temp.as_bytes());
-                        if let Ok(w) = w {
-                            w
-                        } else {
-                            0
-                        }
-                    };
+        if !temp.is_empty() {
+            data.temp_bytes += {
+                let w = data.file.write(temp.as_bytes());
+                if let Ok(w) = w {
+                    w
+                } else {
+                    0
                 }
-            }
+            };
         }
     }
 
