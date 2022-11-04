@@ -6,7 +6,7 @@ use crate::appender::{Command, FastLogRecord};
 use crate::config::Config;
 use crate::error::LogError;
 use crate::filter::Filter;
-use crate::{chan, spawn, Receiver, SendError, Sender, WaitGroup, try_send_num, RecvError};
+use crate::{chan, spawn, Receiver, SendError, Sender, WaitGroup};
 use once_cell::sync::{Lazy, OnceCell};
 use std::result::Result::Ok;
 use std::sync::Arc;
@@ -98,7 +98,7 @@ impl Log for Logger {
                     now: SystemTime::now(),
                     formated: String::new(),
                 };
-                try_send_num(&LOGGER.chan.send, 3, fast_log_record);
+                LOGGER.chan.send.send(fast_log_record);
             }
         }
     }
@@ -183,39 +183,30 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                 });
             }
             loop {
+                let mut remain = Vec::with_capacity(1000);
                 //recv
-                let data = {
-                    if LOGGER.chan.recv.len() == 0 {
-                        LOGGER.chan.recv.recv()
-                    } else {
-                        LOGGER.chan.recv.try_recv().map_err(|e| RecvError {})
+                if LOGGER.chan.recv.len() == 0 {
+                    if let Ok(item) = LOGGER.chan.recv.recv() {
+                        remain.push(item);
                     }
-                };
-                if let Ok(data) = data {
-                    let mut remain;
-                    if LOGGER.chan.recv.len() > 0 {
-                        remain = Vec::with_capacity(LOGGER.chan.recv.len() + 1);
-                        remain.push(data);
-                        recv_all(&mut remain, &LOGGER.chan.recv);
-                    } else {
-                        remain = vec![data];
+                } else {
+                    recv_all(&mut remain, &LOGGER.chan.recv);
+                }
+                let mut exit = false;
+                for x in &mut remain {
+                    if x.formated.is_empty() {
+                        format.do_format(x);
                     }
-                    let mut exit = false;
-                    for x in &mut remain {
-                        if x.formated.is_empty() {
-                            format.do_format(x);
-                        }
-                        if x.command.eq(&Command::CommandExit) {
-                            exit = true;
-                        }
+                    if x.command.eq(&Command::CommandExit) {
+                        exit = true;
                     }
-                    let data = Arc::new(remain);
-                    for x in &sender_vec {
-                        x.send(data.clone());
-                    }
-                    if exit {
-                        break;
-                    }
+                }
+                let data = Arc::new(remain);
+                for x in &sender_vec {
+                    x.send(data.clone());
+                }
+                if exit {
+                    break;
                 }
             }
         });

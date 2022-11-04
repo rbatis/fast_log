@@ -34,20 +34,3 @@ pub fn spawn_stack_size<F>(f: F, stack_size: usize) -> JoinHandle<()>
 {
     std::thread::spawn(f)
 }
-
-
-pub fn try_send_num<T>(sender: &Sender<T>, num: usize, mut target: T) {
-    let mut trys = 0;
-    loop {
-        if trys > num {
-            sender.send(target);
-            break;
-        }
-        if let Err(e) = sender.try_send(target) {
-            trys += 1;
-            target = e.into_inner();
-        } else {
-            break;
-        }
-    }
-}
