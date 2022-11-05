@@ -1,5 +1,5 @@
 use crate::appender::{FastLogRecord, LogAppender};
-use crate::consts::LogSize;
+use crate::consts::{LogSize, SplitType};
 use crate::plugin::file_split::{FileSplitAppender, RollingType};
 use crate::plugin::packer::LogPacker;
 
@@ -9,11 +9,11 @@ pub struct FileLoopAppender {
 }
 
 impl FileLoopAppender {
-    pub fn new(log_file_path: &str, max_temp_size: LogSize) -> FileLoopAppender {
+    pub fn new(log_file_path: &str, size: LogSize) -> FileLoopAppender {
         Self {
             file: FileSplitAppender::new(
                 log_file_path,
-                max_temp_size,
+                SplitType::Size(size),
                 RollingType::KeepNum(1),
                 Box::new(LogPacker {}),
             ),

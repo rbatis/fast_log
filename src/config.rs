@@ -1,5 +1,5 @@
 use crate::appender::{LogAppender, RecordFormat};
-use crate::consts::LogSize;
+use crate::consts::{LogSize, SplitType};
 use crate::filter::{Filter, NoFilter};
 use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
@@ -68,13 +68,13 @@ impl Config {
     pub fn file_split<P: Packer + 'static>(
         mut self,
         file_path: &str,
-        max_temp_size: LogSize,
+        split_type: SplitType,
         rolling_type: RollingType,
         packer: P,
     ) -> Self {
         self.appends.push(Box::new(FileSplitAppender::new(
             file_path,
-            max_temp_size,
+            split_type,
             rolling_type,
             Box::new(packer),
         )));
