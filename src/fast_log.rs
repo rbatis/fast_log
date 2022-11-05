@@ -112,7 +112,7 @@ pub static LOGGER: Lazy<Logger> = Lazy::new(|| Logger {
 
 pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     if config.appends.is_empty() {
-        return Err(LogError::from("[fast_log] appenders can not be empty!"));
+        return Err(LogError::from("[fast_log] appends can not be empty!"));
     }
     match config.chan_len {
         None => {
@@ -125,7 +125,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     LOGGER.set_level(config.level);
     LOGGER.chan.set_filter(config.filter);
     //main recv data
-    let appenders = config.appends;
+    let appends = config.appends;
     let format = Arc::new(config.format);
     let level = config.level;
     let chan_len = config.chan_len;
@@ -135,7 +135,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     std::thread::spawn(move || {
         let mut recever_vec = vec![];
         let mut sender_vec: Vec<Sender<Arc<Vec<FastLogRecord>>>> = vec![];
-        for a in appenders {
+        for a in appends {
             let (s, r) = chan(chan_len);
             sender_vec.push(s);
             recever_vec.push((r, a));
