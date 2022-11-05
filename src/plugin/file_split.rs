@@ -255,6 +255,14 @@ impl LogAppender for FileSplitAppender {
                     }
                     SplitType::Fn(f) => {
                         if (f)(data.temp_bytes + temp.as_bytes().len() + x.formated.as_bytes().len(), x) {
+                            data.temp_bytes += {
+                                let w = data.file.write(temp.as_bytes());
+                                if let Ok(w) = w {
+                                    w
+                                } else {
+                                    0
+                                }
+                            };
                             data.send_pack();
                             temp.clear();
                         }
