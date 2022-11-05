@@ -144,8 +144,22 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
             spawn(move || {
                 let mut exit = false;
                 loop {
-                    //batch fetch
+                   let mut remain=vec![];
                     if let Ok(msg) = recever.recv() {
+                        remain.push(msg);
+                    }
+                    //recv all
+                    loop {
+                        match recever.try_recv() {
+                            Ok(v) => {
+                                remain.push(v);
+                            }
+                            Err(_) => {
+                                break;
+                            }
+                        }
+                    }
+                    for msg in remain {
                         appender.do_logs(msg.as_ref());
                         for x in msg.iter() {
                             match x.command {
@@ -174,8 +188,17 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                 if let Ok(item) = LOGGER.chan.recv.recv() {
                     remain.push(item);
                 }
-            } else {
-                recv_all(&mut remain, &LOGGER.chan.recv);
+            }
+            //recv all
+            loop {
+                match LOGGER.chan.recv.try_recv() {
+                    Ok(v) => {
+                        remain.push(v);
+                    }
+                    Err(_) => {
+                        break;
+                    }
+                }
             }
             let mut exit = false;
             for x in &mut remain {
@@ -196,19 +219,6 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
         }
     });
     return Ok(LOGGER.deref());
-}
-
-fn recv_all<T>(data: &mut Vec<T>, recver: &Receiver<T>) {
-    loop {
-        match recver.try_recv() {
-            Ok(v) => {
-                data.push(v);
-            }
-            Err(_) => {
-                break;
-            }
-        }
-    }
 }
 
 pub fn exit() -> Result<(), LogError> {
