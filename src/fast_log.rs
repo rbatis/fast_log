@@ -1,6 +1,6 @@
 use log::{LevelFilter, Log, Metadata, Record};
 use std::ops::Deref;
-use std::sync::atomic::{AtomicI32, AtomicI64, Ordering};
+use std::sync::atomic::{AtomicI64, Ordering};
 
 use crate::appender::{Command, FastLogRecord};
 use crate::config::Config;
@@ -34,27 +34,16 @@ impl Chan {
 }
 
 pub struct Logger {
-    level: AtomicI32,
     pub chan: Chan,
 }
 
 impl Logger {
     pub fn set_level(&self, level: LevelFilter) {
-        self.level
-            .swap(level as i32, std::sync::atomic::Ordering::Relaxed);
         log::set_max_level(level);
     }
 
     pub fn get_level(&self) -> LevelFilter {
-        match self.level.load(std::sync::atomic::Ordering::Relaxed) {
-            0 => LevelFilter::Off,
-            1 => LevelFilter::Error,
-            2 => LevelFilter::Warn,
-            3 => LevelFilter::Info,
-            4 => LevelFilter::Debug,
-            5 => LevelFilter::Trace,
-            _ => panic!("error log level!"),
-        }
+        log::max_level()
     }
 
     /// print no other info
@@ -114,7 +103,6 @@ impl Log for Logger {
 
 static CHAN_LEN: AtomicI64 = AtomicI64::new(-1);
 pub static LOGGER: Lazy<Logger> = Lazy::new(|| Logger {
-    level: AtomicI32::new(1),
     chan: Chan::new({
         let len = CHAN_LEN.load(Ordering::SeqCst);
         match len {

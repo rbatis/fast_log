@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod test {
     use fast_log::appender::{Command, FastLogRecord, LogAppender};
-    use fast_log::consts::LogSize;
+    use fast_log::consts::{LogSize, SplitType};
     use fast_log::plugin::file_split::{FileSplitAppender, RollingType};
     use fast_log::plugin::packer::LogPacker;
     use log::Level;
@@ -13,7 +13,7 @@ mod test {
         let _ = remove_dir_all("target/test/");
         let appender = FileSplitAppender::new(
             "target/test/",
-            LogSize::MB(1),
+            SplitType::Size(LogSize::MB(1)),
             RollingType::All,
             Box::new(LogPacker {}),
         );
