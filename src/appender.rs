@@ -1,5 +1,5 @@
-use std::time::SystemTime;
 use crate::WaitGroup;
+use std::time::SystemTime;
 
 /// LogAppender append logs
 /// Appender will be running on single main thread,please do_log for new thread or new an Future

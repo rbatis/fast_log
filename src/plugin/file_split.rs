@@ -254,7 +254,7 @@ impl LogAppender for FileSplitAppender {
                         temp.push_str(x.formated.as_str());
                     }
                     SplitType::Fn(f) => {
-                        if (f)(data.temp_bytes,x){
+                        if (f)(data.temp_bytes, x) {
                             data.send_pack();
                             temp.clear();
                         }

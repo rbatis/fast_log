@@ -72,10 +72,8 @@ impl Log for Logger {
         metadata.level() <= self.get_level()
     }
     fn log(&self, record: &Record) {
-        //send
-        let f = LOGGER.chan.filter.get();
-        if f.is_some() {
-            if !f.as_ref().unwrap().filter(record) {
+        if let Some(filter) = LOGGER.chan.filter.get() {
+            if !filter.filter(record) {
                 let fast_log_record = FastLogRecord {
                     command: Command::CommandRecord,
                     level: record.level(),
@@ -131,7 +129,9 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     let format = Arc::new(config.format);
     let level = config.level;
     let chan_len = config.chan_len;
-    log::set_logger(LOGGER.deref()).map(|()| log::set_max_level(level)).map_err(|e|LogError::from(e))?;
+    log::set_logger(LOGGER.deref())
+        .map(|()| log::set_max_level(level))
+        .map_err(|e| LogError::from(e))?;
     std::thread::spawn(move || {
         let mut recever_vec = vec![];
         let mut sender_vec: Vec<Sender<Arc<Vec<FastLogRecord>>>> = vec![];

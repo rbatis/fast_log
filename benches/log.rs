@@ -2,10 +2,9 @@
 #![feature(bench_black_box)]
 extern crate test;
 
-use test::Bencher;
 use fast_log::appender::{FastLogRecord, LogAppender};
 use fast_log::Config;
-
+use test::Bencher;
 
 #[bench]
 fn bench_log(b: &mut Bencher) {
