@@ -144,7 +144,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
             spawn(move || {
                 let mut exit = false;
                 loop {
-                   let mut remain=vec![];
+                    let mut remain = vec![];
                     if let Ok(msg) = recever.recv() {
                         remain.push(msg);
                     }
