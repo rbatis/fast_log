@@ -145,8 +145,10 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                 let mut exit = false;
                 loop {
                     let mut remain = vec![];
-                    if let Ok(msg) = recever.recv() {
-                        remain.push(msg);
+                    if recever.len() == 0 {
+                        if let Ok(msg) = recever.recv() {
+                            remain.push(msg);
+                        }
                     }
                     //recv all
                     loop {
