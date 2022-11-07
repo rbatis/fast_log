@@ -68,13 +68,13 @@ impl Config {
     pub fn file_split<P: Packer + 'static>(
         mut self,
         file_path: &str,
-        limit: LogSize,
+        temp_size: LogSize,
         rolling_type: RollingType,
         packer: P,
     ) -> Self {
         self.appends.push(Box::new(FileSplitAppender::new(
             file_path,
-            limit,
+            temp_size,
             rolling_type,
             Box::new(packer),
         )));

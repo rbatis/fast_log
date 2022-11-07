@@ -128,7 +128,7 @@ pub struct FileSplitAppenderData {
     dir_path: String,
     file: File,
     sender: Sender<LogPack>,
-    limit: LogSize,
+    temp_size: LogSize,
     rolling_type: RollingType,
     //cache data
     temp_bytes: usize,
@@ -168,7 +168,7 @@ impl FileSplitAppenderData {
 impl FileSplitAppender {
     pub fn new(
         file_path: &str,
-        limit: LogSize,
+        temp_size: LogSize,
         rolling_type: RollingType,
         packer: Box<dyn Packer>,
     ) -> FileSplitAppender {
@@ -220,7 +220,7 @@ impl FileSplitAppender {
                 dir_path: dir_path.to_string(),
                 file: file,
                 sender: sender,
-                limit: limit,
+                temp_size: temp_size,
                 temp_name: file_name.to_string(),
                 rolling_type: rolling_type,
             }),
@@ -237,7 +237,7 @@ impl LogAppender for FileSplitAppender {
             match x.command {
                 Command::CommandRecord => {
                     if (data.temp_bytes + temp.as_bytes().len() + x.formated.as_bytes().len())
-                        > data.limit.get_len()
+                        > data.temp_size.get_len()
                     {
                         data.temp_bytes += {
                             let w = data.file.write(temp.as_bytes());
