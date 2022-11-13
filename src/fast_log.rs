@@ -184,7 +184,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
             });
         }
         loop {
-            let mut remain = Vec::with_capacity(LOGGER.chan.recv.len());
+            let mut remain = Vec::with_capacity(10000);
             //recv
             if LOGGER.chan.recv.len() == 0 {
                 if let Ok(item) = LOGGER.chan.recv.recv() {

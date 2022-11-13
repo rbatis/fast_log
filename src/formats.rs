@@ -13,7 +13,7 @@ impl RecordFormat for FastLogFormat {
                 let now = fastdate::DateTime::from(arg.now);
                 if arg.level.to_level_filter() <= self.display_line_level {
                     arg.formated = format!(
-                        "{:29} {} {}:{} {}\n",
+                        "{} {} {}:{} {}\n",
                         &now,
                         arg.level,
                         arg.file,
@@ -22,7 +22,7 @@ impl RecordFormat for FastLogFormat {
                     );
                 } else {
                     arg.formated = format!(
-                        "{:29} {} {} - {}\n",
+                        "{} {} {} - {}\n",
                         &now, arg.level, arg.module_path, arg.args
                     );
                 }
