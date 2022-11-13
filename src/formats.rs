@@ -10,7 +10,7 @@ impl RecordFormat for FastLogFormat {
     fn do_format(&self, arg: &mut FastLogRecord) {
         match &arg.command {
             Command::CommandRecord => {
-                let now = fastdate::DateTime::now();
+                let now = fastdate::DateTime::from(arg.now);
                 if arg.level.to_level_filter() <= self.display_line_level {
                     arg.formated = format!(
                         "{:29} {} {} - {}  {}:{}\n",
