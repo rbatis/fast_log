@@ -1,12 +1,3 @@
-use crate::appender::FastLogRecord;
-
-pub enum SplitType {
-    // when log size > SplitType::Size, do pack
-    Size(LogSize),
-    //Custom Split,return true to do pack
-    Fn(fn(current_size: usize, record: &FastLogRecord) -> bool),
-}
-
 pub enum LogSize {
     KB(usize),
     MB(usize),

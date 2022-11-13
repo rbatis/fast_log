@@ -1,5 +1,5 @@
 use crate::appender::{Command, FastLogRecord, LogAppender};
-use crate::consts::SplitType;
+use crate::consts::LogSize;
 use crate::error::LogError;
 use crate::{chan, Receiver, Sender};
 use fastdate::DateTime;
@@ -128,7 +128,7 @@ pub struct FileSplitAppenderData {
     dir_path: String,
     file: File,
     sender: Sender<LogPack>,
-    split_type: SplitType,
+    temp_size: LogSize,
     rolling_type: RollingType,
     //cache data
     temp_bytes: usize,
@@ -168,7 +168,7 @@ impl FileSplitAppenderData {
 impl FileSplitAppender {
     pub fn new(
         file_path: &str,
-        split_type: SplitType,
+        temp_size: LogSize,
         rolling_type: RollingType,
         packer: Box<dyn Packer>,
     ) -> FileSplitAppender {
@@ -220,7 +220,7 @@ impl FileSplitAppender {
                 dir_path: dir_path.to_string(),
                 file: file,
                 sender: sender,
-                split_type: split_type,
+                temp_size: temp_size,
                 temp_name: file_name.to_string(),
                 rolling_type: rolling_type,
             }),
@@ -235,40 +235,23 @@ impl LogAppender for FileSplitAppender {
         let mut temp = String::with_capacity(100);
         for x in records {
             match x.command {
-                Command::CommandRecord => match &data.split_type {
-                    SplitType::Size(s) => {
-                        if (data.temp_bytes + temp.as_bytes().len() + x.formated.as_bytes().len())
-                            > s.get_len()
-                        {
-                            data.temp_bytes += {
-                                let w = data.file.write(temp.as_bytes());
-                                if let Ok(w) = w {
-                                    w
-                                } else {
-                                    0
-                                }
-                            };
-                            data.send_pack();
-                            temp.clear();
-                        }
-                        temp.push_str(x.formated.as_str());
+                Command::CommandRecord => {
+                    if (data.temp_bytes + temp.as_bytes().len() + x.formated.as_bytes().len())
+                        > data.temp_size.get_len()
+                    {
+                        data.temp_bytes += {
+                            let w = data.file.write(temp.as_bytes());
+                            if let Ok(w) = w {
+                                w
+                            } else {
+                                0
+                            }
+                        };
+                        data.send_pack();
+                        temp.clear();
                     }
-                    SplitType::Fn(f) => {
-                        if (f)(data.temp_bytes + temp.as_bytes().len() + x.formated.as_bytes().len(), x) {
-                            data.temp_bytes += {
-                                let w = data.file.write(temp.as_bytes());
-                                if let Ok(w) = w {
-                                    w
-                                } else {
-                                    0
-                                }
-                            };
-                            data.send_pack();
-                            temp.clear();
-                        }
-                        temp.push_str(x.formated.as_str());
-                    }
-                },
+                    temp.push_str(x.formated.as_str());
+                }
                 Command::CommandExit => {}
                 Command::CommandFlush(_) => {}
             }

@@ -1,5 +1,5 @@
 use crate::appender::{FastLogRecord, LogAppender};
-use crate::consts::{LogSize, SplitType};
+use crate::consts::LogSize;
 use crate::plugin::file_split::{FileSplitAppender, RollingType};
 use crate::plugin::packer::LogPacker;
 
@@ -13,7 +13,7 @@ impl FileLoopAppender {
         Self {
             file: FileSplitAppender::new(
                 log_file_path,
-                SplitType::Size(size),
+                size,
                 RollingType::KeepNum(1),
                 Box::new(LogPacker {}),
             ),
