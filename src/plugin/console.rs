@@ -8,7 +8,7 @@ impl LogAppender for ConsoleAppender {
         if records.len() == 0 {
             return;
         }
-        let mut buffer = String::with_capacity(records.len() * 10);
+        let mut buffer = String::with_capacity(records.len());
         for x in records {
             buffer.push_str(&x.formated);
         }

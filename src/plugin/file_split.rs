@@ -232,7 +232,7 @@ impl LogAppender for FileSplitAppender {
     fn do_logs(&self, records: &[FastLogRecord]) {
         let mut data = self.cell.borrow_mut();
         //if temp_bytes is full,must send pack
-        let mut temp = String::with_capacity(100);
+        let mut temp = String::with_capacity(records.len() * 10);
         for x in records {
             match x.command {
                 Command::CommandRecord => {
