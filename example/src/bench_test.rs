@@ -18,7 +18,7 @@ fn main() {
         log::info!("Commencing yak shaving{}", index);
     }
     //wait log finish write all
-    //log::logger().flush();
+    log::logger().flush();
     now.time(total);
     now.tps(total);
 }
