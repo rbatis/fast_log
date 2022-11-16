@@ -129,26 +129,25 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                             }
                         }
                     }
-                    if let append = appender.lock() {
-                        for msg in remain {
-                            append.do_logs(msg.as_ref());
-                            for x in msg.iter() {
-                                match x.command {
-                                    Command::CommandRecord => {}
-                                    Command::CommandExit => {
-                                        exit = true;
-                                        continue;
-                                    }
-                                    Command::CommandFlush(_) => {
-                                        append.flush();
-                                        continue;
-                                    }
+                    let append = appender.lock();
+                    for msg in remain {
+                        append.do_logs(msg.as_ref());
+                        for x in msg.iter() {
+                            match x.command {
+                                Command::CommandRecord => {}
+                                Command::CommandExit => {
+                                    exit = true;
+                                    continue;
+                                }
+                                Command::CommandFlush(_) => {
+                                    append.flush();
+                                    continue;
                                 }
                             }
                         }
-                        if exit {
-                            break;
-                        }
+                    }
+                    if exit {
+                        break;
                     }
                 }
             });
