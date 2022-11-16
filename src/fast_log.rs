@@ -9,6 +9,12 @@ use std::result::Result::Ok;
 use std::sync::Arc;
 use std::time::SystemTime;
 
+pub static LOGGER: Lazy<Logger> = Lazy::new(|| Logger {
+    cfg: OnceCell::new(),
+    send: OnceCell::new(),
+    recv: OnceCell::new(),
+});
+
 pub struct Logger {
     pub cfg: OnceCell<Config>,
     pub send: OnceCell<Sender<FastLogRecord>>,
@@ -77,12 +83,6 @@ impl Log for Logger {
         }
     }
 }
-
-pub static LOGGER: Lazy<Logger> = Lazy::new(|| Logger {
-    cfg: OnceCell::new(),
-    send: OnceCell::new(),
-    recv: OnceCell::new(),
-});
 
 pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     if config.appends.is_empty() {
