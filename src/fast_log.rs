@@ -4,6 +4,7 @@ use crate::error::LogError;
 use crate::{chan, spawn, Receiver, SendError, Sender, WaitGroup};
 use log::{LevelFilter, Log, Metadata, Record};
 use once_cell::sync::{Lazy, OnceCell};
+use parking_lot::Mutex;
 use std::ops::Deref;
 use std::result::Result::Ok;
 use std::sync::Arc;
@@ -11,8 +12,8 @@ use std::time::SystemTime;
 
 pub struct Logger {
     pub cfg: OnceCell<Config>,
-    pub send: Sender<FastLogRecord>,
-    pub recv: Receiver<FastLogRecord>,
+    pub send: Mutex<Sender<FastLogRecord>>,
+    pub recv: Mutex<Receiver<FastLogRecord>>,
 }
 
 impl Logger {
@@ -37,7 +38,7 @@ impl Logger {
             now: SystemTime::now(),
             formated: log,
         };
-        LOGGER.send.send(fast_log_record)
+        LOGGER.send.lock().send(fast_log_record)
     }
 
     pub fn wait(&self) {
@@ -63,7 +64,7 @@ impl Log for Logger {
                     now: SystemTime::now(),
                     formated: String::new(),
                 };
-                LOGGER.send.send(fast_log_record);
+                LOGGER.send.lock().send(fast_log_record);
             }
         }
     }
@@ -82,8 +83,8 @@ pub static LOGGER: Lazy<Logger> = Lazy::new(|| {
     let (send, recv) = chan(config.chan_len);
     Logger {
         cfg: OnceCell::from(config),
-        send,
-        recv,
+        send: Mutex::new(send),
+        recv: Mutex::new(recv),
     }
 });
 
@@ -91,6 +92,9 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     if config.appends.is_empty() {
         return Err(LogError::from("[fast_log] appends can not be empty!"));
     }
+    let (s, r) = chan(config.chan_len);
+    *LOGGER.send.lock() = s;
+    *LOGGER.recv.lock() = r;
     LOGGER.set_level(config.level);
     LOGGER.cfg.set(config);
     //main recv data
@@ -126,7 +130,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                             }
                         }
                     }
-                    if let Ok(append) = appender.lock() {
+                    if let append = appender.lock() {
                         for msg in remain {
                             append.do_logs(msg.as_ref());
                             for x in msg.iter() {
@@ -153,14 +157,14 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
         loop {
             let mut remain = Vec::with_capacity(10000);
             //recv
-            if LOGGER.recv.len() == 0 {
-                if let Ok(item) = LOGGER.recv.recv() {
+            if LOGGER.recv.lock().len() == 0 {
+                if let Ok(item) = LOGGER.recv.lock().recv() {
                     remain.push(item);
                 }
             }
             //recv all
             loop {
-                match LOGGER.recv.try_recv() {
+                match LOGGER.recv.lock().try_recv() {
                     Ok(v) => {
                         remain.push(v);
                     }
@@ -202,7 +206,7 @@ pub fn exit() -> Result<(), LogError> {
         now: SystemTime::now(),
         formated: String::new(),
     };
-    let result = LOGGER.send.send(fast_log_record);
+    let result = LOGGER.send.lock().send(fast_log_record);
     match result {
         Ok(()) => {
             return Ok(());
@@ -225,7 +229,7 @@ pub fn flush() -> Result<WaitGroup, LogError> {
         now: SystemTime::now(),
         formated: String::new(),
     };
-    let result = LOGGER.send.send(fast_log_record);
+    let result = LOGGER.send.lock().send(fast_log_record);
     match result {
         Ok(()) => {
             return Ok(wg);

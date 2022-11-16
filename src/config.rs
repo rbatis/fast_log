@@ -8,7 +8,7 @@ use crate::plugin::file_split::{FileSplitAppender, Packer, RollingType};
 use crate::FastLogFormat;
 use dark_std::sync::SyncVec;
 use log::LevelFilter;
-use std::sync::Mutex;
+use parking_lot::Mutex;
 
 pub struct Config {
     pub appends: SyncVec<Mutex<Box<dyn LogAppender>>>,
@@ -25,7 +25,7 @@ impl Default for Config {
             level: LevelFilter::Trace,
             filter: Box::new(NoFilter {}),
             format: Box::new(FastLogFormat::new()),
-            chan_len: Some(100000),
+            chan_len: None,
         }
     }
 }
