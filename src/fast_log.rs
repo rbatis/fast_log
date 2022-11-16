@@ -89,10 +89,13 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
         return Err(LogError::from("[fast_log] appends can not be empty!"));
     }
     let (s, r) = chan(config.chan_len);
-    LOGGER.send.set(s).unwrap();
-    LOGGER.recv.set(r).unwrap();
+    LOGGER.send.set(s).map_err(|e| LogError::from("set fail"))?;
+    LOGGER.recv.set(r).map_err(|e| LogError::from("set fail"))?;
     LOGGER.set_level(config.level);
-    LOGGER.cfg.set(config).unwrap();
+    LOGGER
+        .cfg
+        .set(config)
+        .map_err(|e| LogError::from("set fail"))?;
     let cfg = LOGGER.cfg.get().unwrap();
     //main recv data
     log::set_logger(LOGGER.deref())
@@ -202,7 +205,11 @@ pub fn exit() -> Result<(), LogError> {
         now: SystemTime::now(),
         formated: String::new(),
     };
-    let result = LOGGER.send.get().unwrap().send(fast_log_record);
+    let result = LOGGER
+        .send
+        .get()
+        .ok_or_else(|| LogError::from("not init"))?
+        .send(fast_log_record);
     match result {
         Ok(()) => {
             return Ok(());
@@ -225,7 +232,11 @@ pub fn flush() -> Result<WaitGroup, LogError> {
         now: SystemTime::now(),
         formated: String::new(),
     };
-    let result = LOGGER.send.get().unwrap().send(fast_log_record);
+    let result = LOGGER
+        .send
+        .get()
+        .ok_or_else(|| LogError::from("not init"))?
+        .send(fast_log_record);
     match result {
         Ok(()) => {
             return Ok(wg);
