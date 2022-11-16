@@ -38,7 +38,7 @@ impl Default for Config {
             level: LevelFilter::Trace,
             filter: Box::new(NoFilter {}),
             format: Box::new(FastLogFormat::new()),
-            chan_len: None,
+            chan_len: Some(1000000),
         }
     }
 }
