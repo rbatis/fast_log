@@ -13,6 +13,7 @@
 /.vscode
 '.vscode'
 
+.DS_Store
 
 
 # Remove Cargo.lock from gitignore if creating an executable, leave it for libraries
