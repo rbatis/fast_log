@@ -51,19 +51,20 @@ impl Log for Logger {
     }
     fn log(&self, record: &Record) {
         if let Some(filter) = LOGGER.cfg.get() {
-            if !filter.filter.filter(record) {
-                let fast_log_record = FastLogRecord {
-                    command: Command::CommandRecord,
-                    level: record.level(),
-                    target: record.metadata().target().to_string(),
-                    args: record.args().to_string(),
-                    module_path: record.module_path().unwrap_or_default().to_string(),
-                    file: record.file().unwrap_or_default().to_string(),
-                    line: record.line().clone(),
-                    now: SystemTime::now(),
-                    formated: String::new(),
-                };
-                LOGGER.send.get().unwrap().send(fast_log_record);
+            if let Some(send) = LOGGER.send.get() {
+                if !filter.filter.filter(record) {
+                    send.send(FastLogRecord {
+                        command: Command::CommandRecord,
+                        level: record.level(),
+                        target: record.metadata().target().to_string(),
+                        args: record.args().to_string(),
+                        module_path: record.module_path().unwrap_or_default().to_string(),
+                        file: record.file().unwrap_or_default().to_string(),
+                        line: record.line().clone(),
+                        now: SystemTime::now(),
+                        formated: String::new(),
+                    });
+                }
             }
         }
     }
