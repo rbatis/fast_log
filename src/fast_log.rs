@@ -154,16 +154,17 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
             });
         }
         loop {
-            let mut remain = Vec::with_capacity(10000);
+            let recv = LOGGER.recv.get().unwrap();
+            let mut remain = Vec::with_capacity(recv.len());
             //recv
-            if LOGGER.recv.get().unwrap().len() == 0 {
-                if let Ok(item) = LOGGER.recv.get().unwrap().recv() {
+            if recv.len() == 0 {
+                if let Ok(item) = recv.recv() {
                     remain.push(item);
                 }
             }
             //recv all
             loop {
-                match LOGGER.recv.get().unwrap().try_recv() {
+                match recv.try_recv() {
                     Ok(v) => {
                         remain.push(v);
                     }
