@@ -1,40 +1,18 @@
-use log::{LevelFilter, Log, Metadata, Record};
-use std::ops::Deref;
-use std::sync::atomic::{AtomicI64, Ordering};
-
 use crate::appender::{Command, FastLogRecord};
 use crate::config::Config;
 use crate::error::LogError;
-use crate::filter::Filter;
 use crate::{chan, spawn, Receiver, SendError, Sender, WaitGroup};
+use log::{LevelFilter, Log, Metadata, Record};
 use once_cell::sync::{Lazy, OnceCell};
+use std::ops::Deref;
 use std::result::Result::Ok;
 use std::sync::Arc;
 use std::time::SystemTime;
 
-pub struct Chan {
-    pub filter: OnceCell<Box<dyn Filter>>,
+pub struct Logger {
+    pub cfg: OnceCell<Config>,
     pub send: Sender<FastLogRecord>,
     pub recv: Receiver<FastLogRecord>,
-}
-
-impl Chan {
-    pub fn new(len: Option<usize>) -> Self {
-        let (s, r) = chan(len);
-        Chan {
-            filter: OnceCell::new(),
-            send: s,
-            recv: r,
-        }
-    }
-    pub fn set_filter(&self, f: Box<dyn Filter>) {
-        self.filter.get_or_init(|| f);
-        self.filter.get();
-    }
-}
-
-pub struct Logger {
-    pub chan: Chan,
 }
 
 impl Logger {
@@ -59,7 +37,7 @@ impl Logger {
             now: SystemTime::now(),
             formated: log,
         };
-        LOGGER.chan.send.send(fast_log_record)
+        LOGGER.send.send(fast_log_record)
     }
 
     pub fn wait(&self) {
@@ -72,8 +50,8 @@ impl Log for Logger {
         metadata.level() <= self.get_level()
     }
     fn log(&self, record: &Record) {
-        if let Some(filter) = LOGGER.chan.filter.get() {
-            if !filter.filter(record) {
+        if let Some(filter) = LOGGER.cfg.get() {
+            if !filter.filter.filter(record) {
                 let fast_log_record = FastLogRecord {
                     command: Command::CommandRecord,
                     level: record.level(),
@@ -85,7 +63,7 @@ impl Log for Logger {
                     now: SystemTime::now(),
                     formated: String::new(),
                 };
-                LOGGER.chan.send.send(fast_log_record);
+                LOGGER.send.send(fast_log_record);
             }
         }
     }
@@ -99,44 +77,31 @@ impl Log for Logger {
     }
 }
 
-static CHAN_LEN: AtomicI64 = AtomicI64::new(-1);
-pub static LOGGER: Lazy<Logger> = Lazy::new(|| Logger {
-    chan: Chan::new({
-        let len = CHAN_LEN.load(Ordering::SeqCst);
-        match len {
-            -1 => None,
-            v => Some(v as usize),
-        }
-    }),
+pub static LOGGER: Lazy<Logger> = Lazy::new(|| {
+    let config = Config::new();
+    let (send, recv) = chan(config.chan_len);
+    Logger {
+        cfg: OnceCell::from(config),
+        send,
+        recv,
+    }
 });
 
 pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     if config.appends.is_empty() {
         return Err(LogError::from("[fast_log] appends can not be empty!"));
     }
-    match config.chan_len {
-        None => {
-            CHAN_LEN.store(-1, Ordering::SeqCst);
-        }
-        Some(v) => {
-            CHAN_LEN.store(v as i64, Ordering::SeqCst);
-        }
-    }
     LOGGER.set_level(config.level);
-    LOGGER.chan.set_filter(config.filter);
+    LOGGER.cfg.set(config);
     //main recv data
-    let appends = config.appends;
-    let format = Arc::new(config.format);
-    let level = config.level;
-    let chan_len = config.chan_len;
     log::set_logger(LOGGER.deref())
-        .map(|()| log::set_max_level(level))
+        .map(|()| log::set_max_level(LOGGER.cfg.get().unwrap().level))
         .map_err(|e| LogError::from(e))?;
     std::thread::spawn(move || {
         let mut recever_vec = vec![];
         let mut sender_vec: Vec<Sender<Arc<Vec<FastLogRecord>>>> = vec![];
-        for a in appends {
-            let (s, r) = chan(chan_len);
+        for a in LOGGER.cfg.get().unwrap().appends.iter() {
+            let (s, r) = chan(LOGGER.cfg.get().unwrap().chan_len);
             sender_vec.push(s);
             recever_vec.push((r, a));
         }
@@ -161,24 +126,26 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                             }
                         }
                     }
-                    for msg in remain {
-                        appender.do_logs(msg.as_ref());
-                        for x in msg.iter() {
-                            match x.command {
-                                Command::CommandRecord => {}
-                                Command::CommandExit => {
-                                    exit = true;
-                                    continue;
-                                }
-                                Command::CommandFlush(_) => {
-                                    appender.flush();
-                                    continue;
+                    if let Ok(append) = appender.lock() {
+                        for msg in remain {
+                            append.do_logs(msg.as_ref());
+                            for x in msg.iter() {
+                                match x.command {
+                                    Command::CommandRecord => {}
+                                    Command::CommandExit => {
+                                        exit = true;
+                                        continue;
+                                    }
+                                    Command::CommandFlush(_) => {
+                                        append.flush();
+                                        continue;
+                                    }
                                 }
                             }
                         }
-                    }
-                    if exit {
-                        break;
+                        if exit {
+                            break;
+                        }
                     }
                 }
             });
@@ -186,14 +153,14 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
         loop {
             let mut remain = Vec::with_capacity(10000);
             //recv
-            if LOGGER.chan.recv.len() == 0 {
-                if let Ok(item) = LOGGER.chan.recv.recv() {
+            if LOGGER.recv.len() == 0 {
+                if let Ok(item) = LOGGER.recv.recv() {
                     remain.push(item);
                 }
             }
             //recv all
             loop {
-                match LOGGER.chan.recv.try_recv() {
+                match LOGGER.recv.try_recv() {
                     Ok(v) => {
                         remain.push(v);
                     }
@@ -205,7 +172,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
             let mut exit = false;
             for x in &mut remain {
                 if x.formated.is_empty() {
-                    format.do_format(x);
+                    LOGGER.cfg.get().unwrap().format.do_format(x);
                 }
                 if x.command.eq(&Command::CommandExit) {
                     exit = true;
@@ -235,7 +202,7 @@ pub fn exit() -> Result<(), LogError> {
         now: SystemTime::now(),
         formated: String::new(),
     };
-    let result = LOGGER.chan.send.send(fast_log_record);
+    let result = LOGGER.send.send(fast_log_record);
     match result {
         Ok(()) => {
             return Ok(());
@@ -258,7 +225,7 @@ pub fn flush() -> Result<WaitGroup, LogError> {
         now: SystemTime::now(),
         formated: String::new(),
     };
-    let result = LOGGER.chan.send.send(fast_log_record);
+    let result = LOGGER.send.send(fast_log_record);
     match result {
         Ok(()) => {
             return Ok(wg);

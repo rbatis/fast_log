@@ -6,10 +6,12 @@ use crate::plugin::file::FileAppender;
 use crate::plugin::file_loop::FileLoopAppender;
 use crate::plugin::file_split::{FileSplitAppender, Packer, RollingType};
 use crate::FastLogFormat;
+use dark_std::sync::SyncVec;
 use log::LevelFilter;
+use std::sync::Mutex;
 
 pub struct Config {
-    pub appends: Vec<Box<dyn LogAppender>>,
+    pub appends: SyncVec<Mutex<Box<dyn LogAppender>>>,
     pub level: LevelFilter,
     pub filter: Box<dyn Filter>,
     pub format: Box<dyn RecordFormat>,
@@ -19,7 +21,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            appends: vec![],
+            appends: SyncVec::new(),
             level: LevelFilter::Trace,
             filter: Box::new(NoFilter {}),
             format: Box::new(FastLogFormat::new()),
@@ -49,40 +51,44 @@ impl Config {
         self
     }
     /// add a ConsoleAppender
-    pub fn console(mut self) -> Self {
-        self.appends.push(Box::new(ConsoleAppender {}));
+    pub fn console(self) -> Self {
+        self.appends.push(Mutex::new(Box::new(ConsoleAppender {})));
         self
     }
     /// add a FileAppender
-    pub fn file(mut self, file: &str) -> Self {
-        self.appends.push(Box::new(FileAppender::new(file)));
+    pub fn file(self, file: &str) -> Self {
+        self.appends
+            .push(Mutex::new(Box::new(FileAppender::new(file))));
         self
     }
     /// add a FileLoopAppender
-    pub fn file_loop(mut self, file: &str, max_temp_size: LogSize) -> Self {
-        self.appends
-            .push(Box::new(FileLoopAppender::new(file, max_temp_size)));
+    pub fn file_loop(self, file: &str, max_temp_size: LogSize) -> Self {
+        self.appends.push(Mutex::new(Box::new(FileLoopAppender::new(
+            file,
+            max_temp_size,
+        ))));
         self
     }
     /// add a FileSplitAppender
     pub fn file_split<P: Packer + 'static>(
-        mut self,
+        self,
         file_path: &str,
         temp_size: LogSize,
         rolling_type: RollingType,
         packer: P,
     ) -> Self {
-        self.appends.push(Box::new(FileSplitAppender::new(
-            file_path,
-            temp_size,
-            rolling_type,
-            Box::new(packer),
-        )));
+        self.appends
+            .push(Mutex::new(Box::new(FileSplitAppender::new(
+                file_path,
+                temp_size,
+                rolling_type,
+                Box::new(packer),
+            ))));
         self
     }
     /// add a custom LogAppender
-    pub fn custom<Appender: LogAppender + 'static>(mut self, arg: Appender) -> Self {
-        self.appends.push(Box::new(arg));
+    pub fn custom<Appender: LogAppender + 'static>(self, arg: Appender) -> Self {
+        self.appends.push(Mutex::new(Box::new(arg)));
         self
     }
 
