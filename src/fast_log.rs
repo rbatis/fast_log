@@ -43,7 +43,12 @@ impl Logger {
             now: SystemTime::now(),
             formated: log,
         };
-        LOGGER.send.get().unwrap().send(fast_log_record)
+        if let Some(send) = LOGGER.send.get() {
+            send.send(fast_log_record)
+        } else {
+            // Ok(())
+            Err(crossbeam_channel::SendError(fast_log_record))
+        }
     }
 
     pub fn wait(&self) {
@@ -96,7 +101,6 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
         .cfg
         .set(config)
         .map_err(|e| LogError::from("set fail"))?;
-    let cfg = LOGGER.cfg.get().unwrap();
     //main recv data
     log::set_logger(LOGGER.deref())
         .map(|()| log::set_max_level(LOGGER.cfg.get().unwrap().level))
@@ -104,8 +108,9 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     std::thread::spawn(move || {
         let mut recever_vec = vec![];
         let mut sender_vec: Vec<Sender<Arc<Vec<FastLogRecord>>>> = vec![];
-        for a in LOGGER.cfg.get().unwrap().appends.iter() {
-            let (s, r) = chan(LOGGER.cfg.get().unwrap().chan_len);
+        let cfg = LOGGER.cfg.get().unwrap();
+        for a in cfg.appends.iter() {
+            let (s, r) = chan(cfg.chan_len);
             sender_vec.push(s);
             recever_vec.push((r, a));
         }
