@@ -9,6 +9,7 @@ use crate::FastLogFormat;
 use dark_std::sync::SyncVec;
 use log::LevelFilter;
 use parking_lot::Mutex;
+use std::fmt::{Debug, Formatter};
 
 pub struct Config {
     pub appends: SyncVec<Mutex<Box<dyn LogAppender>>>,
@@ -16,6 +17,18 @@ pub struct Config {
     pub filter: Box<dyn Filter>,
     pub format: Box<dyn RecordFormat>,
     pub chan_len: Option<usize>,
+}
+
+impl Debug for Config {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Config")
+            .field("appends", &self.appends.len())
+            .field("level", &self.level)
+            //.field("filter", &self.filter)
+            //.field("format", &self.format)
+            .field("chan_len", &self.chan_len)
+            .finish()
+    }
 }
 
 impl Default for Config {

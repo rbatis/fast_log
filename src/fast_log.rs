@@ -77,14 +77,10 @@ impl Log for Logger {
     }
 }
 
-pub static LOGGER: Lazy<Logger> = Lazy::new(|| {
-    let config = Config::new();
-    let (send, recv) = chan(config.chan_len);
-    Logger {
-        cfg: OnceCell::from(config),
-        send: OnceCell::from(send),
-        recv: OnceCell::from(recv),
-    }
+pub static LOGGER: Lazy<Logger> = Lazy::new(|| Logger {
+    cfg: OnceCell::new(),
+    send: OnceCell::new(),
+    recv: OnceCell::new(),
 });
 
 pub fn init(config: Config) -> Result<&'static Logger, LogError> {
@@ -92,10 +88,11 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
         return Err(LogError::from("[fast_log] appends can not be empty!"));
     }
     let (s, r) = chan(config.chan_len);
-    LOGGER.send.set(s);
-    LOGGER.recv.set(r);
+    LOGGER.send.set(s).unwrap();
+    LOGGER.recv.set(r).unwrap();
     LOGGER.set_level(config.level);
-    LOGGER.cfg.set(config);
+    LOGGER.cfg.set(config).unwrap();
+    let cfg = LOGGER.cfg.get().unwrap();
     //main recv data
     log::set_logger(LOGGER.deref())
         .map(|()| log::set_max_level(LOGGER.cfg.get().unwrap().level))
