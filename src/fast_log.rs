@@ -5,7 +5,6 @@ use crate::{chan, spawn, Receiver, SendError, Sender, WaitGroup};
 use log::{LevelFilter, Log, Metadata, Record};
 use once_cell::sync::{Lazy, OnceCell};
 use std::ops::Deref;
-use std::result::Result::Ok;
 use std::sync::Arc;
 use std::time::SystemTime;
 
