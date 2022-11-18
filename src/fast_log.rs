@@ -104,97 +104,102 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     log::set_logger(LOGGER.deref())
         .map(|()| log::set_max_level(LOGGER.cfg.get().unwrap().level))
         .map_err(|e| LogError::from(e))?;
-    std::thread::spawn(move || {
-        let mut recever_vec = vec![];
-        let mut sender_vec: Vec<Sender<Arc<Vec<FastLogRecord>>>> = vec![];
-        let cfg = LOGGER.cfg.get().unwrap();
-        for a in cfg.appends.iter() {
-            let (s, r) = chan(cfg.chan_len);
-            sender_vec.push(s);
-            recever_vec.push((r, a));
-        }
-        for (recever, appender) in recever_vec {
-            spawn(move || {
-                let mut exit = false;
-                loop {
-                    let mut remain = vec![];
-                    if recever.len() == 0 {
-                        if let Ok(msg) = recever.recv() {
-                            remain.push(msg);
-                        }
-                    }
-                    //recv all
-                    loop {
-                        match recever.try_recv() {
-                            Ok(v) => {
-                                remain.push(v);
-                            }
-                            Err(_) => {
-                                break;
-                            }
-                        }
-                    }
-                    let append = appender.lock();
-                    for msg in remain {
-                        append.do_logs(msg.as_ref());
-                        for x in msg.iter() {
-                            match x.command {
-                                Command::CommandRecord => {}
-                                Command::CommandExit => {
-                                    exit = true;
-                                    continue;
-                                }
-                                Command::CommandFlush(_) => {
-                                    append.flush();
-                                    continue;
-                                }
-                            }
-                        }
-                    }
-                    if exit {
-                        break;
-                    }
-                }
-            });
-        }
-        loop {
-            let recv = LOGGER.recv.get().unwrap();
-            let mut remain = Vec::with_capacity(recv.len());
-            //recv
-            if recv.len() == 0 {
-                if let Ok(item) = recv.recv() {
-                    remain.push(item);
-                }
-            }
-            //recv all
-            loop {
-                match recv.try_recv() {
-                    Ok(v) => {
-                        remain.push(v);
-                    }
-                    Err(_) => {
-                        break;
-                    }
-                }
-            }
+
+    let mut recever_vec = vec![];
+    let mut sender_vec: Vec<Sender<Arc<Vec<FastLogRecord>>>> = vec![];
+    let cfg = LOGGER.cfg.get().unwrap();
+    for a in cfg.appends.iter() {
+        let (s, r) = chan(cfg.chan_len);
+        sender_vec.push(s);
+        recever_vec.push((r, a));
+    }
+    for (recever, appender) in recever_vec {
+        spawn(move || {
             let mut exit = false;
-            for x in &mut remain {
-                if x.formated.is_empty() {
-                    LOGGER.cfg.get().unwrap().format.do_format(x);
+            loop {
+                let mut remain = vec![];
+                if recever.len() == 0 {
+                    if let Ok(msg) = recever.recv() {
+                        remain.push(msg);
+                    }
                 }
-                if x.command.eq(&Command::CommandExit) {
-                    exit = true;
+                //recv all
+                loop {
+                    match recever.try_recv() {
+                        Ok(v) => {
+                            remain.push(v);
+                        }
+                        Err(_) => {
+                            break;
+                        }
+                    }
+                }
+                let append = appender.lock();
+                for msg in remain {
+                    append.do_logs(msg.as_ref());
+                    for x in msg.iter() {
+                        match x.command {
+                            Command::CommandRecord => {}
+                            Command::CommandExit => {
+                                exit = true;
+                                continue;
+                            }
+                            Command::CommandFlush(_) => {
+                                append.flush();
+                                continue;
+                            }
+                        }
+                    }
+                }
+                if exit {
+                    break;
                 }
             }
-            let data = Arc::new(remain);
-            for x in &sender_vec {
-                x.send(data.clone());
+        });
+    }
+    let sender_vec = Arc::new(sender_vec);
+    for _ in 0..1 {
+        let senders = sender_vec.clone();
+        spawn(move || {
+            loop {
+                let recv = LOGGER.recv.get().unwrap();
+                let mut remain = Vec::with_capacity(recv.len());
+                //recv
+                if recv.len() == 0 {
+                    if let Ok(item) = recv.recv() {
+                        remain.push(item);
+                    }
+                }
+                //recv all
+                loop {
+                    match recv.try_recv() {
+                        Ok(v) => {
+                            remain.push(v);
+                        }
+                        Err(_) => {
+                            break;
+                        }
+                    }
+                }
+                let mut exit = false;
+                for x in &mut remain {
+                    if x.formated.is_empty() {
+                        LOGGER.cfg.get().unwrap().format.do_format(x);
+                    }
+                    if x.command.eq(&Command::CommandExit) {
+                        exit = true;
+                    }
+                }
+                let data = Arc::new(remain);
+                for x in senders.iter() {
+                    x.send(data.clone());
+                }
+                if exit {
+                    break;
+                }
             }
-            if exit {
-                break;
-            }
-        }
-    });
+        });
+    }
     return Ok(LOGGER.deref());
 }
 
