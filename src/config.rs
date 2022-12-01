@@ -11,11 +11,14 @@ use log::LevelFilter;
 use parking_lot::Mutex;
 use std::fmt::{Debug, Formatter};
 
+/// fast_log Config
 pub struct Config {
+    /// Each appender is responsible for printing its own business
     pub appends: SyncVec<Mutex<Box<dyn LogAppender>>>,
     pub level: LevelFilter,
     pub filter: Box<dyn Filter>,
     pub format: Box<dyn RecordFormat>,
+    /// the channel length,default None(Unbounded channel)
     pub chan_len: Option<usize>,
 }
 
@@ -38,7 +41,7 @@ impl Default for Config {
             level: LevelFilter::Trace,
             filter: Box::new(NoFilter {}),
             format: Box::new(FastLogFormat::new()),
-            chan_len: Some(1000000),
+            chan_len: None,
         }
     }
 }
