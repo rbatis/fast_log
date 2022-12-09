@@ -1,5 +1,6 @@
 use crate::appender::{Command, FastLogRecord, RecordFormat};
 use log::LevelFilter;
+use std::time::Duration;
 
 pub struct FastLogFormat {
     // show line level
@@ -10,7 +11,8 @@ impl RecordFormat for FastLogFormat {
     fn do_format(&self, arg: &mut FastLogRecord) {
         match &arg.command {
             Command::CommandRecord => {
-                let now = fastdate::DateTime::from(arg.now);
+                let now = fastdate::DateTime::from(arg.now)
+                    .add(Duration::from_secs(fastdate::offset_sec() as u64));
                 if arg.level.to_level_filter() <= self.display_line_level {
                     arg.formated = format!(
                         "{} {} {}:{} {}\n",
