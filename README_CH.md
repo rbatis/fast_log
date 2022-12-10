@@ -62,6 +62,17 @@ log = "0.4"
 fast_log="1.5"
 ```
 
+#### 性能调优-优化(重要)
+
+* 使用 ```chan_len(Some(100000))``` 预分配通道内存（移动设备和小内存设备建议设置None无界队列） 减少内存分配的开销，例如：
+
+```rust
+use log::{error, info, warn};
+fn  main(){
+    fast_log::init(Config::new().file("target/test.log").chan_len(Some(100000))).unwrap();
+    log::info!("Commencing yak shaving{}", 0);
+}
+```
 
 #### use log 简单日志
 ```rust

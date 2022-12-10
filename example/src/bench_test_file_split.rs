@@ -14,7 +14,7 @@ fn main() {
         LogSize::MB(1),
         RollingType::All,
         LogPacker {},
-    ))
+    )).chan_len(Some(100000))
     .unwrap();
     log::info!("Commencing yak shaving{}", 0);
     let total = 1000000;
