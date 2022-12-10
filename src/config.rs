@@ -11,12 +11,19 @@ use log::LevelFilter;
 use parking_lot::Mutex;
 use std::fmt::{Debug, Formatter};
 
-/// fast_log Config
+/// the fast_log Config
+/// for example:
+// fast_log::init(
+//         Config::new().console().chan_len(Some(1000000))
+// )
 pub struct Config {
     /// Each appender is responsible for printing its own business
     pub appends: SyncVec<Mutex<Box<dyn LogAppender>>>,
+    /// the log level filter
     pub level: LevelFilter,
+    /// filter log
     pub filter: Box<dyn Filter>,
+    /// format record into field fast_log_record's formated:String
     pub format: Box<dyn RecordFormat>,
     /// the channel length,default None(Unbounded channel)
     pub chan_len: Option<usize>,
