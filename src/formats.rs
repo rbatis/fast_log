@@ -1,18 +1,16 @@
 use crate::appender::{Command, FastLogRecord, RecordFormat};
 use log::LevelFilter;
-use std::time::Duration;
 
 pub struct FastLogFormat {
     // show line level
-    pub display_line_level: log::LevelFilter,
+    pub display_line_level: LevelFilter,
 }
 
 impl RecordFormat for FastLogFormat {
     fn do_format(&self, arg: &mut FastLogRecord) {
         match &arg.command {
             Command::CommandRecord => {
-                let now = fastdate::DateTime::from(arg.now)
-                    .add(Duration::from_secs(fastdate::offset_sec() as u64));
+                let now = fastdate::DateTime::from(arg.now).add_sub_sec(fastdate::offset_sec() as i64);
                 if arg.level.to_level_filter() <= self.display_line_level {
                     arg.formated = format!(
                         "{} {} {}:{} {}\n",
@@ -55,7 +53,7 @@ impl RecordFormat for FastLogFormatJson {
     fn do_format(&self, arg: &mut FastLogRecord) {
         match &arg.command {
             Command::CommandRecord => {
-                let now = fastdate::DateTime::now();
+                let now = fastdate::DateTime::from(arg.now).add_sub_sec(fastdate::offset_sec() as i64);
                 //{"args":"Commencing yak shaving","date":"2022-08-19 09:53:47.798674","file":"example/src/split_log.rs","level":"INFO","line":21}
                 arg.formated = format!(
                     "{}\"args\":\"{}\",\"date\":\"{}\",\"file\":\"{}\",\"level\":\"{}\",\"line\":{}{}",
