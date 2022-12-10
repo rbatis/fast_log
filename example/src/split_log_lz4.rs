@@ -4,12 +4,12 @@ use fast_log::plugin::file_split::RollingType;
 use fast_log::plugin::packer::LZ4Packer;
 
 fn main() {
-    fast_log::init(Config::new().console().file_split(
+    fast_log::init(Config::new().chan_len(Some(100000)).console().file_split(
         "target/logs/",
         LogSize::KB(50),
         RollingType::KeepNum(5),
         LZ4Packer {},
-    ).chan_len(Some(100000)))
+    ))
     .unwrap();
     for _ in 0..20000 {
         log::info!("Commencing yak shaving");

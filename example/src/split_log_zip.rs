@@ -5,12 +5,12 @@ use fast_log::plugin::packer::ZipPacker;
 use fast_log::config::Config;
 
 fn main() {
-    fast_log::init(Config::new().console().file_split(
+    fast_log::init(Config::new().chan_len(Some(100000)).console().file_split(
         "target/logs/",
         LogSize::KB(50),
         RollingType::KeepNum(5),
         ZipPacker {},
-    ).chan_len(Some(100000)))
+    ))
     .unwrap();
     for _ in 0..20000 {
         log::info!("Commencing yak shaving");
