@@ -53,18 +53,19 @@ log data->    | main channel(crossbeam)  |   ->
 
 ```
 
+* How fast is?
 
-
-> How fast is?
-
+* no flush(chan_len=1000000) benches/log.rs
 ```
 //MACOS(Apple M1MAX-32GB)
-Time: 221.079ms ,each:221 ns/op
-TPS: 4523139 Iter/s
+test bench_log ... bench:          85 ns/iter (+/- 1,800)
 ```
 
-> support Future mode,async await based on mpsc channel, tokio or async_std
-> support log split,zip_compress
+* all log flush into file(chan_len=1000000) example/bench_test_file.rs
+```
+//MACOS(Apple M1MAX-32GB)
+test bench_log ... bench:          323 ns/iter (+/- 0)
+```
 
 * how to use?
 
