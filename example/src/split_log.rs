@@ -9,8 +9,8 @@ fn main() {
         LogSize::MB(1),
         RollingType::All,
         LogPacker {},
-    ))
-    .unwrap();
+    ).chan_len(Some(100000)))
+        .unwrap();
     for _ in 0..40000 {
         log::info!("Commencing yak shaving");
     }

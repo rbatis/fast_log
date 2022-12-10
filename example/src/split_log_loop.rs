@@ -6,7 +6,8 @@ fn main() {
     fast_log::init(
         Config::new()
             .console()
-            .file_loop("target/logs/sloop.log", LogSize::KB(1)),
+            .file_loop("target/logs/sloop.log", LogSize::KB(1))
+            .chan_len(Some(100000)),
     )
     .unwrap();
     for _ in 0..80000 {

@@ -1,5 +1,4 @@
-# log
-#[中文](README_CH.md)
+# fast_log
 
 [![Build Status](https://img.shields.io/github/workflow/status/rbatis/fast_log/Rust)](https://github.com/rbatis/fast_log/actions)
 [![GitHub release](https://img.shields.io/github/v/release/rbatis/fast_log)](https://github.com/rbatis/fast_log/releases)
@@ -98,7 +97,7 @@ fn  main(){
 ```rust
 use log::{error, info, warn};
 fn  main(){
-    fast_log::init(Config::new().console()).unwrap();
+    fast_log::init(Config::new().console().chan_len(Some(100000))).unwrap();
     log::info!("Commencing yak shaving{}", 0);
 }
 ```
@@ -108,7 +107,7 @@ fn  main(){
 ```rust
 use log::{error, info, warn};
 fn  main(){
-    fast_log::init(Config::new().console()).unwrap();
+    fast_log::init(Config::new().console().chan_len(Some(100000))).unwrap();
     fast_log::print("Commencing print\n".into());
 }
 ```
@@ -119,7 +118,7 @@ fn  main(){
 use fast_log::{init_log};
 use log::{error, info, warn};
 fn  main(){
-    fast_log::init(Config::new().file("target/test.log")).unwrap();
+    fast_log::init(Config::new().file("target/test.log").chan_len(Some(100000))).unwrap();
     log::info!("Commencing yak shaving{}", 0);
     info!("Commencing yak shaving");
 }
@@ -138,6 +137,7 @@ use fast_log::plugin::packer::LogPacker;
 pub fn test_file_compation() {
     fast_log::init(Config::new()
         .console()
+        .chan_len(Some(100000))
         .file_split("target/logs/",
                     LogSize::MB(1),
                     RollingType::All,
@@ -164,7 +164,7 @@ impl LogAppender for CustomLog{
     }
 }
 fn  main(){
-    let wait = fast_log::init(Config::new().custom(CustomLog {})).unwrap();
+    let wait = fast_log::init(Config::new().custom(CustomLog {}).chan_len(Some(100000))).unwrap();
     info!("Commencing yak shaving");
     log::logger().flush();
 }
