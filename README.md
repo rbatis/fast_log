@@ -1,6 +1,6 @@
 # fast_log
 
-[![Build Status](https://img.shields.io/github/workflow/status/rbatis/fast_log/Rust)](https://github.com/rbatis/fast_log/actions)
+![Build Status](https://api.travis-ci.com/rbatis/fast_log.svg?branch=master)
 [![GitHub release](https://img.shields.io/github/v/release/rbatis/fast_log)](https://github.com/rbatis/fast_log/releases)
 
 
