@@ -15,7 +15,12 @@ fn bench_log(b: &mut Bencher) {
             //nothing
         }
     }
-    fast_log::init(Config::new().custom(BenchRecvLog {}).chan_len(Some(100000))).unwrap();
+    fast_log::init(
+        Config::new()
+            .custom(BenchRecvLog {})
+            .chan_len(Some(1000000)),
+    )
+    .unwrap();
     b.iter(|| {
         black_box({
             log::info!("Commencing yak shaving");

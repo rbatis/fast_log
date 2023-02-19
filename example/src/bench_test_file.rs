@@ -6,7 +6,12 @@ use std::time::Instant;
 fn main() {
     //clear data
     let _ = std::fs::remove_file("target/test.log");
-    fast_log::init(Config::new().file("target/test.log").chan_len(Some(100000))).unwrap();
+    fast_log::init(
+        Config::new()
+            .file("target/test.log")
+            .chan_len(Some(1000000)),
+    )
+    .unwrap();
     let total = 1000000;
     let now = Instant::now();
     for index in 0..total {
