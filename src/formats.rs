@@ -2,14 +2,17 @@ use crate::appender::{Command, FastLogRecord, RecordFormat};
 use log::LevelFilter;
 
 pub enum TimeType {
-    Local, //default
+    Local,
+    //default
     Utc,
 }
+
 impl Default for TimeType {
     fn default() -> Self {
         TimeType::Local
     }
 }
+
 pub struct FastLogFormat {
     // show line level
     pub display_line_level: LevelFilter,
@@ -20,12 +23,18 @@ impl RecordFormat for FastLogFormat {
     fn do_format(&self, arg: &mut FastLogRecord) {
         match &arg.command {
             Command::CommandRecord => {
-                let now = match self.time_type {
+                let mut now = match self.time_type {
                     TimeType::Local => {
                         fastdate::DateTime::from(arg.now).add_sub_sec(fastdate::offset_sec() as i64)
                     }
                     TimeType::Utc => fastdate::DateTime::from(arg.now),
-                };
+                }.to_string();
+                if now.len() < 27 {
+                    let num = 27 - now.len();
+                    for _ in 0..num {
+                        now.push_str(" ");
+                    }
+                }
                 if arg.level.to_level_filter() <= self.display_line_level {
                     arg.formated = format!(
                         "{} {} {}:{} {}\n",
