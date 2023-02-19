@@ -23,21 +23,15 @@ impl RecordFormat for FastLogFormat {
     fn do_format(&self, arg: &mut FastLogRecord) {
         match &arg.command {
             Command::CommandRecord => {
-                let mut now = match self.time_type {
+                let now = match self.time_type {
                     TimeType::Local => {
                         fastdate::DateTime::from(arg.now).add_sub_sec(fastdate::offset_sec() as i64)
                     }
                     TimeType::Utc => fastdate::DateTime::from(arg.now),
                 }.to_string();
-                if now.len() < 27 {
-                    let num = 27 - now.len();
-                    for _ in 0..num {
-                        now.push_str(" ");
-                    }
-                }
                 if arg.level.to_level_filter() <= self.display_line_level {
                     arg.formated = format!(
-                        "{} {} {}:{} {}\n",
+                        "{:27} {} {}:{} {}\n",
                         &now,
                         arg.level,
                         arg.file,
@@ -46,7 +40,7 @@ impl RecordFormat for FastLogFormat {
                     );
                 } else {
                     arg.formated = format!(
-                        "{} {} {} - {}\n",
+                        "{:27} {} {} - {}\n",
                         &now, arg.level, arg.module_path, arg.args
                     );
                 }
