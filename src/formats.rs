@@ -55,12 +55,14 @@ impl RecordFormat for FastLogFormatJson {
             Command::CommandRecord => {
                 let now = fastdate::DateTime::from(arg.now).add_sub_sec(fastdate::offset_sec() as i64);
                 //{"args":"Commencing yak shaving","date":"2022-08-19 09:53:47.798674","file":"example/src/split_log.rs","level":"INFO","line":21}
+                let args = arg.args.replace("\"", "\\\"");
+                let file = arg.file.replace("\\", "/");
                 arg.formated = format!(
                     "{}\"args\":\"{}\",\"date\":\"{}\",\"file\":\"{}\",\"level\":\"{}\",\"line\":{}{}",
                     "{",
-                    arg.args,
+                    args,
                     now,
-                    arg.file,
+                    file,
                     arg.level,
                     arg.line.unwrap_or_default(),
                     "}\n"
