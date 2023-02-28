@@ -171,7 +171,7 @@ impl FileSplitAppender {
         temp_size: LogSize,
         rolling_type: RollingType,
         packer: Box<dyn Packer>,
-    ) -> FileSplitAppender {
+    ) -> Result<FileSplitAppender, LogError> {
         let mut dir_path = file_path.to_owned();
         let mut temp_file_name = dir_path.to_string();
         if dir_path.contains("/") {
@@ -195,18 +195,11 @@ impl FileSplitAppender {
         }
         let file_name = temp_file_name.trim_end_matches(".log");
         let first_file_path = format!("{}{}.log", &dir_path, file_name);
-        let file = OpenOptions::new()
+        let mut file = OpenOptions::new()
             .create(true)
             .read(true)
             .write(true)
-            .open(first_file_path.as_str());
-        if file.is_err() {
-            panic!(
-                "[fast_log] open and create file fail:{}",
-                file.err().unwrap()
-            );
-        }
-        let mut file = file.unwrap();
+            .open(first_file_path.as_str())?;
         let mut temp_bytes = 0;
         if let Ok(m) = file.metadata() {
             temp_bytes = m.len() as usize;
@@ -214,7 +207,7 @@ impl FileSplitAppender {
         file.seek(SeekFrom::Start(temp_bytes as u64));
         let (sender, receiver) = chan(None);
         spawn_saver(file_name, receiver, packer);
-        Self {
+        Ok(Self {
             cell: RefCell::new(FileSplitAppenderData {
                 temp_bytes: temp_bytes,
                 dir_path: dir_path.to_string(),
@@ -224,7 +217,7 @@ impl FileSplitAppender {
                 temp_name: file_name.to_string(),
                 rolling_type: rolling_type,
             }),
-        }
+        })
     }
 }
 
@@ -305,9 +298,8 @@ pub fn do_pack(packer: &Box<dyn Packer>, mut pack: LogPack) -> Result<bool, LogP
     if log_file.is_err() {
         return Err(pack);
     }
-    let log_file = log_file.unwrap();
     //make
-    let r = packer.do_pack(log_file, log_file_path);
+    let r = packer.do_pack(log_file.unwrap(), log_file_path);
     if r.is_err() && packer.retry() > 0 {
         let mut retry = 1;
         while let Err(packs) = do_pack(packer, pack) {

@@ -1,4 +1,5 @@
 use crate::appender::{FastLogRecord, LogAppender};
+use crate::error::LogError;
 use std::cell::RefCell;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
@@ -9,21 +10,20 @@ pub struct FileAppender {
 }
 
 impl FileAppender {
-    pub fn new(log_file_path: &str) -> FileAppender {
+    pub fn new(log_file_path: &str) -> Result<FileAppender, LogError> {
         let log_file_path = log_file_path.replace("\\", "/");
         if let Some(right) = log_file_path.rfind("/") {
             let path = &log_file_path[0..right];
             std::fs::create_dir_all(path);
         }
-        Self {
+        Ok(Self {
             file: RefCell::new(
                 OpenOptions::new()
                     .create(true)
                     .append(true)
-                    .open(&log_file_path)
-                    .unwrap(),
+                    .open(&log_file_path)?,
             ),
-        }
+        })
     }
 }
 

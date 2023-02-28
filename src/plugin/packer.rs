@@ -69,13 +69,6 @@ impl Packer for ZipPacker {
 #[cfg(feature = "lz4")]
 use lz4::EncoderBuilder;
 
-#[cfg(feature = "lz4")]
-impl From<std::io::Error> for LogError {
-    fn from(arg: std::io::Error) -> Self {
-        LogError::E(arg.to_string())
-    }
-}
-
 /// the zip compress
 #[cfg(feature = "lz4")]
 pub struct LZ4Packer {}

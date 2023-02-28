@@ -81,15 +81,14 @@ impl Config {
     /// add a FileAppender
     pub fn file(self, file: &str) -> Self {
         self.appends
-            .push(Mutex::new(Box::new(FileAppender::new(file))));
+            .push(Mutex::new(Box::new(FileAppender::new(file).unwrap())));
         self
     }
     /// add a FileLoopAppender
     pub fn file_loop(self, file: &str, max_temp_size: LogSize) -> Self {
-        self.appends.push(Mutex::new(Box::new(FileLoopAppender::new(
-            file,
-            max_temp_size,
-        ))));
+        self.appends.push(Mutex::new(Box::new(
+            FileLoopAppender::new(file, max_temp_size).unwrap(),
+        )));
         self
     }
     /// add a FileSplitAppender
@@ -100,13 +99,9 @@ impl Config {
         rolling_type: RollingType,
         packer: P,
     ) -> Self {
-        self.appends
-            .push(Mutex::new(Box::new(FileSplitAppender::new(
-                file_path,
-                temp_size,
-                rolling_type,
-                Box::new(packer),
-            ))));
+        self.appends.push(Mutex::new(Box::new(
+            FileSplitAppender::new(file_path, temp_size, rolling_type, Box::new(packer)).unwrap(),
+        )));
         self
     }
     /// add a custom LogAppender

@@ -27,6 +27,12 @@ impl From<SetLoggerError> for LogError {
     }
 }
 
+impl From<std::io::Error> for LogError {
+    fn from(value: std::io::Error) -> Self {
+        LogError::E(value.to_string())
+    }
+}
+
 impl Display for LogError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         return match self {
@@ -48,24 +54,5 @@ impl Error for LogError {
 impl Default for LogError {
     fn default() -> Self {
         LogError::E(String::new())
-    }
-}
-
-pub trait AsStdResult<T>
-where
-    T: Clone,
-{
-    fn as_std_result(&self) -> Result<T, Box<dyn std::error::Error>>;
-}
-
-impl<T> AsStdResult<T> for Result<T, LogError>
-where
-    T: Clone,
-{
-    fn as_std_result(&self) -> Result<T, Box<dyn std::error::Error>> {
-        return match self {
-            Err(e) => Err(Box::new(e.clone())),
-            Ok(o) => Ok(o.clone()),
-        };
     }
 }
