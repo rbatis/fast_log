@@ -16,7 +16,8 @@ mod test {
             LogSize::MB(1),
             RollingType::All,
             Box::new(LogPacker {}),
-        );
+        )
+        .unwrap();
         appender.do_logs(&[FastLogRecord {
             command: Command::CommandRecord,
             level: Level::Error,
