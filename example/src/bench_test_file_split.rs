@@ -9,12 +9,16 @@ use std::time::Instant;
 fn main() {
     //clear data
     let _ = std::fs::remove_dir("target/logs/");
-    fast_log::init(Config::new().file_split(
-        "target/logs/",
-        LogSize::MB(1),
-        RollingType::All,
-        LogPacker {},
-    )).chan_len(Some(100000))
+    fast_log::init(
+        Config::new()
+            .file_split(
+                "target/logs/",
+                LogSize::MB(1),
+                RollingType::All,
+                LogPacker {},
+            )
+            .chan_len(Some(100000)),
+    )
     .unwrap();
     log::info!("Commencing yak shaving{}", 0);
     let total = 1000000;
