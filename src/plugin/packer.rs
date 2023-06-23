@@ -67,7 +67,7 @@ impl Packer for ZipPacker {
 
 /// you need enable fast_log = { ... ,features=["lz4"]}
 #[cfg(feature = "lz4")]
-use lz4::EncoderBuilder;
+use lz4_flex::frame::FrameEncoder;
 
 /// the zip compress
 #[cfg(feature = "lz4")]
@@ -95,12 +95,10 @@ impl Packer for LZ4Packer {
         }
         let lz4_file = lz4_file.unwrap();
         //write lz4 bytes data
-
-        let mut encoder = EncoderBuilder::new().level(0).build(lz4_file)?;
-        // io::copy(&mut lz4_file, &mut encoder)?;
+        let mut encoder = FrameEncoder::new(lz4_file);
         //buf reader
         std::io::copy(&mut log_file, &mut encoder);
-        let (_output, result) = encoder.finish();
+        let result = encoder.finish();
         if result.is_err() {
             return Err(LogError::from(format!(
                 "[fast_log] try zip fail{:?}",

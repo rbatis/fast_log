@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local};
+use fastdate::DateTime;
 use fast_log::appender::{FastLogRecord, LogAppender};
 use fast_log::config::Config;
 use log::Level;
@@ -8,7 +8,7 @@ struct CustomLog {}
 impl LogAppender for CustomLog {
     fn do_logs(&self, records: &[FastLogRecord]) {
         for record in records {
-            let now: DateTime<Local> = chrono::DateTime::from(record.now);
+            let now = DateTime::from(record.now);
             let data;
             match record.level {
                 Level::Warn | Level::Error => {
