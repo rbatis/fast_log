@@ -34,8 +34,6 @@ impl Debug for Config {
         f.debug_struct("Config")
             .field("appends", &self.appends.len())
             .field("level", &self.level)
-            //.field("filter", &self.filter)
-            //.field("format", &self.format)
             .field("chan_len", &self.chan_len)
             .finish()
     }
@@ -87,7 +85,7 @@ impl Config {
     /// add a FileLoopAppender
     pub fn file_loop(self, file: &str, max_temp_size: LogSize) -> Self {
         self.appends.push(Mutex::new(Box::new(
-            FileLoopAppender::new(file, max_temp_size).unwrap(),
+            FileLoopAppender::new(file, max_temp_size).expect("make file_loop fail"),
         )));
         self
     }

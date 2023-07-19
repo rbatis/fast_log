@@ -6,6 +6,7 @@ use fastdate::DateTime;
 use std::cell::RefCell;
 use std::fs::{DirEntry, File, OpenOptions};
 use std::io::{Seek, SeekFrom, Write};
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -138,10 +139,15 @@ pub struct FileSplitAppenderData {
 impl FileSplitAppenderData {
     /// send data make an pack,and truncate data when finish.
     pub fn send_pack(&mut self) {
-        let first_file_path = format!("{}{}.log", self.dir_path, &self.temp_name);
+        let mut sp = "";
+        if !self.dir_path.is_empty() {
+            sp = "/";
+        }
+        let first_file_path = format!("{}{}{}.log", self.dir_path, sp, &self.temp_name);
         let new_log_name = format!(
-            "{}{}{}.log",
+            "{}{}{}{}.log",
             self.dir_path,
+            sp,
             &self.temp_name,
             DateTime::now()
                 .to_string()
@@ -172,50 +178,54 @@ impl FileSplitAppender {
         rolling_type: RollingType,
         packer: Box<dyn Packer>,
     ) -> Result<FileSplitAppender, LogError> {
-        let mut dir_path = file_path.to_owned();
-        let mut temp_file_name = dir_path.to_string();
-        if dir_path.contains("/") {
-            let new_dir_path =
-                dir_path[0..dir_path.rfind("/").unwrap_or_default()].to_string() + "/";
-            std::fs::create_dir_all(&new_dir_path);
-            temp_file_name = dir_path.trim_start_matches(&new_dir_path).to_string();
-            dir_path = new_dir_path;
+        let mut path_buf = PathBuf::from(file_path);
+        if !file_path.ends_with(".log") {
+            path_buf.push("temp.log");
         }
+        let mut temp_file_name = path_buf
+            .file_name()
+            .unwrap_or_default()
+            .to_str()
+            .unwrap_or_default()
+            .to_string();
         if temp_file_name.is_empty() {
             temp_file_name = "temp.log".to_string();
         }
-        if !dir_path.is_empty() && dir_path.ends_with(".log") {
-            panic!("FileCompactionAppender only support new from path,for example: 'logs/xx/'");
+        let mut dir_path = path_buf.to_str().unwrap_or_default().to_string();
+        dir_path = dir_path.trim_end_matches(&temp_file_name).to_string();
+        if dir_path.is_empty() {
+            if let Ok(v) = std::env::current_dir() {
+                dir_path = v.to_str().unwrap_or_default().to_string();
+            }
         }
-        if !dir_path.is_empty() && !dir_path.ends_with("/") {
-            panic!("FileCompactionAppender only support new from path,for example: 'logs/xx/'");
-        }
+        std::fs::create_dir_all(&dir_path);
+        let mut sp = "";
         if !dir_path.is_empty() {
-            std::fs::create_dir_all(&dir_path);
+            sp = "/";
         }
-        let file_name = temp_file_name.trim_end_matches(".log");
-        let first_file_path = format!("{}{}.log", &dir_path, file_name);
+        let temp_file = format!("{}{}{}", dir_path, sp, temp_file_name);
         let mut file = OpenOptions::new()
             .create(true)
             .read(true)
             .write(true)
-            .open(first_file_path.as_str())?;
+            .open(&temp_file)?;
         let mut temp_bytes = 0;
         if let Ok(m) = file.metadata() {
             temp_bytes = m.len() as usize;
         }
         file.seek(SeekFrom::Start(temp_bytes as u64));
         let (sender, receiver) = chan(None);
+        let file_name = temp_file_name.trim_end_matches(".log");
         spawn_saver(file_name, receiver, packer);
         Ok(Self {
             cell: RefCell::new(FileSplitAppenderData {
-                temp_bytes: temp_bytes,
+                temp_bytes,
                 dir_path: dir_path.to_string(),
-                file: file,
-                sender: sender,
-                temp_size: temp_size,
+                file,
+                sender,
+                temp_size,
                 temp_name: file_name.to_string(),
-                rolling_type: rolling_type,
+                rolling_type,
             }),
         })
     }
