@@ -7,7 +7,6 @@ use std::cell::RefCell;
 use std::fs::{DirEntry, File, OpenOptions};
 use std::io::{Seek, SeekFrom, Write};
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::time::Duration;
 
 /// .zip or .lz4 or any one packer
@@ -49,18 +48,20 @@ pub enum RollingType {
 
 impl RollingType {
     fn read_paths(&self, dir: &str, temp_name: &str) -> Vec<DirEntry> {
+        let base_name = get_base_name(&PathBuf::from(temp_name));
         let paths = std::fs::read_dir(dir);
         if let Ok(paths) = paths {
+            //let mut temp_file = None;
             let mut paths_vec = vec![];
             for path in paths {
                 match path {
                     Ok(path) => {
                         if let Some(v) = path.file_name().to_str() {
-                            //filter temp.log and not start with temp
-                            if (v.ends_with(".log")
-                                && v.trim_end_matches(".log").ends_with(temp_name))
-                                || !v.starts_with(temp_name)
-                            {
+                            if v == temp_name {
+                                //temp_file = Some(path);
+                                continue;
+                            }
+                            if !v.starts_with(&base_name) {
                                 continue;
                             }
                         }
@@ -70,6 +71,9 @@ impl RollingType {
                 }
             }
             paths_vec.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
+            // if let Some(v) = temp_file {
+            //     paths_vec.push(v);
+            // }
             return paths_vec;
         }
         return vec![];
@@ -90,12 +94,12 @@ impl RollingType {
             }
             RollingType::KeepTime(duration) => {
                 let paths_vec = self.read_paths(dir, temp_name);
-                let now = fastdate::DateTime::now();
+                let now = DateTime::now();
                 for index in 0..paths_vec.len() {
                     let item = &paths_vec[index];
                     let file_name = item.file_name();
                     let name = file_name.to_str().unwrap_or("").to_string();
-                    if let Some(time) = self.file_name_parse_time(&name, temp_name) {
+                    if let Some(time) = Self::file_name_parse_time(&name, temp_name) {
                         if now.clone().sub(duration.clone()) > time {
                             std::fs::remove_file(item.path());
                             removed += 1;
@@ -108,13 +112,15 @@ impl RollingType {
         removed
     }
 
-    fn file_name_parse_time(&self, name: &str, temp_name: &str) -> Option<fastdate::DateTime> {
-        if name.starts_with(temp_name) {
-            let mut time_str = name.replace(temp_name, "");
-            if let Some(v) = time_str.find(".") {
+    /// parse `temp2023-07-20T10-13-17.452247.log`
+    pub fn file_name_parse_time(name: &str, temp_name: &str) -> Option<fastdate::DateTime> {
+        let base_name = get_base_name(&PathBuf::from(temp_name));
+        if name.starts_with(&base_name) {
+            let mut time_str = name.trim_start_matches(&base_name).to_string();
+            if let Some(v) = time_str.rfind(".") {
                 time_str = time_str[0..v].to_string();
             }
-            let time = fastdate::DateTime::from_str(&time_str);
+            let time = DateTime::parse("YYYY-MM-DDThh:mm:ss.000000", &time_str);
             if let Ok(time) = time {
                 return Some(time);
             }
@@ -140,20 +146,43 @@ impl FileSplitAppenderData {
     /// send data make an pack,and truncate data when finish.
     pub fn send_pack(&mut self) {
         let mut sp = "";
-        if !self.dir_path.is_empty() {
+        if !self.dir_path.is_empty() && !self.dir_path.ends_with("/") {
             sp = "/";
         }
-        let first_file_path = format!("{}{}{}.log", self.dir_path, sp, &self.temp_name);
-        let new_log_name = format!(
-            "{}{}{}{}.log",
-            self.dir_path,
-            sp,
-            &self.temp_name,
-            DateTime::now()
-                .to_string()
-                .replace(" ", "T")
-                .replace(":", "-")
-        );
+        let first_file_path = format!("{}{}{}", self.dir_path, sp, &self.temp_name);
+        let path = PathBuf::from(first_file_path.clone());
+        let file_name = path
+            .file_name()
+            .unwrap_or_default()
+            .to_str()
+            .unwrap_or_default()
+            .to_string();
+
+        let mut new_log_name = file_name.to_string();
+        let point = file_name.rfind(".");
+        match point {
+            None => {
+                new_log_name.push_str(
+                    &DateTime::now()
+                        .to_string()
+                        .replace(" ", "T")
+                        .replace(":", "-"),
+                );
+            }
+            Some(i) => {
+                let (name, ext) = file_name.split_at(i);
+                new_log_name = format!(
+                    "{}{}{}",
+                    name,
+                    DateTime::now()
+                        .to_string()
+                        .replace(" ", "T")
+                        .replace(":", "-"),
+                    ext
+                );
+            }
+        }
+        new_log_name = first_file_path.trim_end_matches(&file_name).to_string() + &new_log_name;
         std::fs::copy(&first_file_path, &new_log_name);
         self.sender.send(LogPack {
             dir: self.dir_path.clone(),
@@ -178,19 +207,16 @@ impl FileSplitAppender {
         rolling_type: RollingType,
         packer: Box<dyn Packer>,
     ) -> Result<FileSplitAppender, LogError> {
-        let mut path_buf = PathBuf::from(file_path);
-        if !file_path.ends_with(".log") {
+        let mut path_buf = PathBuf::from(&file_path);
+        if file_path.ends_with("/") || file_path.ends_with("\\") {
             path_buf.push("temp.log");
         }
-        let mut temp_file_name = path_buf
+        let temp_file_name = path_buf
             .file_name()
             .unwrap_or_default()
             .to_str()
             .unwrap_or_default()
             .to_string();
-        if temp_file_name.is_empty() {
-            temp_file_name = "temp.log".to_string();
-        }
         let mut dir_path = path_buf.to_str().unwrap_or_default().to_string();
         dir_path = dir_path.trim_end_matches(&temp_file_name).to_string();
         if dir_path.is_empty() {
@@ -215,8 +241,7 @@ impl FileSplitAppender {
         }
         file.seek(SeekFrom::Start(temp_bytes as u64));
         let (sender, receiver) = chan(None);
-        let file_name = temp_file_name.trim_end_matches(".log");
-        spawn_saver(file_name, receiver, packer);
+        spawn_saver(temp_file_name.clone(), receiver, packer);
         Ok(Self {
             cell: RefCell::new(FileSplitAppenderData {
                 temp_bytes,
@@ -224,7 +249,7 @@ impl FileSplitAppender {
                 file,
                 sender,
                 temp_size,
-                temp_name: file_name.to_string(),
+                temp_name: temp_file_name,
                 rolling_type,
             }),
         })
@@ -278,13 +303,12 @@ impl LogAppender for FileSplitAppender {
 }
 
 ///spawn an saver thread to save log file or zip file
-fn spawn_saver(temp_name: &str, r: Receiver<LogPack>, packer: Box<dyn Packer>) {
-    let temp = temp_name.to_string();
+fn spawn_saver(temp_name: String, r: Receiver<LogPack>, packer: Box<dyn Packer>) {
     std::thread::spawn(move || {
         loop {
             if let Ok(pack) = r.recv() {
                 //do rolling
-                pack.rolling.do_rolling(&temp, &pack.dir);
+                pack.rolling.do_rolling(&temp_name, &pack.dir);
                 let log_file_path = pack.new_log_name.clone();
                 //do save pack
                 let remove = do_pack(&packer, pack);
@@ -324,4 +348,18 @@ pub fn do_pack(packer: &Box<dyn Packer>, mut pack: LogPack) -> Result<bool, LogP
         return Ok(b);
     }
     return Ok(false);
+}
+
+fn get_base_name(path: &PathBuf) -> String {
+    let file_name = path
+        .file_name()
+        .unwrap_or_default()
+        .to_str()
+        .unwrap_or_default()
+        .to_string();
+    let p = file_name.rfind(".");
+    match p {
+        None => file_name,
+        Some(i) => file_name[0..i].to_string(),
+    }
 }
