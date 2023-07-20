@@ -317,6 +317,8 @@ fn spawn_saver(temp_name: String, r: Receiver<LogPack>, packer: Box<dyn Packer>)
                         std::fs::remove_file(log_file_path);
                     }
                 }
+            } else {
+                break;
             }
         }
     });
