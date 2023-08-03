@@ -138,7 +138,11 @@ impl<F: SplitFile> FileSplitAppender<F> {
         let temp_file = format!("{}{}{}", dir_path, sp, temp_file_name);
         let temp_bytes = AtomicUsize::new(0);
         let file = F::new(&temp_file, temp_size)?;
-        temp_bytes.store(file.offset() + 1, Ordering::Relaxed);
+        let mut offset = file.offset();
+        if offset != 0 {
+            offset += 1;
+        }
+        temp_bytes.store(offset, Ordering::Relaxed);
         file.seek(SeekFrom::Start(temp_bytes.load(Ordering::Relaxed) as u64));
         let (sender, receiver) = chan(None);
         spawn_saver(temp_file_name.clone(), receiver, packer);
