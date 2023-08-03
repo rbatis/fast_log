@@ -16,8 +16,8 @@ pub trait SplitFile: Send {
         Self: Sized;
     fn seek(&self, pos: SeekFrom) -> std::io::Result<u64>;
     fn write(&self, buf: &[u8]) -> std::io::Result<usize>;
-    fn set_len(&self, len: u64) -> std::io::Result<()>;
     fn metadata(&self) -> std::io::Result<Metadata>;
+    fn truncate(&self) -> std::io::Result<()>;
 }
 
 ///only use File
@@ -56,12 +56,14 @@ impl SplitFile for RawFile {
         self.inner.borrow_mut().write(buf)
     }
 
-    fn set_len(&self, len: u64) -> std::io::Result<()> {
-        self.inner.borrow_mut().set_len(len)
-    }
-
     fn metadata(&self) -> std::io::Result<Metadata> {
         self.inner.borrow_mut().metadata()
+    }
+
+    fn truncate(&self) -> std::io::Result<()> {
+        self.inner.borrow_mut().set_len(0);
+        self.inner.borrow_mut().seek(SeekFrom::Start(0))?;
+        Ok(())
     }
 }
 
@@ -188,8 +190,7 @@ impl<F: SplitFile> FileSplitAppender<F> {
 
     pub fn truncate(&self) {
         //reset data
-        self.file.set_len(0);
-        self.file.seek(SeekFrom::Start(0));
+        self.file.truncate();
         self.temp_bytes.store(0, Ordering::SeqCst);
     }
 }

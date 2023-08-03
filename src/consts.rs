@@ -10,7 +10,7 @@ pub enum LogSize {
 }
 
 impl LogSize {
-    pub fn get_len(&self) -> usize {
+    pub fn len(&self) -> usize {
         match self {
             Self::B(b) => *b,
             Self::KB(kb) => kb * 1024,
@@ -19,6 +19,10 @@ impl LogSize {
             Self::TB(tb) => tb * 1024 * 1024 * 1024 * 1024,
             Self::EB(eb) => eb * 1024 * 1024 * 1024 * 1024 * 1024,
         }
+    }
+
+    pub fn get_len(&self) -> usize {
+        self.len()
     }
 
     pub fn parse(value: &str) -> Result<Self, LogError> {
