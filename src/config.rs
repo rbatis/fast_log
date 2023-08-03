@@ -105,6 +105,19 @@ impl Config {
     }
 
     /// add a SplitAppender
+    /// for example:
+    ///
+    // fast_log::init(
+    //         Config::new()
+    //             .chan_len(Some(100000))
+    //             .split::<MmapFile, LogPacker>(
+    //                 "target/logs/temp.log?1MB",
+    //                 LogSize::MB(1),
+    //                 RollingType::All,
+    //                 LogPacker {},
+    //             ),
+    //     )
+    //     .unwrap();
     pub fn split<S: SplitFile + 'static, P: Packer + 'static>(
         self,
         file_path: &str,
