@@ -145,4 +145,8 @@ impl SplitFile for MmapFile {
         self.point.store(0, Ordering::SeqCst);
         Ok(())
     }
+
+    fn flush(&self) {
+        self.bytes.borrow_mut().flush();
+    }
 }

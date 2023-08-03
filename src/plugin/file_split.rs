@@ -18,6 +18,7 @@ pub trait SplitFile: Send {
     fn write(&self, buf: &[u8]) -> std::io::Result<usize>;
     fn metadata(&self) -> std::io::Result<Metadata>;
     fn truncate(&self) -> std::io::Result<()>;
+    fn flush(&self);
 }
 
 ///only use File
@@ -64,6 +65,10 @@ impl SplitFile for RawFile {
         self.inner.borrow_mut().set_len(0);
         self.inner.borrow_mut().seek(SeekFrom::Start(0))?;
         Ok(())
+    }
+
+    fn flush(&self) {
+        self.inner.borrow_mut().flush();
     }
 }
 
@@ -179,6 +184,7 @@ impl<F: SplitFile> FileSplitAppender<F> {
             }
         }
         new_log_name = first_file_path.trim_end_matches(&file_name).to_string() + &new_log_name;
+        self.file.flush();
         std::fs::copy(&first_file_path, &new_log_name);
         self.sender.send(LogPack {
             dir: self.dir_path.clone(),
