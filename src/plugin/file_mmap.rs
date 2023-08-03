@@ -1,8 +1,10 @@
 use crate::appender::{FastLogRecord, LogAppender};
 use crate::error::LogError;
+use crate::plugin::file_split::SplitFile;
 use memmap::MmapMut;
 use std::cell::{RefCell, UnsafeCell};
-use std::fs::{File, OpenOptions};
+use std::fs::{File, Metadata, OpenOptions};
+use std::io::SeekFrom;
 
 /// only write append into file
 pub struct FileMmapAppender {
@@ -34,8 +36,27 @@ impl FileMmapAppender {
     }
 }
 
-impl LogAppender for FileMmapAppender {
-    fn do_logs(&self, records: &[FastLogRecord]) {
+impl SplitFile for FileMmapAppender {
+    fn new(path: &str) -> Result<Self, LogError>
+    where
+        Self: Sized,
+    {
+        todo!()
+    }
+
+    fn seek(&self, pos: SeekFrom) -> std::io::Result<u64> {
+        todo!()
+    }
+
+    fn write(&self, buf: &[u8]) -> std::io::Result<usize> {
+        todo!()
+    }
+
+    fn set_len(&self, len: u64) -> std::io::Result<()> {
+        todo!()
+    }
+
+    fn metadata(&self) -> std::io::Result<Metadata> {
         todo!()
     }
 }
