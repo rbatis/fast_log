@@ -116,8 +116,7 @@ impl Config {
     //                 RollingType::All,
     //                 LogPacker {},
     //             ),
-    //     )
-    //     .unwrap();
+    //     );
     pub fn split<S: SplitFile + 'static, P: Packer + 'static>(
         self,
         file_path: &str,
