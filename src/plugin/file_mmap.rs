@@ -4,7 +4,7 @@ use crate::plugin::file_split::SplitFile;
 use memmap::{MmapMut, MmapOptions};
 use std::cell::{RefCell, UnsafeCell};
 use std::fs::{File, Metadata, OpenOptions};
-use std::io::SeekFrom;
+use std::io::{SeekFrom, Write};
 use std::ops::DerefMut;
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -129,6 +129,7 @@ impl SplitFile for MmapFile {
     fn truncate(&self) -> std::io::Result<()> {
         let file = unsafe { &mut *self.file.get() };
         file.set_len(0)?;
+        file.flush();
         file.set_len(self.size.get_len() as u64);
         let mmap = unsafe {
             MmapOptions::new()

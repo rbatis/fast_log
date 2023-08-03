@@ -63,6 +63,7 @@ impl SplitFile for RawFile {
 
     fn truncate(&self) -> std::io::Result<()> {
         self.inner.borrow_mut().set_len(0);
+        self.inner.borrow_mut().flush();
         self.inner.borrow_mut().seek(SeekFrom::Start(0))?;
         Ok(())
     }
