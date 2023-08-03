@@ -20,6 +20,7 @@ pub trait SplitFile: Send {
     fn metadata(&self) -> std::io::Result<Metadata>;
 }
 
+///only use File
 pub struct RawFile {
     pub inner: RefCell<File>,
 }
