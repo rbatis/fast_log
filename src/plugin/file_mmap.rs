@@ -13,38 +13,52 @@ pub struct MmapFile {
     file: UnsafeCell<File>,
     bytes: RefCell<MmapMut>,
     size: LogSize,
-    point: AtomicU64,
+    offset: AtomicU64,
 }
 
 impl MmapFile {
-    pub fn new(log_file_path: &str) -> Result<Self, LogError> {
+    pub fn new(log_file_path: &str, size: LogSize) -> Result<Self, LogError> {
         let log_file_path = log_file_path.replace("\\", "/");
         if let Some(right) = log_file_path.rfind("/") {
             let path = &log_file_path[0..right];
             std::fs::create_dir_all(path);
         }
-        let cap = 4096;
         let file = OpenOptions::new()
             .write(true)
             .read(true)
             .create(true)
             .open(&log_file_path)?;
-        let mut size = LogSize::B(cap);
-        if let Ok(v) = file.metadata() {
-            size = LogSize::B(v.len() as usize);
-        }
-        file.set_len((size.len() + cap) as u64);
+        file.set_len(size.get_len() as u64);
         let mmap = unsafe {
-            MmapOptions::new()
-                .map(&file)
-                .map_err(|e| LogError::from(format!("{}", e.to_string())))?
+            MmapOptions::new().map(&file).map_err(|e| {
+                println!("e={}", e);
+                LogError::from(format!("{}", e.to_string()))
+            })?
         };
-        Ok(Self {
+        let s = Self {
             file: UnsafeCell::new(file),
             bytes: RefCell::new(mmap.make_mut()?),
             size,
-            point: AtomicU64::new(0),
-        })
+            offset: AtomicU64::new(0),
+        };
+        //set point
+        let mut offset = s.find_offset() as u64 + 1;
+        if offset > size.len() as u64 {
+            offset = size.len() as u64 - 1;
+        }
+        s.offset.store(offset, Ordering::SeqCst);
+        Ok(s)
+    }
+
+    pub fn find_offset(&self) -> usize {
+        let bytes = self.bytes.borrow();
+        let len = bytes.len();
+        for i in (0..len).rev() {
+            if bytes[i] != 0 {
+                return i;
+            }
+        }
+        0
     }
 }
 
@@ -53,7 +67,18 @@ impl SplitFile for MmapFile {
     where
         Self: Sized,
     {
-        Ok(MmapFile::new(path)?)
+        let mut path = path.to_string();
+        if !path.contains("?") {
+            path.push_str("?1GB");
+        }
+        let index = path.rfind("?").unwrap_or_default();
+        let file_path = &path[0..index];
+        let file_size = &path[(index + 1)..path.len()];
+        let mut size = LogSize::parse(file_size)?;
+        if size.len() == 0 {
+            size = LogSize::GB(1);
+        }
+        Ok(MmapFile::new(file_path, size)?)
     }
 
     fn seek(&self, pos: SeekFrom) -> std::io::Result<u64> {
@@ -82,7 +107,7 @@ impl SplitFile for MmapFile {
                 }
             }
             SeekFrom::Current(n) => {
-                let current = self.point.load(Ordering::Relaxed);
+                let current = self.offset.load(Ordering::Relaxed);
                 let offset = current.checked_add(n as u64).ok_or(std::io::Error::new(
                     std::io::ErrorKind::InvalidInput,
                     "Seek before start of file",
@@ -94,29 +119,25 @@ impl SplitFile for MmapFile {
                 }
             }
         };
-        self.point.store(new_pos, Ordering::SeqCst);
+        self.offset.store(new_pos, Ordering::SeqCst);
         Ok(new_pos)
     }
 
     fn write(&self, buf: &[u8]) -> std::io::Result<usize> {
         let len = buf.len() as u64;
         let size = self.size.get_len();
-        if self.point.load(Ordering::Relaxed) + len > size as u64 {
+        if self.offset.load(Ordering::Relaxed) + len > size as u64 {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
                 "Write past end of file",
             ));
         }
         let mut bytes = self.bytes.borrow_mut();
-        let current = self.point.load(Ordering::Relaxed) as usize;
+        let current = self.offset.load(Ordering::Relaxed) as usize;
         bytes.deref_mut()[current..(current + buf.len())].copy_from_slice(buf);
         let len = buf.len();
-        self.point.fetch_add(len as u64, Ordering::SeqCst);
+        self.offset.fetch_add(len as u64, Ordering::SeqCst);
         Ok(len)
-    }
-
-    fn metadata(&self) -> std::io::Result<Metadata> {
-        unsafe { &*self.file.get() }.metadata()
     }
 
     fn truncate(&self) -> std::io::Result<()> {
@@ -136,11 +157,19 @@ impl SplitFile for MmapFile {
                 .make_mut()?
         };
         *self.bytes.borrow_mut() = mmap;
-        self.point.store(0, Ordering::SeqCst);
+        self.offset.store(0, Ordering::SeqCst);
         Ok(())
     }
 
     fn flush(&self) {
         self.bytes.borrow_mut().flush();
+    }
+
+    fn len(&self) -> usize {
+        self.size.len()
+    }
+
+    fn offset(&self) -> usize {
+        self.offset.load(Ordering::Relaxed) as usize
     }
 }

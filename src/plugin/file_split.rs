@@ -16,9 +16,10 @@ pub trait SplitFile: Send {
         Self: Sized;
     fn seek(&self, pos: SeekFrom) -> std::io::Result<u64>;
     fn write(&self, buf: &[u8]) -> std::io::Result<usize>;
-    fn metadata(&self) -> std::io::Result<Metadata>;
     fn truncate(&self) -> std::io::Result<()>;
     fn flush(&self);
+    fn len(&self) -> usize;
+    fn offset(&self) -> usize;
 }
 
 ///only use File
@@ -57,10 +58,6 @@ impl SplitFile for RawFile {
         self.inner.borrow_mut().write(buf)
     }
 
-    fn metadata(&self) -> std::io::Result<Metadata> {
-        self.inner.borrow_mut().metadata()
-    }
-
     fn truncate(&self) -> std::io::Result<()> {
         self.inner.borrow_mut().set_len(0);
         self.inner.borrow_mut().flush();
@@ -70,6 +67,18 @@ impl SplitFile for RawFile {
 
     fn flush(&self) {
         self.inner.borrow_mut().flush();
+    }
+
+    fn len(&self) -> usize {
+        if let Ok(v) = self.inner.borrow_mut().metadata() {
+            v.len() as usize
+        } else {
+            0
+        }
+    }
+
+    fn offset(&self) -> usize {
+        todo!()
     }
 }
 
@@ -129,9 +138,7 @@ impl<F: SplitFile> FileSplitAppender<F> {
         let temp_file = format!("{}{}{}", dir_path, sp, temp_file_name);
         let temp_bytes = AtomicUsize::new(0);
         let file = F::new(&temp_file)?;
-        if let Ok(m) = file.metadata() {
-            temp_bytes.store(m.len() as usize, Ordering::Relaxed);
-        }
+        temp_bytes.store(file.offset() + 1, Ordering::Relaxed);
         file.seek(SeekFrom::Start(temp_bytes.load(Ordering::Relaxed) as u64));
         let (sender, receiver) = chan(None);
         spawn_saver(temp_file_name.clone(), receiver, packer);
