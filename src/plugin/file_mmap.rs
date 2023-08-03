@@ -17,23 +17,27 @@ pub struct MmapFile {
 }
 
 impl MmapFile {
-    pub fn new(log_file_path: &str, size: LogSize) -> Result<Self, LogError> {
+    pub fn new(log_file_path: &str) -> Result<Self, LogError> {
         let log_file_path = log_file_path.replace("\\", "/");
         if let Some(right) = log_file_path.rfind("/") {
             let path = &log_file_path[0..right];
             std::fs::create_dir_all(path);
         }
+        let cap = 4096;
         let file = OpenOptions::new()
             .write(true)
             .read(true)
             .create(true)
             .open(&log_file_path)?;
-        file.set_len(size.get_len() as u64);
+        let mut size = LogSize::B(cap);
+        if let Ok(v) = file.metadata() {
+            size = LogSize::B(v.len() as usize);
+        }
+        file.set_len((size.len() + cap) as u64);
         let mmap = unsafe {
-            MmapOptions::new().map(&file).map_err(|e| {
-                println!("e={}", e);
-                LogError::from(format!("{}", e.to_string()))
-            })?
+            MmapOptions::new()
+                .map(&file)
+                .map_err(|e| LogError::from(format!("{}", e.to_string())))?
         };
         Ok(Self {
             file: UnsafeCell::new(file),
@@ -49,18 +53,7 @@ impl SplitFile for MmapFile {
     where
         Self: Sized,
     {
-        let mut path = path.to_string();
-        if !path.contains("?") {
-            path.push_str("?1GB");
-        }
-        let index = path.rfind("?").unwrap_or_default();
-        let file_path = &path[0..index];
-        let file_size = &path[(index + 1)..path.len()];
-        let mut size = LogSize::parse(file_size)?;
-        if size.len() == 0 {
-            size = LogSize::GB(1);
-        }
-        Ok(MmapFile::new(file_path, size)?)
+        Ok(MmapFile::new(path)?)
     }
 
     fn seek(&self, pos: SeekFrom) -> std::io::Result<u64> {

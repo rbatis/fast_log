@@ -1,5 +1,6 @@
 use crate::error::LogError;
 
+#[derive(Clone, Copy)]
 pub enum LogSize {
     B(usize),
     KB(usize),
