@@ -4,14 +4,14 @@ use crate::error::LogError;
 use crate::{chan, Receiver, Sender};
 use fastdate::DateTime;
 use std::cell::RefCell;
-use std::fs::{DirEntry, File, Metadata, OpenOptions};
+use std::fs::{DirEntry, File, OpenOptions};
 use std::io::{Seek, SeekFrom, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 pub trait SplitFile: Send {
-    fn new(path: &str) -> Result<Self, LogError>
+    fn new(path: &str, temp_size: LogSize) -> Result<Self, LogError>
     where
         Self: Sized;
     fn seek(&self, pos: SeekFrom) -> std::io::Result<u64>;
@@ -36,7 +36,7 @@ impl From<File> for RawFile {
 }
 
 impl SplitFile for RawFile {
-    fn new(path: &str) -> Result<Self, LogError>
+    fn new(path: &str, temp_size: LogSize) -> Result<Self, LogError>
     where
         Self: Sized,
     {
@@ -137,7 +137,7 @@ impl<F: SplitFile> FileSplitAppender<F> {
         }
         let temp_file = format!("{}{}{}", dir_path, sp, temp_file_name);
         let temp_bytes = AtomicUsize::new(0);
-        let file = F::new(&temp_file)?;
+        let file = F::new(&temp_file, temp_size)?;
         temp_bytes.store(file.offset() + 1, Ordering::Relaxed);
         file.seek(SeekFrom::Start(temp_bytes.load(Ordering::Relaxed) as u64));
         let (sender, receiver) = chan(None);
@@ -325,6 +325,7 @@ impl<F: SplitFile> LogAppender for FileSplitAppender<F> {
                         + x.formated.as_bytes().len())
                         > self.temp_size.get_len()
                     {
+                        self.send_pack();
                         self.temp_bytes.fetch_add(
                             {
                                 let w = self.file.write(temp.as_bytes());
@@ -336,7 +337,6 @@ impl<F: SplitFile> LogAppender for FileSplitAppender<F> {
                             },
                             Ordering::SeqCst,
                         );
-                        self.send_pack();
                         temp.clear();
                     }
                     temp.push_str(x.formated.as_str());

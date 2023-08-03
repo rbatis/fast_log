@@ -3,7 +3,7 @@ use crate::error::LogError;
 use crate::plugin::file_split::SplitFile;
 use memmap::{MmapMut, MmapOptions};
 use std::cell::{RefCell, UnsafeCell};
-use std::fs::{File, Metadata, OpenOptions};
+use std::fs::{File, OpenOptions};
 use std::io::{SeekFrom, Write};
 use std::ops::DerefMut;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -63,22 +63,14 @@ impl MmapFile {
 }
 
 impl SplitFile for MmapFile {
-    fn new(path: &str) -> Result<Self, LogError>
+    fn new(path: &str, mut size: LogSize) -> Result<Self, LogError>
     where
         Self: Sized,
     {
-        let mut path = path.to_string();
-        if !path.contains("?") {
-            path.push_str("?1GB");
-        }
-        let index = path.rfind("?").unwrap_or_default();
-        let file_path = &path[0..index];
-        let file_size = &path[(index + 1)..path.len()];
-        let mut size = LogSize::parse(file_size)?;
         if size.len() == 0 {
             size = LogSize::GB(1);
         }
-        Ok(MmapFile::new(file_path, size)?)
+        Ok(MmapFile::new(path, size)?)
     }
 
     fn seek(&self, pos: SeekFrom) -> std::io::Result<u64> {

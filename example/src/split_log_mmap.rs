@@ -1,7 +1,7 @@
 use fast_log::config::Config;
 use fast_log::consts::LogSize;
 use fast_log::plugin::file_mmap::MmapFile;
-use fast_log::plugin::file_split::{RollingType, SplitFile};
+use fast_log::plugin::file_split::RollingType;
 use fast_log::plugin::packer::LogPacker;
 
 fn main() {
@@ -10,14 +10,14 @@ fn main() {
             .chan_len(Some(100000))
             .console()
             .split::<MmapFile, LogPacker>(
-                "target/logs/temp.log?1MB",
+                "target/logs/temp.log",
                 LogSize::MB(1),
                 RollingType::All,
                 LogPacker {},
             ),
     )
     .unwrap();
-    for _ in 0..40000 {
+    for _ in 0..1 {
         log::info!("Commencing yak shaving");
     }
     log::logger().flush();
