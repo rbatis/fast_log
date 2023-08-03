@@ -6,13 +6,12 @@ use std::cell::{RefCell, UnsafeCell};
 use std::fs::{File, Metadata, OpenOptions};
 use std::io::SeekFrom;
 
-/// only write append into file
-pub struct FileMmapAppender {
+pub struct MmapFile {
     file: RefCell<File>,
     bytes: UnsafeCell<MmapMut>,
 }
 
-impl FileMmapAppender {
+impl MmapFile {
     pub fn new(log_file_path: &str, size: usize) -> Result<Self, LogError> {
         let log_file_path = log_file_path.replace("\\", "/");
         if let Some(right) = log_file_path.rfind("/") {
@@ -36,7 +35,7 @@ impl FileMmapAppender {
     }
 }
 
-impl SplitFile for FileMmapAppender {
+impl SplitFile for MmapFile {
     fn new(path: &str) -> Result<Self, LogError>
     where
         Self: Sized,
