@@ -17,7 +17,7 @@ fn main() {
             ),
     )
     .unwrap();
-    for _ in 0..1 {
+    for _ in 0..40000 {
         log::info!("Commencing yak shaving");
     }
     log::logger().flush();

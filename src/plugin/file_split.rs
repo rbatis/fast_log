@@ -327,7 +327,7 @@ impl<F: SplitFile> LogAppender for FileSplitAppender<F> {
                     if (self.temp_bytes.load(Ordering::Relaxed)
                         + temp.as_bytes().len()
                         + x.formated.as_bytes().len())
-                        > self.temp_size.get_len()
+                        >= self.temp_size.get_len()
                     {
                         self.send_pack();
                         self.temp_bytes.fetch_add(
