@@ -13,7 +13,6 @@ impl<F: SplitFile> FileLoopAppender<F> {
     pub fn new(log_file_path: &str, size: LogSize) -> Result<FileLoopAppender<F>, LogError> {
         Ok(Self {
             file: FileSplitAppender::<F>::new(
-                F::new(log_file_path)?,
                 log_file_path,
                 size,
                 RollingType::KeepNum(1),

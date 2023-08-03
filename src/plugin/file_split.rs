@@ -91,7 +91,6 @@ pub struct FileSplitAppender<F: SplitFile> {
 
 impl<F: SplitFile> FileSplitAppender<F> {
     pub fn new(
-        file: F,
         file_path: &str,
         temp_size: LogSize,
         rolling_type: RollingType,
@@ -121,6 +120,7 @@ impl<F: SplitFile> FileSplitAppender<F> {
         }
         let temp_file = format!("{}{}{}", dir_path, sp, temp_file_name);
         let temp_bytes = AtomicUsize::new(0);
+        let file = F::new(&temp_file)?;
         if let Ok(m) = file.metadata() {
             temp_bytes.store(m.len() as usize, Ordering::Relaxed);
         }
