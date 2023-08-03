@@ -42,11 +42,8 @@ impl MmapFile {
             offset: AtomicU64::new(0),
         };
         //set point
-        let mut offset = s.find_offset() as u64 + 1;
-        if offset > size.len() as u64 {
-            offset = size.len() as u64 - 1;
-        }
-        s.offset.store(offset, Ordering::SeqCst);
+        let offset = s.find_offset();
+        s.offset.store(offset as u64, Ordering::SeqCst);
         Ok(s)
     }
 
