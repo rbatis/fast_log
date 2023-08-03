@@ -105,6 +105,7 @@ impl Config {
     }
 
     /// add a SplitAppender
+    /// .split::<FileType, Packer>()
     /// for example:
     ///
     // fast_log::init(
