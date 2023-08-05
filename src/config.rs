@@ -118,15 +118,15 @@ impl Config {
     //                 LogPacker {},
     //             ),
     //     );
-    pub fn split<S: SplitFile + 'static, P: Packer + 'static>(
+    pub fn split<FILE: SplitFile + 'static, PACKER: Packer + 'static>(
         self,
         file_path: &str,
         temp_size: LogSize,
         rolling_type: RollingType,
-        packer: P,
+        packer: PACKER,
     ) -> Self {
         self.appends.push(Mutex::new(Box::new(
-            FileSplitAppender::<S>::new(file_path, temp_size, rolling_type, Box::new(packer))
+            FileSplitAppender::<FILE>::new(file_path, temp_size, rolling_type, Box::new(packer))
                 .unwrap(),
         )));
         self
