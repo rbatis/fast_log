@@ -4,6 +4,7 @@ use fast_log::plugin::file_split::RollingType;
 use fast_log::plugin::packer::LogPacker;
 
 fn main() {
+    //file_path also can use '"target/logs/test.log"'
     fast_log::init(Config::new().chan_len(Some(100000)).console().file_split(
         "target/logs/",
         LogSize::MB(1),
