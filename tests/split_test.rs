@@ -2,7 +2,7 @@
 mod test {
     use fast_log::appender::{Command, FastLogRecord, LogAppender};
     use fast_log::consts::LogSize;
-    use fast_log::plugin::file_split::{FileSplitAppender, RollingType};
+    use fast_log::plugin::file_split::{FileSplitAppender, RawFile, RollingType};
     use fast_log::plugin::packer::LogPacker;
     use log::Level;
     use std::fs::remove_dir_all;
@@ -12,7 +12,7 @@ mod test {
     #[test]
     fn test_send_pack() {
         let _ = remove_dir_all("target/test/");
-        let appender = FileSplitAppender::new(
+        let appender = FileSplitAppender::<RawFile>::new(
             "target/test/",
             LogSize::MB(1),
             RollingType::All,
@@ -30,7 +30,7 @@ mod test {
             now: SystemTime::now(),
             formated: "".to_string(),
         }]);
-        appender.cell.borrow_mut().send_pack();
+        appender.send_pack();
         sleep(Duration::from_secs(1));
         let rolling_num = RollingType::KeepNum(0).do_rolling("temp.log", "target/test/");
         assert_eq!(rolling_num, 1);

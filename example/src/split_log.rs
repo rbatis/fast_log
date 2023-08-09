@@ -10,8 +10,8 @@ fn main() {
         RollingType::All,
         LogPacker {},
     ))
-        .unwrap();
-    for _ in 0..40000 {
+    .unwrap();
+    for _ in 0..3 {
         log::info!("Commencing yak shaving");
     }
     log::logger().flush();

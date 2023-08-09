@@ -78,7 +78,11 @@ impl SplitFile for RawFile {
     }
 
     fn offset(&self) -> usize {
-        todo!()
+        let mut offset = self.len();
+        if offset > 0 {
+            offset = offset - 1;
+        }
+        offset
     }
 }
 
