@@ -329,7 +329,6 @@ impl<F: SplitFile> LogAppender for FileSplitAppender<F> {
                         + x.formated.as_bytes().len())
                         >= self.temp_size.get_len()
                     {
-                        self.send_pack();
                         self.temp_bytes.fetch_add(
                             {
                                 let w = self.file.write(temp.as_bytes());
@@ -342,6 +341,7 @@ impl<F: SplitFile> LogAppender for FileSplitAppender<F> {
                             Ordering::SeqCst,
                         );
                         temp.clear();
+                        self.send_pack();
                     }
                     temp.push_str(x.formated.as_str());
                 }
