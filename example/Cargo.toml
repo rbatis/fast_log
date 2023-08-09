@@ -33,9 +33,6 @@ path = "src/bench_test_file.rs"
 name = "bench_test_file_split"
 path = "src/bench_test_file_split.rs"
 [[bin]]
-name = "split_log_flush"
-path = "src/split_log_flush.rs"
-[[bin]]
 name = "split_log_loop"
 path = "src/split_log_loop.rs"
 [[bin]]
