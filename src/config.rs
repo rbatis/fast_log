@@ -112,7 +112,7 @@ impl Config {
     //         Config::new()
     //             .chan_len(Some(100000))
     //             .split::<MmapFile, LogPacker>(
-    //                 "target/logs/temp.log?1MB",
+    //                 "target/logs/temp.log",
     //                 LogSize::MB(1),
     //                 RollingType::All,
     //                 LogPacker {},
