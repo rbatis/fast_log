@@ -28,6 +28,8 @@ A log implementation for extreme speed, using Crossbeam/channel ,once Batch writ
 
 * Simple and efficient Appender architecture.Both configuration and customization are simple
 
+* Support custom file type, just like mmap/file
+
 
 ```
 
