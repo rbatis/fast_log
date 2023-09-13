@@ -6,7 +6,7 @@ use fastdate::DateTime;
 use std::cell::RefCell;
 use std::fs::{DirEntry, File, OpenOptions};
 use std::io::{Seek, SeekFrom, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
@@ -244,7 +244,7 @@ pub enum RollingType {
 
 impl RollingType {
     fn read_paths(&self, dir: &str, temp_name: &str) -> Vec<DirEntry> {
-        let base_name = get_base_name(&PathBuf::from(temp_name));
+        let base_name = get_base_name(&Path::new(temp_name));
         let paths = std::fs::read_dir(dir);
         if let Ok(paths) = paths {
             //let mut temp_file = None;
@@ -309,8 +309,8 @@ impl RollingType {
     }
 
     /// parse `temp2023-07-20T10-13-17.452247.log`
-    pub fn file_name_parse_time(name: &str, temp_name: &str) -> Option<fastdate::DateTime> {
-        let base_name = get_base_name(&PathBuf::from(temp_name));
+    pub fn file_name_parse_time(name: &str, temp_name: &str) -> Option<DateTime> {
+        let base_name = get_base_name(&Path::new(temp_name));
         if name.starts_with(&base_name) {
             let mut time_str = name.trim_start_matches(&base_name).to_string();
             if let Some(v) = time_str.rfind(".") {
@@ -425,7 +425,7 @@ pub fn do_pack(packer: &Box<dyn Packer>, mut pack: LogPack) -> Result<bool, LogP
     return Ok(false);
 }
 
-fn get_base_name(path: &PathBuf) -> String {
+fn get_base_name(path: &Path) -> String {
     let file_name = path
         .file_name()
         .unwrap_or_default()
