@@ -6,7 +6,7 @@ use fastdate::DateTime;
 use std::cell::RefCell;
 use std::fs::{DirEntry, File, OpenOptions};
 use std::io::{Seek, SeekFrom, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
@@ -117,18 +117,23 @@ impl<F: SplitFile> FileSplitAppender<F> {
         rolling_type: RollingType,
         packer: Box<dyn Packer>,
     ) -> Result<FileSplitAppender<F>, LogError> {
-        let mut path_buf = PathBuf::from(&file_path);
-        if file_path.ends_with("/") || file_path.ends_with("\\") {
-            path_buf.push("temp.log");
-        }
-        let temp_file_name = path_buf
-            .file_name()
-            .unwrap_or_default()
-            .to_str()
-            .unwrap_or_default()
-            .to_string();
-        let mut dir_path = path_buf.to_str().unwrap_or_default().to_string();
-        dir_path = dir_path.trim_end_matches(&temp_file_name).to_string();
+        let temp_name = {
+            let buf = Path::new(&file_path);
+            let mut name = if buf.is_file() {
+                buf.file_name()
+                    .unwrap_or_default()
+                    .to_str()
+                    .unwrap_or_default()
+                    .to_string()
+            } else {
+                String::default()
+            };
+            if name.is_empty() {
+                name = "temp.log".to_string();
+            }
+            name
+        };
+        let mut dir_path = file_path.trim_end_matches(&temp_name).to_string();
         if dir_path.is_empty() {
             if let Ok(v) = std::env::current_dir() {
                 dir_path = v.to_str().unwrap_or_default().to_string();
@@ -139,7 +144,7 @@ impl<F: SplitFile> FileSplitAppender<F> {
         if !dir_path.is_empty() {
             sp = "/";
         }
-        let temp_file = format!("{}{}{}", dir_path, sp, temp_file_name);
+        let temp_file = format!("{}{}{}", dir_path, sp, temp_name);
         let temp_bytes = AtomicUsize::new(0);
         let file = F::new(&temp_file, temp_size)?;
         let mut offset = file.offset();
@@ -149,14 +154,14 @@ impl<F: SplitFile> FileSplitAppender<F> {
         temp_bytes.store(offset, Ordering::Relaxed);
         file.seek(SeekFrom::Start(temp_bytes.load(Ordering::Relaxed) as u64));
         let (sender, receiver) = chan(None);
-        spawn_saver(temp_file_name.clone(), receiver, packer);
+        spawn_saver(temp_name.clone(), receiver, packer);
         Ok(Self {
             temp_bytes,
             dir_path: dir_path.to_string(),
             file,
             sender,
             temp_size,
-            temp_name: temp_file_name,
+            temp_name,
             rolling_type,
         })
     }
