@@ -172,14 +172,13 @@ impl<F: SplitFile> FileSplitAppender<F> {
             sp = "/";
         }
         let first_file_path = format!("{}{}{}", self.dir_path, sp, &self.temp_name);
-        let path = PathBuf::from(first_file_path.clone());
+        let path = Path::new(&first_file_path);
         let file_name = path
             .file_name()
             .unwrap_or_default()
             .to_str()
             .unwrap_or_default()
             .to_string();
-
         let mut new_log_name = file_name.to_string();
         let point = file_name.rfind(".");
         match point {
