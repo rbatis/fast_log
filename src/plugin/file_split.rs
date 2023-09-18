@@ -1,14 +1,15 @@
 use crate::appender::{Command, FastLogRecord, LogAppender};
 use crate::consts::LogSize;
 use crate::error::LogError;
+use crate::plugin::roller::Roller;
+pub use crate::plugin::roller::RollingType;
 use crate::{chan, Receiver, Sender};
 use fastdate::DateTime;
 use std::cell::RefCell;
-use std::fs::{DirEntry, File, OpenOptions};
+use std::fs::{File, OpenOptions};
 use std::io::{Seek, SeekFrom, Write};
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::Duration;
 
 pub trait SplitFile: Send {
     fn new(path: &str, temp_size: LogSize) -> Result<Self, LogError>
@@ -104,7 +105,7 @@ pub struct FileSplitAppender<F: SplitFile> {
     file: F,
     sender: Sender<LogPack>,
     temp_size: LogSize,
-    rolling_type: RollingType,
+    roller: Box<dyn Roller>,
     //cache data
     temp_bytes: AtomicUsize,
     temp_name: String,
@@ -114,7 +115,7 @@ impl<F: SplitFile> FileSplitAppender<F> {
     pub fn new(
         file_path: &str,
         temp_size: LogSize,
-        rolling_type: RollingType,
+        roller: Box<dyn Roller>,
         packer: Box<dyn Packer>,
     ) -> Result<FileSplitAppender<F>, LogError> {
         let temp_name = {
@@ -162,7 +163,7 @@ impl<F: SplitFile> FileSplitAppender<F> {
             sender,
             temp_size,
             temp_name,
-            rolling_type,
+            roller,
         })
     }
     /// send data make an pack,and truncate data when finish.
@@ -208,7 +209,7 @@ impl<F: SplitFile> FileSplitAppender<F> {
         std::fs::copy(&first_file_path, &new_log_name);
         self.sender.send(LogPack {
             dir: self.dir_path.clone(),
-            rolling: self.rolling_type.clone(),
+            rolling: dyn_clone::clone_box(&*self.roller),
             new_log_name: new_log_name,
         });
         self.truncate();
@@ -224,105 +225,8 @@ impl<F: SplitFile> FileSplitAppender<F> {
 ///log data pack
 pub struct LogPack {
     pub dir: String,
-    pub rolling: RollingType,
+    pub rolling: Box<dyn Roller>,
     pub new_log_name: String,
-}
-
-///rolling keep type
-#[derive(Copy, Clone, Debug)]
-pub enum RollingType {
-    /// keep All of log packs
-    All,
-    /// keep by Time Duration,
-    /// for example:
-    /// // keep one day log pack
-    /// (Duration::from_secs(24 * 3600))
-    KeepTime(Duration),
-    /// keep log pack num(.log,.zip.lz4...more)
-    KeepNum(i64),
-}
-
-impl RollingType {
-    fn read_paths(&self, dir: &str, temp_name: &str) -> Vec<DirEntry> {
-        let base_name = get_base_name(&Path::new(temp_name));
-        let paths = std::fs::read_dir(dir);
-        if let Ok(paths) = paths {
-            //let mut temp_file = None;
-            let mut paths_vec = vec![];
-            for path in paths {
-                match path {
-                    Ok(path) => {
-                        if let Some(v) = path.file_name().to_str() {
-                            if v == temp_name {
-                                //temp_file = Some(path);
-                                continue;
-                            }
-                            if !v.starts_with(&base_name) {
-                                continue;
-                            }
-                        }
-                        paths_vec.push(path);
-                    }
-                    _ => {}
-                }
-            }
-            paths_vec.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
-            // if let Some(v) = temp_file {
-            //     paths_vec.push(v);
-            // }
-            return paths_vec;
-        }
-        return vec![];
-    }
-
-    pub fn do_rolling(&self, temp_name: &str, dir: &str) -> i64 {
-        let mut removed = 0;
-        match self {
-            RollingType::KeepNum(n) => {
-                let paths_vec = self.read_paths(dir, temp_name);
-                for index in 0..paths_vec.len() {
-                    if index >= (*n) as usize {
-                        let item = &paths_vec[index];
-                        std::fs::remove_file(item.path());
-                        removed += 1;
-                    }
-                }
-            }
-            RollingType::KeepTime(duration) => {
-                let paths_vec = self.read_paths(dir, temp_name);
-                let now = DateTime::now();
-                for index in 0..paths_vec.len() {
-                    let item = &paths_vec[index];
-                    let file_name = item.file_name();
-                    let name = file_name.to_str().unwrap_or("").to_string();
-                    if let Some(time) = Self::file_name_parse_time(&name, temp_name) {
-                        if now.clone().sub(duration.clone()) > time {
-                            std::fs::remove_file(item.path());
-                            removed += 1;
-                        }
-                    }
-                }
-            }
-            _ => {}
-        }
-        removed
-    }
-
-    /// parse `temp2023-07-20T10-13-17.452247.log`
-    pub fn file_name_parse_time(name: &str, temp_name: &str) -> Option<DateTime> {
-        let base_name = get_base_name(&Path::new(temp_name));
-        if name.starts_with(&base_name) {
-            let mut time_str = name.trim_start_matches(&base_name).to_string();
-            if let Some(v) = time_str.rfind(".") {
-                time_str = time_str[0..v].to_string();
-            }
-            let time = DateTime::parse("YYYY-MM-DDThh:mm:ss.000000", &time_str);
-            if let Ok(time) = time {
-                return Some(time);
-            }
-        }
-        return None;
-    }
 }
 
 impl<F: SplitFile> LogAppender for FileSplitAppender<F> {
@@ -423,18 +327,4 @@ pub fn do_pack(packer: &Box<dyn Packer>, mut pack: LogPack) -> Result<bool, LogP
         return Ok(b);
     }
     return Ok(false);
-}
-
-fn get_base_name(path: &Path) -> String {
-    let file_name = path
-        .file_name()
-        .unwrap_or_default()
-        .to_str()
-        .unwrap_or_default()
-        .to_string();
-    let p = file_name.rfind(".");
-    match p {
-        None => file_name,
-        Some(i) => file_name[0..i].to_string(),
-    }
 }
