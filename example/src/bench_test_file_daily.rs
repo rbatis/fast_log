@@ -3,7 +3,6 @@ use fast_log::config::Config;
 use fast_log::consts::LogSize;
 use fast_log::plugin::packer::LogPacker;
 use fast_log::plugin::roller::DailyRollingType;
-use std::thread::sleep;
 use std::time::Instant;
 
 /// cargo run --release --package example --bin bench_test_file_daily
