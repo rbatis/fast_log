@@ -5,3 +5,5 @@ pub mod file_loop;
 pub mod file_mmap;
 pub mod file_split;
 pub mod packer;
+
+pub mod rolling;

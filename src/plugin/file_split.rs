@@ -311,67 +311,14 @@ pub trait Rolling: Send {
 #[derive(Copy, Clone, Debug)]
 pub enum RollingType {
     /// keep All of log packs
-    #[deprecated(note = "use RollingAll,RollingNum,RollingTime  replace  this")]
     All,
     /// keep by Time Duration,
     /// for example:
     /// // keep one day log pack
     /// (Duration::from_secs(24 * 3600))
-    #[deprecated(note = "use RollingAll,RollingNum,RollingTime  replace  this")]
     KeepTime(Duration),
     /// keep log pack num(.log,.zip.lz4...more)
-    #[deprecated(note = "use RollingAll,RollingNum,RollingTime  replace  this")]
     KeepNum(i64),
-}
-
-pub struct RollingAll {}
-impl Rolling for RollingAll {
-    fn do_rolling(&self, dir: &str, temp_name: &str) -> i64 {
-        0
-    }
-}
-
-pub struct RollingNum {
-    pub num: i64,
-}
-
-impl Rolling for RollingNum {
-    fn do_rolling(&self, dir: &str, temp_name: &str) -> i64 {
-        let mut removed = 0;
-        let paths_vec = self.read_paths(dir, temp_name);
-        for index in 0..paths_vec.len() {
-            if index >= (self.num) as usize {
-                let item = &paths_vec[index];
-                std::fs::remove_file(item.path());
-                removed += 1;
-            }
-        }
-        removed
-    }
-}
-
-pub struct RollingTime {
-    pub duration: Duration,
-}
-
-impl Rolling for RollingTime {
-    fn do_rolling(&self, dir: &str, temp_name: &str) -> i64 {
-        let mut removed = 0;
-        let paths_vec = self.read_paths(dir, temp_name);
-        let now = DateTime::now();
-        for index in 0..paths_vec.len() {
-            let item = &paths_vec[index];
-            let file_name = item.file_name();
-            let name = file_name.to_str().unwrap_or("").to_string();
-            if let Some(time) = Self::file_name_parse_time(&name, temp_name) {
-                if now.clone().sub(self.duration.clone()) > time {
-                    std::fs::remove_file(item.path());
-                    removed += 1;
-                }
-            }
-        }
-        removed
-    }
 }
 
 impl Rolling for RollingType {
