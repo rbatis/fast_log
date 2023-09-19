@@ -1,6 +1,6 @@
 use fast_log::config::Config;
 use fast_log::consts::LogSize;
-use fast_log::plugin::keep::{KeepAll, KeepNum};
+use fast_log::plugin::file_split::KeepType;
 use fast_log::plugin::packer::LogPacker;
 
 fn main() {
@@ -8,7 +8,7 @@ fn main() {
     fast_log::init(Config::new().chan_len(Some(100000)).console().file_split(
         "target/logs/",
         LogSize::MB(1),
-        KeepNum(2),
+        KeepType::KeepNum(2),
         LogPacker {},
     ))
     .unwrap();

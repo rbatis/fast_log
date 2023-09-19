@@ -28,7 +28,7 @@ where
 }
 
 #[cfg(feature = "runtime_thread")]
-pub fn spawn_stack_size<F>(f: F, stack_size: usize) -> JoinHandle<()>
+pub fn spawn_stack_size<F>(f: F, _stack_size: usize) -> JoinHandle<()>
 where
     F: FnOnce() + Send + 'static,
 {

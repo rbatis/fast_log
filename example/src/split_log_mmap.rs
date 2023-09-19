@@ -1,7 +1,7 @@
 use fast_log::config::Config;
 use fast_log::consts::LogSize;
 use fast_log::plugin::file_mmap::MmapFile;
-use fast_log::plugin::file_split::RollingType;
+use fast_log::plugin::file_split::KeepType;
 use fast_log::plugin::packer::LogPacker;
 
 fn main() {
@@ -12,7 +12,7 @@ fn main() {
             .split::<MmapFile, LogPacker>(
                 "target/logs/temp.log",
                 LogSize::MB(1),
-                RollingType::All,
+                KeepType::All,
                 LogPacker {},
             ),
     )

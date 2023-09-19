@@ -63,7 +63,7 @@ impl Log for Logger {
         if let Some(filter) = LOGGER.cfg.get() {
             if let Some(send) = LOGGER.send.get() {
                 if !filter.filter.filter(record) {
-                    send.send(FastLogRecord {
+                    let _= send.send(FastLogRecord {
                         command: Command::CommandRecord,
                         level: record.level(),
                         target: record.metadata().target().to_string(),
@@ -93,13 +93,13 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
         return Err(LogError::from("[fast_log] appends can not be empty!"));
     }
     let (s, r) = chan(config.chan_len);
-    LOGGER.send.set(s).map_err(|e| LogError::from("set fail"))?;
-    LOGGER.recv.set(r).map_err(|e| LogError::from("set fail"))?;
+    LOGGER.send.set(s).map_err(|_| LogError::from("set fail"))?;
+    LOGGER.recv.set(r).map_err(|_| LogError::from("set fail"))?;
     LOGGER.set_level(config.level);
     LOGGER
         .cfg
         .set(config)
-        .map_err(|e| LogError::from("set fail"))?;
+        .map_err(|_| LogError::from("set fail="))?;
     //main recv data
     log::set_logger(LOGGER.deref())
         .map(|()| log::set_max_level(LOGGER.cfg.get().unwrap().level))
@@ -192,7 +192,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                 }
                 let data = Arc::new(remain);
                 for x in senders.iter() {
-                    x.send(data.clone());
+                    let _= x.send(data.clone());
                 }
                 if exit {
                     break;

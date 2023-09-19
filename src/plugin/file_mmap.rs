@@ -21,14 +21,14 @@ impl MmapFile {
         let log_file_path = log_file_path.replace("\\", "/");
         if let Some(right) = log_file_path.rfind("/") {
             let path = &log_file_path[0..right];
-            std::fs::create_dir_all(path);
+            let _= std::fs::create_dir_all(path);
         }
         let file = OpenOptions::new()
             .write(true)
             .read(true)
             .create(true)
             .open(&log_file_path)?;
-        file.set_len(size.get_len() as u64);
+        file.set_len(size.get_len() as u64)?;
         let mmap = unsafe {
             MmapOptions::new().map(&file).map_err(|e| {
                 println!("e={}", e);
@@ -132,8 +132,8 @@ impl SplitFile for MmapFile {
     fn truncate(&self) -> std::io::Result<()> {
         let file = unsafe { &mut *self.file.get() };
         file.set_len(0)?;
-        file.flush();
-        file.set_len(self.size.get_len() as u64);
+        file.flush()?;
+        file.set_len(self.size.get_len() as u64)?;
         let mmap = unsafe {
             MmapOptions::new()
                 .map(&file)
@@ -151,7 +151,7 @@ impl SplitFile for MmapFile {
     }
 
     fn flush(&self) {
-        self.bytes.borrow_mut().flush();
+        let _= self.bytes.borrow_mut().flush();
     }
 
     fn len(&self) -> usize {

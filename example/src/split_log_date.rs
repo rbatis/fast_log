@@ -1,8 +1,7 @@
 use fast_log::config::Config;
 use fast_log::consts::LogSize;
 use fast_log::error::LogError;
-use fast_log::plugin::file_split::Packer;
-use fast_log::plugin::keep::KeepNum;
+use fast_log::plugin::file_split::{Packer, KeepType};
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::Path;
@@ -11,9 +10,9 @@ use std::time::Duration;
 
 ///pack by an date
 #[derive(Clone)]
-pub struct LogDatePacker {}
+pub struct DateLogPacker {}
 
-impl LogDatePacker {
+impl DateLogPacker {
     pub fn log_name_create_by_time(
         &self,
         first_file_path: &str,
@@ -33,7 +32,7 @@ impl LogDatePacker {
         return new_log_name;
     }
 }
-impl Packer for LogDatePacker {
+impl Packer for DateLogPacker {
     fn pack_name(&self) -> &'static str {
         "log"
     }
@@ -76,8 +75,8 @@ fn main() {
     fast_log::init(Config::new().chan_len(Some(100000)).console().file_split(
         "target/logs/",
         LogSize::MB(1),
-        KeepNum(2),
-        LogDatePacker {},
+        KeepType::KeepNum(2),
+        DateLogPacker {},
     ))
     .unwrap();
     for _ in 0..40000 {

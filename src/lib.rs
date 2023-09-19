@@ -1,7 +1,3 @@
-#![allow(unused_variables)]
-#![allow(unused_assignments)]
-#![allow(unused_must_use)]
-
 extern crate core;
 
 pub mod appender;

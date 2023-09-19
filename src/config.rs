@@ -122,11 +122,11 @@ impl Config {
         self,
         file_path: &str,
         temp_size: LogSize,
-        rolling_type: R,
+        keeper: R,
         packer: P,
     ) -> Self {
         self.appends.push(Mutex::new(Box::new(
-            FileSplitAppender::<F, P>::new(file_path, temp_size, rolling_type, packer).unwrap(),
+            FileSplitAppender::<F, P>::new(file_path, temp_size, keeper, packer).unwrap(),
         )));
         self
     }

@@ -14,7 +14,7 @@ impl FileAppender {
         let log_file_path = log_file_path.replace("\\", "/");
         if let Some(right) = log_file_path.rfind("/") {
             let path = &log_file_path[0..right];
-            std::fs::create_dir_all(path);
+            let _= std::fs::create_dir_all(path);
         }
         Ok(Self {
             file: RefCell::new(
@@ -34,10 +34,10 @@ impl LogAppender for FileAppender {
         for x in records {
             buf.push_str(&x.formated);
         }
-        log_file.write_all(buf.as_bytes());
+        let _= log_file.write_all(buf.as_bytes());
     }
 
     fn flush(&self) {
-        self.file.borrow_mut().flush();
+        let _= self.file.borrow_mut().flush();
     }
 }

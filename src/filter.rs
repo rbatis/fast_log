@@ -7,7 +7,7 @@ pub trait Filter: Send + Sync {
 pub struct NoFilter {}
 
 impl Filter for NoFilter {
-    fn filter(&self, module: &log::Record) -> bool {
+    fn filter(&self, _module: &log::Record) -> bool {
         return false;
     }
 }

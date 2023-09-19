@@ -1,8 +1,7 @@
 use crate::appender::{FastLogRecord, LogAppender};
 use crate::consts::LogSize;
 use crate::error::LogError;
-use crate::plugin::file_split::{FileSplitAppender, SplitFile};
-use crate::plugin::keep::KeepNum;
+use crate::plugin::file_split::{FileSplitAppender, KeepType, SplitFile};
 use crate::plugin::packer::LogPacker;
 
 /// Single logs are stored in rolling mode by capacity
@@ -16,7 +15,7 @@ impl<F: SplitFile> FileLoopAppender<F> {
             file: FileSplitAppender::<F, LogPacker>::new(
                 log_file_path,
                 size,
-                KeepNum(1),
+                KeepType::KeepNum(1),
                 LogPacker {},
             )?,
         })

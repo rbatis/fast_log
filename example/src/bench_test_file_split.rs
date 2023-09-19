@@ -1,7 +1,7 @@
 use fast_log::bencher::TPS;
 use fast_log::config::Config;
 use fast_log::consts::LogSize;
-use fast_log::plugin::file_split::RollingType;
+use fast_log::plugin::file_split::KeepType;
 use fast_log::plugin::packer::LogPacker;
 use std::time::Instant;
 
@@ -14,7 +14,7 @@ fn main() {
             .file_split(
                 "target/logs/",
                 LogSize::MB(1),
-                RollingType::All,
+                KeepType::All,
                 LogPacker {},
             )
             .chan_len(Some(100000)),

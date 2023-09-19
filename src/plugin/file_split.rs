@@ -38,7 +38,7 @@ impl From<File> for RawFile {
 }
 
 impl SplitFile for RawFile {
-    fn new(path: &str, temp_size: LogSize) -> Result<Self, LogError>
+    fn new(path: &str, _temp_size: LogSize) -> Result<Self, LogError>
     where
         Self: Sized,
     {
@@ -61,14 +61,14 @@ impl SplitFile for RawFile {
     }
 
     fn truncate(&self) -> std::io::Result<()> {
-        self.inner.borrow_mut().set_len(0);
-        self.inner.borrow_mut().flush();
+        self.inner.borrow_mut().set_len(0)?;
+        self.inner.borrow_mut().flush()?;
         self.inner.borrow_mut().seek(SeekFrom::Start(0))?;
         Ok(())
     }
 
     fn flush(&self) {
-        self.inner.borrow_mut().flush();
+        let _= self.inner.borrow_mut().flush();
     }
 
     fn len(&self) -> usize {
@@ -176,7 +176,7 @@ impl<F: SplitFile, P: Packer + Sync + 'static> FileSplitAppender<F, P> {
     pub fn new<R: Keep + 'static>(
         file_path: &str,
         temp_size: LogSize,
-        rolling: R,
+        rolling_type: R,
         packer: P,
     ) -> Result<FileSplitAppender<F, P>, LogError> {
         let temp_name = {
@@ -201,7 +201,7 @@ impl<F: SplitFile, P: Packer + Sync + 'static> FileSplitAppender<F, P> {
                 dir_path = v.to_str().unwrap_or_default().to_string();
             }
         }
-        std::fs::create_dir_all(&dir_path);
+        let _= std::fs::create_dir_all(&dir_path);
         let mut sp = "";
         if !dir_path.is_empty() {
             sp = "/";
@@ -214,10 +214,10 @@ impl<F: SplitFile, P: Packer + Sync + 'static> FileSplitAppender<F, P> {
             offset += 1;
         }
         temp_bytes.store(offset, Ordering::Relaxed);
-        file.seek(SeekFrom::Start(temp_bytes.load(Ordering::Relaxed) as u64));
+        let _= file.seek(SeekFrom::Start(temp_bytes.load(Ordering::Relaxed) as u64));
         let (sender, receiver) = chan(None);
         let arc_packer = Arc::new(packer);
-        spawn_saver(temp_name.clone(), receiver, rolling, arc_packer.clone());
+        spawn_saver(temp_name.clone(), receiver, rolling_type, arc_packer.clone());
         Ok(Self {
             temp_bytes,
             dir_path: dir_path.to_string(),
@@ -237,8 +237,8 @@ impl<F: SplitFile, P: Packer + Sync + 'static> FileSplitAppender<F, P> {
         let first_file_path = format!("{}{}{}", self.dir_path, sp, &self.temp_name);
         let new_log_name = self.packer.log_name_create(&first_file_path);
         self.file.flush();
-        std::fs::copy(&first_file_path, &new_log_name);
-        self.sender.send(LogPack {
+        let _= std::fs::copy(&first_file_path, &new_log_name);
+        let _= self.sender.send(LogPack {
             dir: self.dir_path.clone(),
             new_log_name: new_log_name,
             wg: None,
@@ -248,7 +248,7 @@ impl<F: SplitFile, P: Packer + Sync + 'static> FileSplitAppender<F, P> {
 
     pub fn truncate(&self) {
         //reset data
-        self.file.truncate();
+        let _= self.file.truncate();
         self.temp_bytes.store(0, Ordering::SeqCst);
     }
 }
@@ -281,7 +281,7 @@ impl LogPack {
         let r = packer.do_pack(log_file.unwrap(), log_file_path);
         if r.is_err() && packer.retry() > 0 {
             let mut retry = 1;
-            while let Err(packs) = self.do_pack(packer) {
+            while let Err(_packs) = self.do_pack(packer) {
                 retry += 1;
                 if retry > packer.retry() {
                     break;
@@ -297,6 +297,7 @@ impl LogPack {
 
 /// keep logs, for example keep by log num or keep by log create time.
 /// that do not meet the retention conditions will be deleted
+/// you can use KeepType or RollingType::All
 pub trait Keep: Send {
     /// return removed nums
     fn do_keep(&self, dir: &str, temp_name: &str) -> i64;
@@ -330,9 +331,10 @@ pub trait Keep: Send {
 }
 
 ///rolling keep type
-#[deprecated(note = "use RollingAll,RollingNum,RollingDuration  replace this")]
+pub type RollingType = KeepType;
+///rolling keep type
 #[derive(Copy, Clone, Debug)]
-pub enum RollingType {
+pub enum KeepType {
     /// keep All of log packs
     All,
     /// keep by Time Duration,
@@ -344,32 +346,30 @@ pub enum RollingType {
     KeepNum(i64),
 }
 
-impl Keep for RollingType {
+impl Keep for KeepType {
     fn do_keep(&self, dir: &str, temp_name: &str) -> i64 {
         let mut removed = 0;
         match self {
-            RollingType::KeepNum(n) => {
+            KeepType::KeepNum(n) => {
                 let paths_vec = self.read_paths(dir, temp_name);
                 for index in 0..paths_vec.len() {
                     if index >= (*n) as usize {
                         let item = &paths_vec[index];
-                        std::fs::remove_file(item.path());
+                        let _ = std::fs::remove_file(item.path());
                         removed += 1;
                     }
                 }
             }
-            RollingType::KeepTime(duration) => {
+            KeepType::KeepTime(duration) => {
                 let paths_vec = self.read_paths(dir, temp_name);
                 let now = DateTime::now();
                 for index in 0..paths_vec.len() {
                     let item = &paths_vec[index];
-                    let file_name = item.file_name();
-                    let name = file_name.to_str().unwrap_or("").to_string();
                     if let Ok(m) = item.metadata() {
                         if let Ok(c) = m.created() {
                             let time = DateTime::from(c);
                             if now.clone().sub(duration.clone()) > time {
-                                std::fs::remove_file(item.path());
+                                let _ = std::fs::remove_file(item.path());
                                 removed += 1;
                             }
                         }
@@ -412,7 +412,7 @@ impl<F: SplitFile, P: Packer + Sync + 'static> LogAppender for FileSplitAppender
                 }
                 Command::CommandExit => {}
                 Command::CommandFlush(ref w) => {
-                    self.sender.send(LogPack {
+                    let _= self.sender.send(LogPack {
                         dir: "".to_string(),
                         new_log_name: "".to_string(),
                         wg: Some(w.clone()),
@@ -421,7 +421,7 @@ impl<F: SplitFile, P: Packer + Sync + 'static> LogAppender for FileSplitAppender
             }
         }
         if !temp.is_empty() {
-            self.temp_bytes.fetch_add(
+            let _= self.temp_bytes.fetch_add(
                 {
                     let w = self.file.write(temp.as_bytes());
                     if let Ok(w) = w {
@@ -442,7 +442,7 @@ impl<F: SplitFile, P: Packer + Sync + 'static> LogAppender for FileSplitAppender
 fn spawn_saver<P: Packer + Sync + 'static, R: Keep + 'static>(
     temp_name: String,
     r: Receiver<LogPack>,
-    rolling: R,
+    rolling_type: R,
     packer: Arc<P>,
 ) {
     std::thread::spawn(move || {
@@ -453,11 +453,11 @@ fn spawn_saver<P: Packer + Sync + 'static, R: Keep + 'static>(
                 let remove = pack.do_pack(packer.deref());
                 if let Ok(remove) = remove {
                     if remove {
-                        std::fs::remove_file(log_file_path);
+                        let _ = std::fs::remove_file(log_file_path);
                     }
                 }
                 //do rolling
-                rolling.do_keep(&pack.dir, &temp_name);
+                rolling_type.do_keep(&pack.dir, &temp_name);
             } else {
                 break;
             }
