@@ -1,20 +1,20 @@
-use crate::plugin::file_split::Cleaner;
+use crate::plugin::file_split::Keep;
 use fastdate::DateTime;
 use std::time::Duration;
 
 /// keeps all,do not rolling
-pub struct RollingAll {}
-impl Cleaner for RollingAll {
-    fn do_clean(&self, dir: &str, temp_name: &str) -> i64 {
+pub struct KeepAll {}
+impl Keep for KeepAll {
+    fn do_keep(&self, dir: &str, temp_name: &str) -> i64 {
         0
     }
 }
 
 /// rolling from file num
-pub struct RollingNum(pub i64);
+pub struct KeepNum(pub i64);
 
-impl Cleaner for RollingNum {
-    fn do_clean(&self, dir: &str, temp_name: &str) -> i64 {
+impl Keep for KeepNum {
+    fn do_keep(&self, dir: &str, temp_name: &str) -> i64 {
         let mut removed = 0;
         let paths_vec = self.read_paths(dir, temp_name);
         for index in 0..paths_vec.len() {
@@ -29,10 +29,10 @@ impl Cleaner for RollingNum {
 }
 
 /// rolling from metadata
-pub struct RollingDuration(pub Duration);
+pub struct KeepDuration(pub Duration);
 
-impl Cleaner for RollingDuration {
-    fn do_clean(&self, dir: &str, temp_name: &str) -> i64 {
+impl Keep for KeepDuration {
+    fn do_keep(&self, dir: &str, temp_name: &str) -> i64 {
         let mut removed = 0;
         let paths_vec = self.read_paths(dir, temp_name);
         let now = DateTime::now();

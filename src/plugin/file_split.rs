@@ -174,7 +174,7 @@ pub struct FileSplitAppender<F: SplitFile, P: Packer> {
 }
 
 impl<F: SplitFile, P: Packer + Sync + 'static> FileSplitAppender<F, P> {
-    pub fn new<R: Cleaner + 'static>(
+    pub fn new<R: Keep + 'static>(
         file_path: &str,
         temp_size: LogSize,
         rolling: R,
@@ -289,9 +289,9 @@ impl LogPack {
     }
 }
 
-pub trait Cleaner: Send {
+pub trait Keep: Send {
     /// return removed
-    fn do_clean(&self, dir: &str, temp_name: &str) -> i64;
+    fn do_keep(&self, dir: &str, temp_name: &str) -> i64;
     fn read_paths(&self, dir: &str, temp_name: &str) -> Vec<DirEntry> {
         let base_name = get_base_name(&Path::new(temp_name));
         let paths = std::fs::read_dir(dir);
@@ -337,8 +337,8 @@ pub enum RollingType {
     KeepNum(i64),
 }
 
-impl Cleaner for RollingType {
-    fn do_clean(&self, temp_name: &str, dir: &str) -> i64 {
+impl Keep for RollingType {
+    fn do_keep(&self, temp_name: &str, dir: &str) -> i64 {
         let mut removed = 0;
         match self {
             RollingType::KeepNum(n) => {
@@ -426,7 +426,7 @@ impl<F: SplitFile, P: Packer + Sync + 'static> LogAppender for FileSplitAppender
 }
 
 ///spawn an saver thread to save log file or zip file
-fn spawn_saver<P: Packer + Sync + 'static, R: Cleaner + 'static>(
+fn spawn_saver<P: Packer + Sync + 'static, R: Keep + 'static>(
     temp_name: String,
     r: Receiver<LogPack>,
     rolling: R,
@@ -436,7 +436,7 @@ fn spawn_saver<P: Packer + Sync + 'static, R: Cleaner + 'static>(
         loop {
             if let Ok(pack) = r.recv() {
                 //do rolling
-                rolling.do_clean(&pack.dir, &temp_name);
+                rolling.do_keep(&pack.dir, &temp_name);
                 let log_file_path = pack.new_log_name.clone();
                 //do save pack
                 let remove = pack.do_pack(packer.deref());

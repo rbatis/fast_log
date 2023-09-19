@@ -2,8 +2,8 @@
 mod test {
     use fast_log::appender::{Command, FastLogRecord, LogAppender};
     use fast_log::consts::LogSize;
-    use fast_log::plugin::cleaner::{RollingAll, RollingNum};
-    use fast_log::plugin::file_split::{Cleaner, FileSplitAppender, Packer, RawFile};
+    use fast_log::plugin::file_split::{FileSplitAppender, Keep, Packer, RawFile};
+    use fast_log::plugin::keep::{KeepAll, KeepNum};
     use fast_log::plugin::packer::LogPacker;
     use log::Level;
     use std::fs::remove_dir_all;
@@ -16,7 +16,7 @@ mod test {
         let appender = FileSplitAppender::<RawFile, LogPacker>::new(
             "target/test/",
             LogSize::MB(1),
-            RollingAll {},
+            KeepAll {},
             LogPacker {},
         )
         .unwrap();
@@ -33,7 +33,7 @@ mod test {
         }]);
         appender.send_pack();
         sleep(Duration::from_secs(1));
-        let rolling_num = RollingNum(0).do_clean("target/test/", "temp.log");
+        let rolling_num = KeepNum(0).do_keep("target/test/", "temp.log");
         assert_eq!(rolling_num, 1);
         let _ = remove_dir_all("target/test/");
     }
