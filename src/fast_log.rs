@@ -113,19 +113,19 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
         sender_vec.push(s);
         recever_vec.push((r, a));
     }
-    for (recever, appender) in recever_vec {
+    for (receiver, appender) in recever_vec {
         spawn(move || {
             let mut exit = false;
             loop {
                 let mut remain = vec![];
-                if recever.len() == 0 {
-                    if let Ok(msg) = recever.recv() {
+                if receiver.len() == 0 {
+                    if let Ok(msg) = receiver.recv() {
                         remain.push(msg);
                     }
                 }
                 //recv all
                 loop {
-                    match recever.try_recv() {
+                    match receiver.try_recv() {
                         Ok(v) => {
                             remain.push(v);
                         }

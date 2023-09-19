@@ -3,6 +3,7 @@ use crate::plugin::file_split::Packer;
 use std::fs::File;
 
 /// keep temp{date}.log
+#[derive(Clone)]
 pub struct LogPacker {}
 impl Packer for LogPacker {
     fn pack_name(&self) -> &'static str {

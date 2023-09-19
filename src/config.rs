@@ -4,7 +4,7 @@ use crate::filter::{Filter, NoFilter};
 use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
 use crate::plugin::file_loop::FileLoopAppender;
-use crate::plugin::file_split::{FileSplitAppender, Packer, RawFile, RollingType, SplitFile};
+use crate::plugin::file_split::{FileSplitAppender, Packer, RawFile, Rolling, SplitFile};
 use crate::FastLogFormat;
 use dark_std::sync::SyncVec;
 use log::LevelFilter;
@@ -90,16 +90,15 @@ impl Config {
         self
     }
     /// add a FileSplitAppender
-    pub fn file_split<P: Packer + 'static>(
+    pub fn file_split<P: Packer + Sync + 'static, R: Rolling + Sync + 'static>(
         self,
         file_path: &str,
         temp_size: LogSize,
-        rolling_type: RollingType,
+        rolling_type: R,
         packer: P,
     ) -> Self {
         self.appends.push(Mutex::new(Box::new(
-            FileSplitAppender::<RawFile>::new(file_path, temp_size, rolling_type, Box::new(packer))
-                .unwrap(),
+            FileSplitAppender::<RawFile>::new(file_path, temp_size, rolling_type, packer).unwrap(),
         )));
         self
     }
@@ -118,16 +117,19 @@ impl Config {
     //                 LogPacker {},
     //             ),
     //     );
-    pub fn split<S: SplitFile + 'static, P: Packer + 'static>(
+    pub fn split<
+        F: SplitFile + 'static,
+        R: Rolling + Sync + 'static,
+        P: Packer + Sync + 'static,
+    >(
         self,
         file_path: &str,
         temp_size: LogSize,
-        rolling_type: RollingType,
+        rolling_type: R,
         packer: P,
     ) -> Self {
         self.appends.push(Mutex::new(Box::new(
-            FileSplitAppender::<S>::new(file_path, temp_size, rolling_type, Box::new(packer))
-                .unwrap(),
+            FileSplitAppender::<F>::new(file_path, temp_size, rolling_type, packer).unwrap(),
         )));
         self
     }

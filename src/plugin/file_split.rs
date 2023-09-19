@@ -6,8 +6,10 @@ use fastdate::DateTime;
 use std::cell::RefCell;
 use std::fs::{DirEntry, File, OpenOptions};
 use std::io::{Seek, SeekFrom, Write};
+use std::ops::Deref;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 pub trait SplitFile: Send {
@@ -100,22 +102,21 @@ pub trait Packer: Send {
 /// split log file allow pack compress log
 /// Memory space swop running time , reduces the number of repeated queries for IO
 pub struct FileSplitAppender<F: SplitFile> {
-    dir_path: String,
     file: F,
+    dir_path: String,
     sender: Sender<LogPack>,
     temp_size: LogSize,
-    rolling_type: RollingType,
     //cache data
     temp_bytes: AtomicUsize,
     temp_name: String,
 }
 
 impl<F: SplitFile> FileSplitAppender<F> {
-    pub fn new(
+    pub fn new<P: Packer + Sync + 'static, R: Rolling + Sync + 'static>(
         file_path: &str,
         temp_size: LogSize,
-        rolling_type: RollingType,
-        packer: Box<dyn Packer>,
+        rolling: R,
+        packer: P,
     ) -> Result<FileSplitAppender<F>, LogError> {
         let temp_name = {
             let buf = Path::new(&file_path);
@@ -154,7 +155,7 @@ impl<F: SplitFile> FileSplitAppender<F> {
         temp_bytes.store(offset, Ordering::Relaxed);
         file.seek(SeekFrom::Start(temp_bytes.load(Ordering::Relaxed) as u64));
         let (sender, receiver) = chan(None);
-        spawn_saver(temp_name.clone(), receiver, packer);
+        spawn_saver(temp_name.clone(), receiver, rolling, packer);
         Ok(Self {
             temp_bytes,
             dir_path: dir_path.to_string(),
@@ -162,7 +163,6 @@ impl<F: SplitFile> FileSplitAppender<F> {
             sender,
             temp_size,
             temp_name,
-            rolling_type,
         })
     }
     /// send data make an pack,and truncate data when finish.
@@ -208,7 +208,6 @@ impl<F: SplitFile> FileSplitAppender<F> {
         std::fs::copy(&first_file_path, &new_log_name);
         self.sender.send(LogPack {
             dir: self.dir_path.clone(),
-            rolling: self.rolling_type.clone(),
             new_log_name: new_log_name,
         });
         self.truncate();
@@ -224,25 +223,42 @@ impl<F: SplitFile> FileSplitAppender<F> {
 ///log data pack
 pub struct LogPack {
     pub dir: String,
-    pub rolling: RollingType,
     pub new_log_name: String,
 }
 
-///rolling keep type
-#[derive(Copy, Clone, Debug)]
-pub enum RollingType {
-    /// keep All of log packs
-    All,
-    /// keep by Time Duration,
-    /// for example:
-    /// // keep one day log pack
-    /// (Duration::from_secs(24 * 3600))
-    KeepTime(Duration),
-    /// keep log pack num(.log,.zip.lz4...more)
-    KeepNum(i64),
+impl LogPack {
+    /// write an Pack to zip file
+    pub fn do_pack<P: Packer>(mut self, packer: &P) -> Result<bool, LogPack> {
+        let log_file_path = self.new_log_name.as_str();
+        if log_file_path.is_empty() {
+            return Err(self);
+        }
+        let log_file = OpenOptions::new().read(true).open(log_file_path);
+        if log_file.is_err() {
+            return Err(self);
+        }
+        //make
+        let r = packer.do_pack(log_file.unwrap(), log_file_path);
+        if r.is_err() && packer.retry() > 0 {
+            let mut retry = 1;
+            while let Err(packs) = self.do_pack(packer) {
+                self = packs;
+                retry += 1;
+                if retry > packer.retry() {
+                    break;
+                }
+            }
+        }
+        if let Ok(b) = r {
+            return Ok(b);
+        }
+        return Ok(false);
+    }
 }
 
-impl RollingType {
+pub trait Rolling: Send {
+    /// return removed
+    fn do_rolling(&self, dir: &str, temp_name: &str) -> i64;
     fn read_paths(&self, dir: &str, temp_name: &str) -> Vec<DirEntry> {
         let base_name = get_base_name(&Path::new(temp_name));
         let paths = std::fs::read_dir(dir);
@@ -267,15 +283,101 @@ impl RollingType {
                 }
             }
             paths_vec.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
-            // if let Some(v) = temp_file {
-            //     paths_vec.push(v);
-            // }
             return paths_vec;
         }
         return vec![];
     }
 
-    pub fn do_rolling(&self, temp_name: &str, dir: &str) -> i64 {
+    /// parse `temp2023-07-20T10-13-17.452247.log`
+    fn file_name_parse_time(name: &str, temp_name: &str) -> Option<DateTime>
+    where
+        Self: Sized,
+    {
+        let base_name = get_base_name(&Path::new(temp_name));
+        if name.starts_with(&base_name) {
+            let mut time_str = name.trim_start_matches(&base_name).to_string();
+            if let Some(v) = time_str.rfind(".") {
+                time_str = time_str[0..v].to_string();
+            }
+            let time = DateTime::parse("YYYY-MM-DDThh:mm:ss.000000", &time_str);
+            if let Ok(time) = time {
+                return Some(time);
+            }
+        }
+        return None;
+    }
+}
+
+///rolling keep type
+#[deprecated(note = "use RollingAll,RollingNum,RollingTime  replace  this")]
+#[derive(Copy, Clone, Debug)]
+pub enum RollingType {
+    /// keep All of log packs
+    #[deprecated(note = "use RollingAll,RollingNum,RollingTime  replace  this")]
+    All,
+    /// keep by Time Duration,
+    /// for example:
+    /// // keep one day log pack
+    /// (Duration::from_secs(24 * 3600))
+    #[deprecated(note = "use RollingAll,RollingNum,RollingTime  replace  this")]
+    KeepTime(Duration),
+    /// keep log pack num(.log,.zip.lz4...more)
+    #[deprecated(note = "use RollingAll,RollingNum,RollingTime  replace  this")]
+    KeepNum(i64),
+}
+
+pub struct RollingAll {}
+impl Rolling for RollingAll {
+    fn do_rolling(&self, dir: &str, temp_name: &str) -> i64 {
+        0
+    }
+}
+
+pub struct RollingNum {
+    pub num: i64,
+}
+
+impl Rolling for RollingNum {
+    fn do_rolling(&self, dir: &str, temp_name: &str) -> i64 {
+        let mut removed = 0;
+        let paths_vec = self.read_paths(dir, temp_name);
+        for index in 0..paths_vec.len() {
+            if index >= (self.num) as usize {
+                let item = &paths_vec[index];
+                std::fs::remove_file(item.path());
+                removed += 1;
+            }
+        }
+        removed
+    }
+}
+
+pub struct RollingTime {
+    pub duration: Duration,
+}
+
+impl Rolling for RollingTime {
+    fn do_rolling(&self, dir: &str, temp_name: &str) -> i64 {
+        let mut removed = 0;
+        let paths_vec = self.read_paths(dir, temp_name);
+        let now = DateTime::now();
+        for index in 0..paths_vec.len() {
+            let item = &paths_vec[index];
+            let file_name = item.file_name();
+            let name = file_name.to_str().unwrap_or("").to_string();
+            if let Some(time) = Self::file_name_parse_time(&name, temp_name) {
+                if now.clone().sub(self.duration.clone()) > time {
+                    std::fs::remove_file(item.path());
+                    removed += 1;
+                }
+            }
+        }
+        removed
+    }
+}
+
+impl Rolling for RollingType {
+    fn do_rolling(&self, temp_name: &str, dir: &str) -> i64 {
         let mut removed = 0;
         match self {
             RollingType::KeepNum(n) => {
@@ -306,22 +408,6 @@ impl RollingType {
             _ => {}
         }
         removed
-    }
-
-    /// parse `temp2023-07-20T10-13-17.452247.log`
-    pub fn file_name_parse_time(name: &str, temp_name: &str) -> Option<DateTime> {
-        let base_name = get_base_name(&Path::new(temp_name));
-        if name.starts_with(&base_name) {
-            let mut time_str = name.trim_start_matches(&base_name).to_string();
-            if let Some(v) = time_str.rfind(".") {
-                time_str = time_str[0..v].to_string();
-            }
-            let time = DateTime::parse("YYYY-MM-DDThh:mm:ss.000000", &time_str);
-            if let Ok(time) = time {
-                return Some(time);
-            }
-        }
-        return None;
     }
 }
 
@@ -376,15 +462,20 @@ impl<F: SplitFile> LogAppender for FileSplitAppender<F> {
 }
 
 ///spawn an saver thread to save log file or zip file
-fn spawn_saver(temp_name: String, r: Receiver<LogPack>, packer: Box<dyn Packer>) {
+fn spawn_saver<P: Packer + Sync + 'static, R: Rolling + Send + Sync + 'static>(
+    temp_name: String,
+    r: Receiver<LogPack>,
+    rolling: R,
+    packer: P,
+) {
     std::thread::spawn(move || {
         loop {
             if let Ok(pack) = r.recv() {
                 //do rolling
-                pack.rolling.do_rolling(&temp_name, &pack.dir);
+                rolling.do_rolling(&pack.dir, &temp_name);
                 let log_file_path = pack.new_log_name.clone();
                 //do save pack
-                let remove = do_pack(&packer, pack);
+                let remove = pack.do_pack(&packer);
                 if let Ok(remove) = remove {
                     if remove {
                         std::fs::remove_file(log_file_path);
@@ -395,34 +486,6 @@ fn spawn_saver(temp_name: String, r: Receiver<LogPack>, packer: Box<dyn Packer>)
             }
         }
     });
-}
-
-/// write an Pack to zip file
-pub fn do_pack(packer: &Box<dyn Packer>, mut pack: LogPack) -> Result<bool, LogPack> {
-    let log_file_path = pack.new_log_name.as_str();
-    if log_file_path.is_empty() {
-        return Err(pack);
-    }
-    let log_file = OpenOptions::new().read(true).open(log_file_path);
-    if log_file.is_err() {
-        return Err(pack);
-    }
-    //make
-    let r = packer.do_pack(log_file.unwrap(), log_file_path);
-    if r.is_err() && packer.retry() > 0 {
-        let mut retry = 1;
-        while let Err(packs) = do_pack(packer, pack) {
-            pack = packs;
-            retry += 1;
-            if retry > packer.retry() {
-                break;
-            }
-        }
-    }
-    if let Ok(b) = r {
-        return Ok(b);
-    }
-    return Ok(false);
 }
 
 fn get_base_name(path: &Path) -> String {
