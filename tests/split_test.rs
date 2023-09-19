@@ -12,11 +12,11 @@ mod test {
     #[test]
     fn test_send_pack() {
         let _ = remove_dir_all("target/test/");
-        let appender = FileSplitAppender::<RawFile, LogPacker>::new(
+        let appender = FileSplitAppender::<RawFile>::new(
             "target/test/",
             LogSize::MB(1),
             RollingType::All,
-            LogPacker {},
+            Box::new(LogPacker {}),
         )
         .unwrap();
         appender.do_logs(&[FastLogRecord {

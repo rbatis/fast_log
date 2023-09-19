@@ -98,7 +98,7 @@ impl Config {
         packer: P,
     ) -> Self {
         self.appends.push(Mutex::new(Box::new(
-            FileSplitAppender::<RawFile, P>::new(file_path, temp_size, rolling_type, packer)
+            FileSplitAppender::<RawFile>::new(file_path, temp_size, rolling_type, Box::new(packer))
                 .unwrap(),
         )));
         self
@@ -126,7 +126,7 @@ impl Config {
         packer: P,
     ) -> Self {
         self.appends.push(Mutex::new(Box::new(
-            FileSplitAppender::<F, P>::new(file_path, temp_size, keeper, packer).unwrap(),
+            FileSplitAppender::<F>::new(file_path, temp_size, keeper, Box::new(packer)).unwrap(),
         )));
         self
     }

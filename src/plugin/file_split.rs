@@ -6,7 +6,6 @@ use fastdate::DateTime;
 use std::cell::RefCell;
 use std::fs::{DirEntry, File, OpenOptions};
 use std::io::{Seek, SeekFrom, Write};
-use std::ops::Deref;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -14,8 +13,8 @@ use std::time::Duration;
 
 pub trait SplitFile: Send {
     fn new(path: &str, temp_size: LogSize) -> Result<Self, LogError>
-    where
-        Self: Sized;
+        where
+            Self: Sized;
     fn seek(&self, pos: SeekFrom) -> std::io::Result<u64>;
     fn write(&self, buf: &[u8]) -> std::io::Result<usize>;
     fn truncate(&self) -> std::io::Result<()>;
@@ -39,8 +38,8 @@ impl From<File> for RawFile {
 
 impl SplitFile for RawFile {
     fn new(path: &str, _temp_size: LogSize) -> Result<Self, LogError>
-    where
-        Self: Sized,
+        where
+            Self: Sized,
     {
         let file = OpenOptions::new()
             .create(true)
@@ -68,7 +67,7 @@ impl SplitFile for RawFile {
     }
 
     fn flush(&self) {
-        let _= self.inner.borrow_mut().flush();
+        let _ = self.inner.borrow_mut().flush();
     }
 
     fn len(&self) -> usize {
@@ -89,7 +88,7 @@ impl SplitFile for RawFile {
 }
 
 /// .zip or .lz4 or any one packer
-pub trait Packer: Send {
+pub trait Packer: Send+Sync {
     fn pack_name(&self) -> &'static str;
     //return bool: remove_log_file
     fn do_pack(&self, log_file: File, log_file_path: &str) -> Result<bool, LogError>;
@@ -161,9 +160,9 @@ pub trait Packer: Send {
 
 /// split log file allow pack compress log
 /// Memory space swop running time , reduces the number of repeated queries for IO
-pub struct FileSplitAppender<F: SplitFile, P: Packer> {
+pub struct FileSplitAppender<F: SplitFile> {
     file: F,
-    packer: Arc<P>,
+    packer: Arc<Box<dyn Packer>>,
     dir_path: String,
     sender: Sender<LogPack>,
     temp_size: LogSize,
@@ -172,13 +171,13 @@ pub struct FileSplitAppender<F: SplitFile, P: Packer> {
     temp_name: String,
 }
 
-impl<F: SplitFile, P: Packer + Sync + 'static> FileSplitAppender<F, P> {
+impl<F: SplitFile> FileSplitAppender<F> {
     pub fn new<R: Keep + 'static>(
         file_path: &str,
         temp_size: LogSize,
         rolling_type: R,
-        packer: P,
-    ) -> Result<FileSplitAppender<F, P>, LogError> {
+        packer: Box<dyn Packer>,
+    ) -> Result<FileSplitAppender<F>, LogError> {
         let temp_name = {
             let buf = Path::new(&file_path);
             let mut name = if buf.is_file() {
@@ -201,7 +200,7 @@ impl<F: SplitFile, P: Packer + Sync + 'static> FileSplitAppender<F, P> {
                 dir_path = v.to_str().unwrap_or_default().to_string();
             }
         }
-        let _= std::fs::create_dir_all(&dir_path);
+        let _ = std::fs::create_dir_all(&dir_path);
         let mut sp = "";
         if !dir_path.is_empty() {
             sp = "/";
@@ -214,7 +213,7 @@ impl<F: SplitFile, P: Packer + Sync + 'static> FileSplitAppender<F, P> {
             offset += 1;
         }
         temp_bytes.store(offset, Ordering::Relaxed);
-        let _= file.seek(SeekFrom::Start(temp_bytes.load(Ordering::Relaxed) as u64));
+        let _ = file.seek(SeekFrom::Start(temp_bytes.load(Ordering::Relaxed) as u64));
         let (sender, receiver) = chan(None);
         let arc_packer = Arc::new(packer);
         spawn_saver(temp_name.clone(), receiver, rolling_type, arc_packer.clone());
@@ -237,8 +236,8 @@ impl<F: SplitFile, P: Packer + Sync + 'static> FileSplitAppender<F, P> {
         let first_file_path = format!("{}{}{}", self.dir_path, sp, &self.temp_name);
         let new_log_name = self.packer.log_name_create(&first_file_path);
         self.file.flush();
-        let _= std::fs::copy(&first_file_path, &new_log_name);
-        let _= self.sender.send(LogPack {
+        let _ = std::fs::copy(&first_file_path, &new_log_name);
+        let _ = self.sender.send(LogPack {
             dir: self.dir_path.clone(),
             new_log_name: new_log_name,
             wg: None,
@@ -248,7 +247,7 @@ impl<F: SplitFile, P: Packer + Sync + 'static> FileSplitAppender<F, P> {
 
     pub fn truncate(&self) {
         //reset data
-        let _= self.file.truncate();
+        let _ = self.file.truncate();
         self.temp_bytes.store(0, Ordering::SeqCst);
     }
 }
@@ -262,7 +261,7 @@ pub struct LogPack {
 
 impl LogPack {
     /// write an Pack to zip file
-    pub fn do_pack<P: Packer>(&self, packer: &P) -> Result<bool, LogError> {
+    pub fn do_pack(&self, packer: &Box<dyn Packer>) -> Result<bool, LogError> {
         let log_file_path = self.new_log_name.as_str();
         if log_file_path.is_empty() {
             return Err(LogError::from("log_file_path.is_empty"));
@@ -332,6 +331,7 @@ pub trait Keep: Send {
 
 ///rolling keep type
 pub type RollingType = KeepType;
+
 ///rolling keep type
 #[derive(Copy, Clone, Debug)]
 pub enum KeepType {
@@ -382,7 +382,7 @@ impl Keep for KeepType {
     }
 }
 
-impl<F: SplitFile, P: Packer + Sync + 'static> LogAppender for FileSplitAppender<F, P> {
+impl<F: SplitFile> LogAppender for FileSplitAppender<F> {
     fn do_logs(&self, records: &[FastLogRecord]) {
         //if temp_bytes is full,must send pack
         let mut temp = String::with_capacity(records.len() * 10);
@@ -412,7 +412,7 @@ impl<F: SplitFile, P: Packer + Sync + 'static> LogAppender for FileSplitAppender
                 }
                 Command::CommandExit => {}
                 Command::CommandFlush(ref w) => {
-                    let _= self.sender.send(LogPack {
+                    let _ = self.sender.send(LogPack {
                         dir: "".to_string(),
                         new_log_name: "".to_string(),
                         wg: Some(w.clone()),
@@ -421,7 +421,7 @@ impl<F: SplitFile, P: Packer + Sync + 'static> LogAppender for FileSplitAppender
             }
         }
         if !temp.is_empty() {
-            let _= self.temp_bytes.fetch_add(
+            let _ = self.temp_bytes.fetch_add(
                 {
                     let w = self.file.write(temp.as_bytes());
                     if let Ok(w) = w {
@@ -439,18 +439,21 @@ impl<F: SplitFile, P: Packer + Sync + 'static> LogAppender for FileSplitAppender
 }
 
 ///spawn an saver thread to save log file or zip file
-fn spawn_saver<P: Packer + Sync + 'static, R: Keep + 'static>(
+fn spawn_saver<R: Keep + 'static>(
     temp_name: String,
     r: Receiver<LogPack>,
     rolling_type: R,
-    packer: Arc<P>,
+    packer: Arc<Box<dyn Packer>>,
 ) {
     std::thread::spawn(move || {
         loop {
             if let Ok(pack) = r.recv() {
+                if pack.wg.is_some() {
+                    return;
+                }
                 let log_file_path = pack.new_log_name.clone();
                 //do save pack
-                let remove = pack.do_pack(packer.deref());
+                let remove = pack.do_pack(packer.as_ref());
                 if let Ok(remove) = remove {
                     if remove {
                         let _ = std::fs::remove_file(log_file_path);

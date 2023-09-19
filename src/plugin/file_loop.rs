@@ -6,17 +6,17 @@ use crate::plugin::packer::LogPacker;
 
 /// Single logs are stored in rolling mode by capacity
 pub struct FileLoopAppender<F: SplitFile> {
-    file: FileSplitAppender<F, LogPacker>,
+    file: FileSplitAppender<F>,
 }
 
 impl<F: SplitFile> FileLoopAppender<F> {
     pub fn new(log_file_path: &str, size: LogSize) -> Result<FileLoopAppender<F>, LogError> {
         Ok(Self {
-            file: FileSplitAppender::<F, LogPacker>::new(
+            file: FileSplitAppender::<F>::new(
                 log_file_path,
                 size,
                 KeepType::KeepNum(1),
-                LogPacker {},
+                Box::new(LogPacker {}),
             )?,
         })
     }
