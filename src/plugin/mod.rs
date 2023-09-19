@@ -4,5 +4,6 @@ pub mod file_loop;
 #[cfg(feature = "mmap")]
 pub mod file_mmap;
 pub mod file_split;
+pub mod file_daily;
 pub mod packer;
 pub mod roller;

@@ -33,6 +33,9 @@ path = "src/bench_test_file.rs"
 name = "bench_test_file_split"
 path = "src/bench_test_file_split.rs"
 [[bin]]
+name = "bench_test_file_daily"
+path = "src/bench_test_file_daily.rs"
+[[bin]]
 name = "split_log_loop"
 path = "src/split_log_loop.rs"
 [[bin]]
@@ -47,6 +50,9 @@ path = "src/format_log_json.rs"
 [[bin]]
 name = "split_log_mmap"
 path = "src/split_log_mmap.rs"
+[[bin]]
+name = "split_log_daily"
+path = "src/split_log_daily.rs"
 [dependencies]
 log = { version = "0.4", features = ["std"] }
 crossbeam-channel = "0.5"

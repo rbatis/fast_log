@@ -3,9 +3,10 @@ use crate::consts::LogSize;
 use crate::filter::{Filter, NoFilter};
 use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
+use crate::plugin::file_daily::FileDailyAppender;
 use crate::plugin::file_loop::FileLoopAppender;
 use crate::plugin::file_split::{FileSplitAppender, Packer, RawFile, SplitFile};
-use crate::plugin::roller::RollingType;
+use crate::plugin::roller::{DailyRollingType, RollingType};
 use crate::FastLogFormat;
 use dark_std::sync::SyncVec;
 use log::LevelFilter;
@@ -109,6 +110,23 @@ impl Config {
         )));
         self
     }
+
+    /// add a FileDailyAppender
+    pub fn file_daily<P: Packer + 'static>(
+        self,
+        file_path: &str,
+        temp_size: LogSize,
+        rolling_type: DailyRollingType,
+        packer: P,
+    ) -> Self {
+        self.appends.push(Mutex::new(Box::new(
+            FileDailyAppender::<RawFile>::new(
+                file_path,
+                temp_size,
+                Box::new(rolling_type),
+                Box::new(packer),
+            )
+            .unwrap(),
         )));
         self
     }

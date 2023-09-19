@@ -280,7 +280,7 @@ impl<F: SplitFile> LogAppender for FileSplitAppender<F> {
 }
 
 ///spawn an saver thread to save log file or zip file
-fn spawn_saver(temp_name: String, r: Receiver<LogPack>, packer: Box<dyn Packer>) {
+pub fn spawn_saver(temp_name: String, r: Receiver<LogPack>, packer: Box<dyn Packer>) {
     std::thread::spawn(move || {
         loop {
             if let Ok(pack) = r.recv() {
