@@ -267,7 +267,10 @@ impl LogPack {
         if log_file_path.is_empty() {
             return Err(LogError::from("log_file_path.is_empty"));
         }
-        let log_file = OpenOptions::new().read(true).open(log_file_path);
+        let log_file = OpenOptions::new()
+            .write(true)
+            .read(true)
+            .open(log_file_path);
         if log_file.is_err() {
             return Err(LogError::from(format!(
                 "open(log_file_path={}) fail",
