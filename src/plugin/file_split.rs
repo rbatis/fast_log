@@ -110,7 +110,7 @@ pub struct FileSplitAppender<F: SplitFile> {
 }
 
 impl<F: SplitFile> FileSplitAppender<F> {
-    pub fn new<P: Packer + Sync + 'static, R: Rolling + Sync + 'static>(
+    pub fn new<P: Packer + 'static, R: Rolling + 'static>(
         file_path: &str,
         temp_size: LogSize,
         rolling: R,
@@ -460,7 +460,7 @@ impl<F: SplitFile> LogAppender for FileSplitAppender<F> {
 }
 
 ///spawn an saver thread to save log file or zip file
-fn spawn_saver<P: Packer + Sync + 'static, R: Rolling + Send + Sync + 'static>(
+fn spawn_saver<P: Packer + 'static, R: Rolling + 'static>(
     temp_name: String,
     r: Receiver<LogPack>,
     rolling: R,

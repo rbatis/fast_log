@@ -90,7 +90,7 @@ impl Config {
         self
     }
     /// add a FileSplitAppender
-    pub fn file_split<P: Packer + Sync + 'static, R: Rolling + Sync + 'static>(
+    pub fn file_split<P: Packer + 'static, R: Rolling + 'static>(
         self,
         file_path: &str,
         temp_size: LogSize,
@@ -117,11 +117,7 @@ impl Config {
     //                 LogPacker {},
     //             ),
     //     );
-    pub fn split<
-        F: SplitFile + 'static,
-        R: Rolling + Sync + 'static,
-        P: Packer + Sync + 'static,
-    >(
+    pub fn split<F: SplitFile + 'static, R: Rolling + 'static, P: Packer + 'static>(
         self,
         file_path: &str,
         temp_size: LogSize,
