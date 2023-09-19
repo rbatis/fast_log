@@ -143,6 +143,7 @@ pub trait Packer: Send {
             .to_str()
             .unwrap_or_default()
             .to_string();
+        let temp_name = temp_name.trim_end_matches(&format!(".{}", self.pack_name()));
         if file_name.starts_with(&temp_name) {
             let mut time_str = file_name.trim_start_matches(&temp_name).to_string();
             if let Some(v) = time_str.rfind(".") {
