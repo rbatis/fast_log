@@ -11,16 +11,14 @@ impl Rolling for RollingAll {
 }
 
 /// rolling from file num
-pub struct RollingNum {
-    pub num: i64,
-}
+pub struct RollingNum(pub i64);
 
 impl Rolling for RollingNum {
     fn do_rolling(&self, dir: &str, temp_name: &str) -> i64 {
         let mut removed = 0;
         let paths_vec = self.read_paths(dir, temp_name);
         for index in 0..paths_vec.len() {
-            if index >= (self.num) as usize {
+            if index >= (self.0) as usize {
                 let item = &paths_vec[index];
                 std::fs::remove_file(item.path());
                 removed += 1;
@@ -31,9 +29,7 @@ impl Rolling for RollingNum {
 }
 
 /// rolling from metadata
-pub struct RollingDuration {
-    pub duration: Duration,
-}
+pub struct RollingDuration(pub Duration);
 
 impl Rolling for RollingDuration {
     fn do_rolling(&self, dir: &str, temp_name: &str) -> i64 {
@@ -47,7 +43,7 @@ impl Rolling for RollingDuration {
             if let Ok(m) = item.metadata() {
                 if let Ok(c) = m.created() {
                     let time = DateTime::from(c);
-                    if now.clone().sub(self.duration.clone()) > time {
+                    if now.clone().sub(self.0.clone()) > time {
                         std::fs::remove_file(item.path());
                         removed += 1;
                     }

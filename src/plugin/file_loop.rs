@@ -16,7 +16,7 @@ impl<F: SplitFile> FileLoopAppender<F> {
             file: FileSplitAppender::<F, LogPacker>::new(
                 log_file_path,
                 size,
-                RollingNum { num: 1 },
+                RollingNum(1),
                 LogPacker {},
             )?,
         })
