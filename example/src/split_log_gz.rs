@@ -15,5 +15,5 @@ fn main() {
         log::info!("Commencing yak shaving");
     }
     log::logger().flush();
-    println!("you can see log files in path: {}", "target/logs/")
+    println!("you can see log files in path: {}", "target/logs/");
 }

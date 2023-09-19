@@ -261,21 +261,23 @@ pub struct LogPack {
 
 impl LogPack {
     /// write an Pack to zip file
-    pub fn do_pack<P: Packer>(mut self, packer: &P) -> Result<bool, LogPack> {
+    pub fn do_pack<P: Packer>(&self, packer: &P) -> Result<bool, LogError> {
         let log_file_path = self.new_log_name.as_str();
         if log_file_path.is_empty() {
-            return Err(self);
+            return Err(LogError::from("log_file_path.is_empty"));
         }
         let log_file = OpenOptions::new().read(true).open(log_file_path);
         if log_file.is_err() {
-            return Err(self);
+            return Err(LogError::from(format!(
+                "open(log_file_path={}) fail",
+                log_file_path
+            )));
         }
         //make
         let r = packer.do_pack(log_file.unwrap(), log_file_path);
         if r.is_err() && packer.retry() > 0 {
             let mut retry = 1;
             while let Err(packs) = self.do_pack(packer) {
-                self = packs;
                 retry += 1;
                 if retry > packer.retry() {
                     break;
@@ -305,7 +307,6 @@ pub trait Keep: Send {
                     Ok(path) => {
                         if let Some(v) = path.file_name().to_str() {
                             if v == temp_name {
-                                //temp_file = Some(path);
                                 continue;
                             }
                             if !v.starts_with(&base_name) {
@@ -340,7 +341,7 @@ pub enum RollingType {
 }
 
 impl Keep for RollingType {
-    fn do_keep(&self, temp_name: &str, dir: &str) -> i64 {
+    fn do_keep(&self, dir: &str, temp_name: &str) -> i64 {
         let mut removed = 0;
         match self {
             RollingType::KeepNum(n) => {
@@ -437,8 +438,6 @@ fn spawn_saver<P: Packer + Sync + 'static, R: Keep + 'static>(
     std::thread::spawn(move || {
         loop {
             if let Ok(pack) = r.recv() {
-                //do rolling
-                rolling.do_keep(&pack.dir, &temp_name);
                 let log_file_path = pack.new_log_name.clone();
                 //do save pack
                 let remove = pack.do_pack(packer.deref());
@@ -447,6 +446,8 @@ fn spawn_saver<P: Packer + Sync + 'static, R: Keep + 'static>(
                         std::fs::remove_file(log_file_path);
                     }
                 }
+                //do rolling
+                rolling.do_keep(&pack.dir, &temp_name);
             } else {
                 break;
             }

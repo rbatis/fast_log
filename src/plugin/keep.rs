@@ -20,7 +20,8 @@ impl Keep for KeepNum {
         for index in 0..paths_vec.len() {
             if index >= (self.0) as usize {
                 let item = &paths_vec[index];
-                std::fs::remove_file(item.path());
+                let path = item.path();
+                std::fs::remove_file(path);
                 removed += 1;
             }
         }
