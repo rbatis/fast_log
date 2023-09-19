@@ -2,7 +2,6 @@ use crate::appender::{Command, FastLogRecord, LogAppender};
 use crate::consts::LogSize;
 use crate::error::LogError;
 use crate::{chan, Receiver, Sender, WaitGroup};
-use dark_std::errors::new;
 use fastdate::DateTime;
 use std::cell::RefCell;
 use std::fs::{DirEntry, File, OpenOptions};
@@ -107,7 +106,7 @@ pub trait Packer: Send {
             .to_str()
             .unwrap_or_default()
             .to_string();
-        let mut new_log_name = file_name.to_string();
+        let mut new_log_name = String::new();
         let point = file_name.rfind(".");
         match point {
             None => {

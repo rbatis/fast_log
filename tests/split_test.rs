@@ -45,4 +45,11 @@ mod test {
             .unwrap();
         assert_eq!(t.to_string(), "2023-07-20 10:13:17.452247");
     }
+
+    #[test]
+    fn test_log_name_create() {
+        let p = LogPacker {};
+        let name = p.log_name_create("temp.log");
+        assert_eq!(name.ends_with(".log"), true);
+    }
 }
