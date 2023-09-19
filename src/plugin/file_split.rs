@@ -1,7 +1,7 @@
 use crate::appender::{Command, FastLogRecord, LogAppender};
 use crate::consts::LogSize;
 use crate::error::LogError;
-use crate::{chan, Receiver, Sender};
+use crate::{chan, Receiver, Sender, WaitGroup};
 use dark_std::errors::new;
 use fastdate::DateTime;
 use std::cell::RefCell;
@@ -242,6 +242,7 @@ impl<F: SplitFile, P: Packer + Sync + 'static> FileSplitAppender<F, P> {
         self.sender.send(LogPack {
             dir: self.dir_path.clone(),
             new_log_name: new_log_name,
+            wg: None,
         });
         self.truncate();
     }
@@ -257,6 +258,7 @@ impl<F: SplitFile, P: Packer + Sync + 'static> FileSplitAppender<F, P> {
 pub struct LogPack {
     pub dir: String,
     pub new_log_name: String,
+    pub wg: Option<WaitGroup>,
 }
 
 impl LogPack {
@@ -407,7 +409,13 @@ impl<F: SplitFile, P: Packer + Sync + 'static> LogAppender for FileSplitAppender
                     temp.push_str(x.formated.as_str());
                 }
                 Command::CommandExit => {}
-                Command::CommandFlush(_) => {}
+                Command::CommandFlush(ref w) => {
+                    self.sender.send(LogPack {
+                        dir: "".to_string(),
+                        new_log_name: "".to_string(),
+                        wg: Some(w.clone()),
+                    });
+                }
             }
         }
         if !temp.is_empty() {
