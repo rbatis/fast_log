@@ -99,7 +99,7 @@ pub trait Packer: Send {
         return 0;
     }
 
-    fn create_log_name(&self, first_file_path: &str) -> String {
+    fn log_name_create(&self, first_file_path: &str) -> String {
         let path = Path::new(first_file_path);
         let file_name = path
             .file_name()
@@ -135,7 +135,7 @@ pub trait Packer: Send {
         return new_log_name;
     }
 
-    fn parse_log_name(&self, file_name: &str, temp_name: &str) -> Result<DateTime, LogError> {
+    fn log_name_parse_time(&self, file_name: &str, temp_name: &str) -> Result<DateTime, LogError> {
         let path = Path::new(file_name);
         let file_name = path
             .file_name()
@@ -236,7 +236,7 @@ impl<F: SplitFile, P: Packer + Sync + 'static> FileSplitAppender<F, P> {
             sp = "/";
         }
         let first_file_path = format!("{}{}{}", self.dir_path, sp, &self.temp_name);
-        let new_log_name = self.packer.create_log_name(&first_file_path);
+        let new_log_name = self.packer.log_name_create(&first_file_path);
         self.file.flush();
         std::fs::copy(&first_file_path, &new_log_name);
         self.sender.send(LogPack {

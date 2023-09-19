@@ -41,7 +41,7 @@ mod test {
     #[test]
     fn test_parse_log_name() {
         let t = LogPacker {}
-            .parse_log_name("temp2023-07-20T10-13-17.452247.log", "temp.log")
+            .log_name_parse_time("temp2023-07-20T10-13-17.452247.log", "temp.log")
             .unwrap();
         assert_eq!(t.to_string(), "2023-07-20 10:13:17.452247");
     }
