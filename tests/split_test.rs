@@ -33,7 +33,7 @@ mod test {
         }]);
         appender.send_pack();
         sleep(Duration::from_secs(1));
-        let rolling_num = RollingNum { num: 0 }.do_rolling("target/test/", "temp.log");
+        let rolling_num = RollingNum(0).do_rolling("target/test/", "temp.log");
         assert_eq!(rolling_num, 1);
         let _ = remove_dir_all("target/test/");
     }
