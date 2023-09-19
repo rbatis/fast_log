@@ -289,8 +289,10 @@ impl LogPack {
     }
 }
 
+/// keep logs, for example keep by log num or keep by log create time.
+/// that do not meet the retention conditions will be deleted
 pub trait Keep: Send {
-    /// return removed
+    /// return removed nums
     fn do_keep(&self, dir: &str, temp_name: &str) -> i64;
     fn read_paths(&self, dir: &str, temp_name: &str) -> Vec<DirEntry> {
         let base_name = get_base_name(&Path::new(temp_name));
