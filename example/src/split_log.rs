@@ -1,7 +1,7 @@
 use fast_log::config::Config;
 use fast_log::consts::LogSize;
+use fast_log::plugin::cleaner::{RollingAll, RollingNum};
 use fast_log::plugin::packer::LogPacker;
-use fast_log::plugin::rolling::{RollingAll, RollingNum};
 
 fn main() {
     //file_path also can use '"target/logs/test.log"'

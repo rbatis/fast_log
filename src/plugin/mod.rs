@@ -6,4 +6,4 @@ pub mod file_mmap;
 pub mod file_split;
 pub mod packer;
 
-pub mod rolling;
+pub mod cleaner;

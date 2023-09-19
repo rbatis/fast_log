@@ -4,7 +4,7 @@ use crate::filter::{Filter, NoFilter};
 use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
 use crate::plugin::file_loop::FileLoopAppender;
-use crate::plugin::file_split::{FileSplitAppender, Packer, RawFile, Rolling, SplitFile};
+use crate::plugin::file_split::{Cleaner, FileSplitAppender, Packer, RawFile, SplitFile};
 use crate::FastLogFormat;
 use dark_std::sync::SyncVec;
 use log::LevelFilter;
@@ -90,7 +90,7 @@ impl Config {
         self
     }
     /// add a FileSplitAppender
-    pub fn file_split<P: Packer + Sync + 'static, R: Rolling + 'static>(
+    pub fn file_split<P: Packer + Sync + 'static, R: Cleaner + 'static>(
         self,
         file_path: &str,
         temp_size: LogSize,
@@ -118,7 +118,7 @@ impl Config {
     //                 LogPacker {},
     //             ),
     //     );
-    pub fn split<F: SplitFile + 'static, R: Rolling + 'static, P: Packer + Sync + 'static>(
+    pub fn split<F: SplitFile + 'static, R: Cleaner + 'static, P: Packer + Sync + 'static>(
         self,
         file_path: &str,
         temp_size: LogSize,
