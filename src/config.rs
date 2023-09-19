@@ -90,7 +90,7 @@ impl Config {
         self
     }
     /// add a FileSplitAppender
-    pub fn file_split<P: Packer + 'static, R: Rolling + 'static>(
+    pub fn file_split<P: Packer + Sync + 'static, R: Rolling + 'static>(
         self,
         file_path: &str,
         temp_size: LogSize,
@@ -98,7 +98,8 @@ impl Config {
         packer: P,
     ) -> Self {
         self.appends.push(Mutex::new(Box::new(
-            FileSplitAppender::<RawFile>::new(file_path, temp_size, rolling_type, packer).unwrap(),
+            FileSplitAppender::<RawFile, P>::new(file_path, temp_size, rolling_type, packer)
+                .unwrap(),
         )));
         self
     }
@@ -117,7 +118,7 @@ impl Config {
     //                 LogPacker {},
     //             ),
     //     );
-    pub fn split<F: SplitFile + 'static, R: Rolling + 'static, P: Packer + 'static>(
+    pub fn split<F: SplitFile + 'static, R: Rolling + 'static, P: Packer + Sync + 'static>(
         self,
         file_path: &str,
         temp_size: LogSize,
@@ -125,7 +126,7 @@ impl Config {
         packer: P,
     ) -> Self {
         self.appends.push(Mutex::new(Box::new(
-            FileSplitAppender::<F>::new(file_path, temp_size, rolling_type, packer).unwrap(),
+            FileSplitAppender::<F, P>::new(file_path, temp_size, rolling_type, packer).unwrap(),
         )));
         self
     }

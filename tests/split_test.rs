@@ -2,7 +2,7 @@
 mod test {
     use fast_log::appender::{Command, FastLogRecord, LogAppender};
     use fast_log::consts::LogSize;
-    use fast_log::plugin::file_split::{FileSplitAppender, RawFile, Rolling};
+    use fast_log::plugin::file_split::{FileSplitAppender, Packer, RawFile, Rolling};
     use fast_log::plugin::packer::LogPacker;
     use fast_log::plugin::rolling::{RollingAll, RollingNum};
     use log::Level;
@@ -13,7 +13,7 @@ mod test {
     #[test]
     fn test_send_pack() {
         let _ = remove_dir_all("target/test/");
-        let appender = FileSplitAppender::<RawFile>::new(
+        let appender = FileSplitAppender::<RawFile, LogPacker>::new(
             "target/test/",
             LogSize::MB(1),
             RollingAll {},
@@ -39,8 +39,9 @@ mod test {
     }
 
     #[test]
-    fn test_file_name_parse_time() {
-        let t = RollingAll::file_name_parse_time("temp2023-07-20T10-13-17.452247.log", "temp.log")
+    fn test_parse_log_name() {
+        let t = LogPacker {}
+            .parse_log_name("temp2023-07-20T10-13-17.452247.log", "temp.log")
             .unwrap();
         assert_eq!(t.to_string(), "2023-07-20 10:13:17.452247");
     }

@@ -7,13 +7,13 @@ use crate::plugin::rolling::RollingNum;
 
 /// Single logs are stored in rolling mode by capacity
 pub struct FileLoopAppender<F: SplitFile> {
-    file: FileSplitAppender<F>,
+    file: FileSplitAppender<F, LogPacker>,
 }
 
 impl<F: SplitFile> FileLoopAppender<F> {
     pub fn new(log_file_path: &str, size: LogSize) -> Result<FileLoopAppender<F>, LogError> {
         Ok(Self {
-            file: FileSplitAppender::<F>::new(
+            file: FileSplitAppender::<F, LogPacker>::new(
                 log_file_path,
                 size,
                 RollingNum { num: 1 },
