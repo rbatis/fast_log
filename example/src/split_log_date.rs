@@ -5,41 +5,36 @@ use fast_log::plugin::file_name::FileName;
 use fast_log::plugin::file_split::{KeepType, Packer};
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
-use std::path::Path;
 use std::thread::sleep;
 use std::time::Duration;
 
 ///pack by an date
 #[derive(Clone)]
 pub struct DateLogPacker {}
-
-impl DateLogPacker {
-    pub fn log_name_create_by_time(
-        &self,
-        first_file_path: &str,
-        date: fastdate::DateTime,
-    ) -> String {
-        let file_name = first_file_path.extract_file_name();
-        let mut new_log_name = date.to_string().replace(" ", "T").replace(":", "-");
-        new_log_name.push_str(".");
-        new_log_name.push_str(self.pack_name());
-        new_log_name = first_file_path.trim_end_matches(&file_name).to_string() + &new_log_name;
-        return new_log_name;
-    }
-}
 impl Packer for DateLogPacker {
     fn pack_name(&self) -> &'static str {
         "log"
     }
 
     fn do_pack(&self, mut log_file: File, log_file_path: &str) -> Result<bool, LogError> {
+        impl DateLogPacker {
+            pub fn new_log_name(&self, first_file_path: &str, date: fastdate::DateTime) -> String {
+                let file_name = first_file_path.extract_file_name();
+                let mut new_log_name = date.to_string().replace(" ", "T").replace(":", "-");
+                new_log_name.push_str(".");
+                new_log_name.push_str(self.pack_name());
+                new_log_name =
+                    first_file_path.trim_end_matches(&file_name).to_string() + &new_log_name;
+                return new_log_name;
+            }
+        }
         //do nothing,and not remove file
         let now = fastdate::DateTime::now()
             .set_hour(0)
             .set_min(0)
             .set_sec(0)
             .set_nano(0);
-        let name = self.log_name_create_by_time(log_file_path, now);
+        let name = self.new_log_name(log_file_path, now);
         let mut f = OpenOptions::new()
             .write(true)
             .read(true)
