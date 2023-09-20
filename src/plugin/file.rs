@@ -38,7 +38,7 @@ impl LogAppender for FileAppender {
                 Command::CommandExit => {}
                 Command::CommandFlush(_) => {
                     let _ = log_file.write_all(buf.as_bytes());
-                    let _ = self.file.borrow_mut().flush();
+                    let _ = log_file.flush();
                     buf.clear();
                 }
             }
