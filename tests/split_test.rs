@@ -2,6 +2,7 @@
 mod test {
     use fast_log::appender::{Command, FastLogRecord, LogAppender};
     use fast_log::consts::LogSize;
+    use fast_log::plugin::file_name::FileName;
     use fast_log::plugin::file_split::{FileSplitAppender, Keep, Packer, RawFile, RollingType};
     use fast_log::plugin::packer::LogPacker;
     use log::Level;
@@ -50,5 +51,35 @@ mod test {
         let p = LogPacker {};
         let name = p.log_name_create("temp.log");
         assert_eq!(name.ends_with(".log"), true);
+    }
+
+    #[test]
+    fn test_extract_file_name() {
+        let p = "temp.log".extract_file_name();
+        assert_eq!(p, "temp.log");
+    }
+
+    #[test]
+    fn test_extract_file_name2() {
+        let p = "logs/temp.log".extract_file_name();
+        assert_eq!(p, "temp.log");
+    }
+
+    #[test]
+    fn test_extract_file_name3() {
+        let p = "logs/".extract_file_name();
+        assert_eq!(p, "");
+    }
+
+    #[test]
+    fn test_extract_file_name4() {
+        let p = "C:/logs".extract_file_name();
+        assert_eq!(p, "logs");
+    }
+
+    #[test]
+    fn test_extract_file_name5() {
+        let p = "C:/logs/aa.log".extract_file_name();
+        assert_eq!(p, "aa.log");
     }
 }

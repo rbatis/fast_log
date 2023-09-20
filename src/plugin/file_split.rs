@@ -1,20 +1,20 @@
 use crate::appender::{Command, FastLogRecord, LogAppender};
 use crate::consts::LogSize;
 use crate::error::LogError;
+use crate::plugin::file_name::FileName;
 use crate::{chan, Receiver, Sender, WaitGroup};
 use fastdate::DateTime;
 use std::cell::RefCell;
 use std::fs::{DirEntry, File, OpenOptions};
 use std::io::{Seek, SeekFrom, Write};
-use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
 pub trait SplitFile: Send {
     fn new(path: &str, temp_size: LogSize) -> Result<Self, LogError>
-        where
-            Self: Sized;
+    where
+        Self: Sized;
     fn seek(&self, pos: SeekFrom) -> std::io::Result<u64>;
     fn write(&self, buf: &[u8]) -> std::io::Result<usize>;
     fn truncate(&self) -> std::io::Result<()>;
@@ -38,8 +38,8 @@ impl From<File> for RawFile {
 
 impl SplitFile for RawFile {
     fn new(path: &str, _temp_size: LogSize) -> Result<Self, LogError>
-        where
-            Self: Sized,
+    where
+        Self: Sized,
     {
         let file = OpenOptions::new()
             .create(true)
@@ -88,7 +88,7 @@ impl SplitFile for RawFile {
 }
 
 /// .zip or .lz4 or any one packer
-pub trait Packer: Send+Sync {
+pub trait Packer: Send + Sync {
     fn pack_name(&self) -> &'static str;
     //return bool: remove_log_file
     fn do_pack(&self, log_file: File, log_file_path: &str) -> Result<bool, LogError>;
@@ -98,13 +98,7 @@ pub trait Packer: Send+Sync {
     }
 
     fn log_name_create(&self, first_file_path: &str) -> String {
-        let path = Path::new(first_file_path);
-        let file_name = path
-            .file_name()
-            .unwrap_or_default()
-            .to_str()
-            .unwrap_or_default()
-            .to_string();
+        let file_name = first_file_path.extract_file_name();
         let mut new_log_name = String::new();
         let point = file_name.rfind(".");
         match point {
@@ -134,13 +128,7 @@ pub trait Packer: Send+Sync {
     }
 
     fn log_name_parse_time(&self, file_name: &str, temp_name: &str) -> Result<DateTime, LogError> {
-        let path = Path::new(file_name);
-        let file_name = path
-            .file_name()
-            .unwrap_or_default()
-            .to_str()
-            .unwrap_or_default()
-            .to_string();
+        let file_name = file_name.extract_file_name();
         let temp_name = temp_name.trim_end_matches(&format!(".{}", self.pack_name()));
         if file_name.starts_with(&temp_name) {
             let mut time_str = file_name.trim_start_matches(&temp_name).to_string();
@@ -179,16 +167,7 @@ impl<F: SplitFile> FileSplitAppender<F> {
         packer: Box<dyn Packer>,
     ) -> Result<FileSplitAppender<F>, LogError> {
         let temp_name = {
-            let buf = Path::new(&file_path);
-            let mut name = if buf.is_file() {
-                buf.file_name()
-                    .unwrap_or_default()
-                    .to_str()
-                    .unwrap_or_default()
-                    .to_string()
-            } else {
-                String::default()
-            };
+            let mut name = file_path.extract_file_name().to_string();
             if name.is_empty() {
                 name = "temp.log".to_string();
             }
@@ -216,7 +195,12 @@ impl<F: SplitFile> FileSplitAppender<F> {
         let _ = file.seek(SeekFrom::Start(temp_bytes.load(Ordering::Relaxed) as u64));
         let (sender, receiver) = chan(None);
         let arc_packer = Arc::new(packer);
-        spawn_saver(temp_name.clone(), receiver, rolling_type, arc_packer.clone());
+        spawn_saver(
+            temp_name.clone(),
+            receiver,
+            rolling_type,
+            arc_packer.clone(),
+        );
         Ok(Self {
             temp_bytes,
             dir_path: dir_path.to_string(),
@@ -251,7 +235,6 @@ impl<F: SplitFile> FileSplitAppender<F> {
         self.temp_bytes.store(0, Ordering::SeqCst);
     }
 }
-
 ///log data pack
 pub struct LogPack {
     pub dir: String,
@@ -301,7 +284,7 @@ pub trait Keep: Send {
     /// return removed nums
     fn do_keep(&self, dir: &str, temp_name: &str) -> i64;
     fn read_paths(&self, dir: &str, temp_name: &str) -> Vec<DirEntry> {
-        let base_name = get_base_name(&Path::new(temp_name));
+        let base_name = get_base_name(temp_name);
         let paths = std::fs::read_dir(dir);
         if let Ok(paths) = paths {
             //let mut temp_file = None;
@@ -468,13 +451,8 @@ fn spawn_saver<R: Keep + 'static>(
     });
 }
 
-fn get_base_name(path: &Path) -> String {
-    let file_name = path
-        .file_name()
-        .unwrap_or_default()
-        .to_str()
-        .unwrap_or_default()
-        .to_string();
+fn get_base_name(path: &str) -> String {
+    let file_name = path.extract_file_name();
     let p = file_name.rfind(".");
     match p {
         None => file_name,
