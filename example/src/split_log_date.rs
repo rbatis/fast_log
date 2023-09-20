@@ -1,7 +1,8 @@
 use fast_log::config::Config;
 use fast_log::consts::LogSize;
 use fast_log::error::LogError;
-use fast_log::plugin::file_split::{Packer, KeepType};
+use fast_log::plugin::file_name::FileName;
+use fast_log::plugin::file_split::{KeepType, Packer};
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::Path;
@@ -18,13 +19,7 @@ impl DateLogPacker {
         first_file_path: &str,
         date: fastdate::DateTime,
     ) -> String {
-        let path = Path::new(first_file_path);
-        let file_name = path
-            .file_name()
-            .unwrap_or_default()
-            .to_str()
-            .unwrap_or_default()
-            .to_string();
+        let file_name = first_file_path.extract_file_name();
         let mut new_log_name = date.to_string().replace(" ", "T").replace(":", "-");
         new_log_name.push_str(".");
         new_log_name.push_str(self.pack_name());
