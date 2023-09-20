@@ -26,8 +26,4 @@ impl<F: SplitFile> LogAppender for FileLoopAppender<F> {
     fn do_logs(&self, records: &[FastLogRecord]) {
         self.file.do_logs(records);
     }
-
-    fn flush(&self) {
-        self.file.flush();
-    }
 }

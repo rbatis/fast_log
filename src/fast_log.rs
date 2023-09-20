@@ -63,7 +63,7 @@ impl Log for Logger {
         if let Some(filter) = LOGGER.cfg.get() {
             if let Some(send) = LOGGER.send.get() {
                 if !filter.filter.filter(record) {
-                    let _= send.send(FastLogRecord {
+                    let _ = send.send(FastLogRecord {
                         command: Command::CommandRecord,
                         level: record.level(),
                         target: record.metadata().target().to_string(),
@@ -145,7 +145,6 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                                 continue;
                             }
                             Command::CommandFlush(_) => {
-                                append.flush();
                                 continue;
                             }
                         }
@@ -192,7 +191,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                 }
                 let data = Arc::new(remain);
                 for x in senders.iter() {
-                    let _= x.send(data.clone());
+                    let _ = x.send(data.clone());
                 }
                 if exit {
                     break;

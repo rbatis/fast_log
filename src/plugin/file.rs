@@ -1,4 +1,4 @@
-use crate::appender::{FastLogRecord, LogAppender};
+use crate::appender::{Command, FastLogRecord, LogAppender};
 use crate::error::LogError;
 use std::cell::RefCell;
 use std::fs::{File, OpenOptions};
@@ -14,7 +14,7 @@ impl FileAppender {
         let log_file_path = log_file_path.replace("\\", "/");
         if let Some(right) = log_file_path.rfind("/") {
             let path = &log_file_path[0..right];
-            let _= std::fs::create_dir_all(path);
+            let _ = std::fs::create_dir_all(path);
         }
         Ok(Self {
             file: RefCell::new(
@@ -33,11 +33,16 @@ impl LogAppender for FileAppender {
         let mut buf = String::new();
         for x in records {
             buf.push_str(&x.formated);
+            match &x.command {
+                Command::CommandRecord => {}
+                Command::CommandExit => {}
+                Command::CommandFlush(_) => {
+                    let _ = log_file.write_all(buf.as_bytes());
+                    let _ = self.file.borrow_mut().flush();
+                    buf.clear();
+                }
+            }
         }
-        let _= log_file.write_all(buf.as_bytes());
-    }
-
-    fn flush(&self) {
-        let _= self.file.borrow_mut().flush();
+        let _ = log_file.write_all(buf.as_bytes());
     }
 }

@@ -6,9 +6,6 @@ use std::time::SystemTime;
 pub trait LogAppender: Send {
     /// Batch write log, or do nothing
     fn do_logs(&self, records: &[FastLogRecord]);
-
-    /// flush or do nothing
-    fn flush(&self) {}
 }
 
 #[derive(Clone, Debug)]

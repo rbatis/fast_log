@@ -417,8 +417,6 @@ impl<F: SplitFile> LogAppender for FileSplitAppender<F> {
             );
         }
     }
-
-    fn flush(&self) {}
 }
 
 ///spawn an saver thread to save log file or zip file
