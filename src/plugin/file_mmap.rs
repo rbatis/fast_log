@@ -1,7 +1,7 @@
 use crate::consts::LogSize;
 use crate::error::LogError;
 use crate::plugin::file_split::SplitFile;
-use memmap::{MmapMut, MmapOptions};
+use memmap2::{MmapMut, MmapOptions};
 use std::cell::{RefCell, UnsafeCell};
 use std::fs::{File, OpenOptions};
 use std::io::{SeekFrom, Write};
@@ -21,7 +21,7 @@ impl MmapFile {
         let log_file_path = log_file_path.replace("\\", "/");
         if let Some(right) = log_file_path.rfind("/") {
             let path = &log_file_path[0..right];
-            let _= std::fs::create_dir_all(path);
+            let _ = std::fs::create_dir_all(path);
         }
         let file = OpenOptions::new()
             .write(true)
@@ -136,7 +136,7 @@ impl SplitFile for MmapFile {
         file.set_len(self.size.get_len() as u64)?;
         let mmap = unsafe {
             MmapOptions::new()
-                .map(&file)
+                .map(&*file)
                 .map_err(|e| {
                     std::io::Error::new(
                         std::io::ErrorKind::InvalidInput,
@@ -151,7 +151,7 @@ impl SplitFile for MmapFile {
     }
 
     fn flush(&self) {
-        let _= self.bytes.borrow_mut().flush();
+        let _ = self.bytes.borrow_mut().flush();
     }
 
     fn len(&self) -> usize {
