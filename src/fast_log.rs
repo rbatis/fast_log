@@ -105,15 +105,15 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
         .map(|()| log::set_max_level(LOGGER.cfg.get().unwrap().level))
         .map_err(|e| LogError::from(e))?;
 
-    let mut recever_vec = vec![];
+    let mut receiver_vec = vec![];
     let mut sender_vec: Vec<Sender<Arc<Vec<FastLogRecord>>>> = vec![];
     let cfg = LOGGER.cfg.get().unwrap();
     for a in cfg.appends.iter() {
         let (s, r) = chan(cfg.chan_len);
         sender_vec.push(s);
-        recever_vec.push((r, a));
+        receiver_vec.push((r, a));
     }
-    for (receiver, appender) in recever_vec {
+    for (receiver, appender) in receiver_vec {
         spawn(move || {
             let mut exit = false;
             loop {
