@@ -47,12 +47,14 @@ impl DailyKeeper {
     }
 
     /// parse `temp_20230720_0.log`
-    pub fn file_name_parse_time(name: &str, temp_name: &str) -> Option<DateTime> {
-        let base_name = Self::get_base_name(temp_name);
+    pub fn file_name_parse_time(name: &str, base_name: &str) -> Option<DateTime> {
+        let base_name = Self::get_base_name(base_name);
         if name.starts_with(&base_name) {
             let mut time_str = name.trim_start_matches(&base_name).to_string();
             if let Some(v) = time_str.rfind("_") {
-                time_str = time_str[1..v].to_string();
+                if v > 1 {
+                    time_str = time_str[1..v].to_string();
+                }
             }
             let time = DateTime::parse("YYYYMMDD", &time_str);
             if let Ok(time) = time {
@@ -81,11 +83,11 @@ impl DailyKeeper {
 }
 
 impl Keep for DailyKeeper {
-    fn do_keep(&self, dir: &str, temp_name: &str) -> i64 {
+    fn do_keep(&self, dir: &str, base_name: &str) -> i64 {
         let mut removed = 0;
         match self.keep_type {
             DailyKeepType::KeepDays(n) => {
-                let paths_vec = self.read_paths(dir, temp_name);
+                let paths_vec = self.read_paths(dir, base_name);
                 let now = DateTime::now()
                     .set_hour(0)
                     .set_min(0)
@@ -95,7 +97,7 @@ impl Keep for DailyKeeper {
                     let item = &paths_vec[index];
                     let file_name = item.file_name();
                     let name = file_name.to_str().unwrap_or("").to_string();
-                    if let Some(time) = Self::file_name_parse_time(&name, temp_name) {
+                    if let Some(time) = Self::file_name_parse_time(&name, base_name) {
                         if now.clone().sub(Duration::from_day(n as u64)) > time {
                             let _ = std::fs::remove_file(item.path());
                             removed += 1;
@@ -201,4 +203,102 @@ fn main() {
     }
     log::logger().flush();
     println!("you can see log files in path: {}", "target/logs/")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use fast_log::plugin::packer::LogPacker;
+    use std::time::Duration;
+
+    #[test]
+    fn test_log_dailykeeper() {
+        let keeper = DailyKeeper::new(DailyKeepType::All, "log.txt");
+        let log_packer = LogPacker {};
+        let today = DateTime::now()
+            .set_hour(0)
+            .set_min(0)
+            .set_sec(0)
+            .set_nano(0);
+        let date_str = |date: &DateTime| date.to_string()[0..10].replace("-", "");
+        let today_date_str = date_str(&today);
+        let today_record = FastLogRecord {
+            command: fast_log::appender::Command::CommandRecord,
+            level: log::Level::Info,
+            target: String::default(),
+            args: String::default(),
+            module_path: String::default(),
+            file: String::default(),
+            line: None,
+            now: today.clone().into(),
+            formated: String::default(),
+        };
+        let tomorrow = today.clone().add(Duration::from_day(1));
+        let tomorrow_record = FastLogRecord {
+            command: fast_log::appender::Command::CommandRecord,
+            level: log::Level::Info,
+            target: String::default(),
+            args: String::default(),
+            module_path: String::default(),
+            file: String::default(),
+            line: None,
+            now: tomorrow.clone().into(),
+            formated: String::default(),
+        };
+        let tomorrow_date_str = date_str(&tomorrow);
+
+        assert_eq!("log", DailyKeeper::get_base_name("log.txt"));
+        assert_eq!(
+            format!("log_{today_date_str}_0.txt"),
+            DailyKeeper::calc_filename("log.txt", 0, &today)
+        );
+        assert_eq!(
+            Some(today),
+            DailyKeeper::file_name_parse_time(&format!("log_{today_date_str}_0.txt"), "log.txt")
+        );
+        assert_eq!(
+            Some(tomorrow),
+            DailyKeeper::file_name_parse_time(&format!("log_{tomorrow_date_str}_0.txt"), "log.txt")
+        );
+        assert_eq!(
+            None,
+            DailyKeeper::file_name_parse_time(&format!("log__0.txt"), "log.txt")
+        );
+        assert_eq!(
+            None,
+            DailyKeeper::file_name_parse_time(&format!("log_0.txt"), "log.txt")
+        );
+        assert_eq!(
+            None,
+            DailyKeeper::file_name_parse_time(&format!("log0.txt"), "log.txt")
+        );
+        assert_eq!(
+            None,
+            DailyKeeper::file_name_parse_time(&format!("log.txt"), "log.txt")
+        );
+        assert_eq!("log.txt", keeper.base_name());
+        assert_eq!(format!("log_{today_date_str}_0.txt"), keeper.current());
+        assert_eq!(
+            format!("log_{today_date_str}_0.txt"),
+            keeper.init("logs/", &(Box::new(log_packer) as Box<dyn Packer>))
+        );
+        assert_eq!(
+            format!("log_{today_date_str}_1.txt"),
+            keeper.next(&today_record)
+        );
+        assert_eq!(false, keeper.should_rotate(&today_record));
+        assert_eq!(
+            format!("log_{today_date_str}_2.txt"),
+            keeper.next(&today_record)
+        );
+        assert_eq!(true, keeper.should_rotate(&tomorrow_record));
+        assert_eq!(
+            format!("log_{tomorrow_date_str}_0.txt"),
+            keeper.next(&tomorrow_record)
+        );
+        assert_eq!(
+            format!("log_{tomorrow_date_str}_1.txt"),
+            keeper.next(&tomorrow_record)
+        );
+    }
 }
