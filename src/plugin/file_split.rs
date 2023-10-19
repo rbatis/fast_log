@@ -126,24 +126,6 @@ pub trait Packer: Send + Sync {
         new_log_name = first_file_path.trim_end_matches(&file_name).to_string() + &new_log_name;
         return new_log_name;
     }
-
-    fn log_name_parse_time(&self, file_name: &str, temp_name: &str) -> Result<DateTime, LogError> {
-        let file_name = file_name.extract_file_name();
-        let temp_name = temp_name.trim_end_matches(&format!(".{}", self.pack_name()));
-        if file_name.starts_with(&temp_name) {
-            let mut time_str = file_name.trim_start_matches(&temp_name).to_string();
-            if let Some(v) = time_str.rfind(".") {
-                time_str = time_str[0..v].to_string();
-            }
-            let time = DateTime::parse("YYYY-MM-DDThh:mm:ss.000000", &time_str);
-            return time.map_err(|e| LogError::from(e.to_string()));
-        } else {
-            return Err(LogError::E(format!(
-                "file_name={} not an pack file",
-                file_name
-            )));
-        }
-    }
 }
 
 /// split log file allow pack compress log
