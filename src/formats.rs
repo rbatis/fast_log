@@ -25,10 +25,11 @@ impl RecordFormat for FastLogFormat {
             Command::CommandRecord => {
                 let now = match self.time_type {
                     TimeType::Local => {
-                        fastdate::DateTime::from(arg.now).add_sub_sec(fastdate::offset_sec() as i64)
+                        fastdate::DateTime::from(arg.now).set_offset(fastdate::offset_sec())
                     }
                     TimeType::Utc => fastdate::DateTime::from(arg.now),
-                }.to_string();
+                }
+                .to_string();
                 if arg.level.to_level_filter() <= self.display_line_level {
                     arg.formated = format!(
                         "{:27} {} {}:{} {}\n",

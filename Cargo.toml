@@ -6,7 +6,7 @@ members = [
 
 [package]
 name = "fast_log"
-version = "1.6.7"
+version = "1.6.8"
 description = "Rust async log High-performance asynchronous logging"
 readme = "Readme.md"
 authors = ["ce <zhuxiujia@qq.com>"]
@@ -24,7 +24,7 @@ mmap = ["memmap2"]
 runtime_thread = []
 
 [dependencies]
-fastdate = "0.2"
+fastdate = "0.3"
 log = { version = "0.4", features = ["std"] }
 crossbeam-utils = "0.8"
 crossbeam = "0.8"

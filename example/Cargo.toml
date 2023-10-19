@@ -55,7 +55,7 @@ log = { version = "0.4", features = ["std"] }
 crossbeam-channel = "0.5"
 crossbeam-utils = "0.8"
 crossbeam = "0.8"
-fastdate = "0.2"
+fastdate = "0.3"
 # features=["lz4"] or add features=["zip","lz4"] if you need lz4 packer
 fast_log = { path = "../", features = ["lz4","zip","gzip","mmap"]}
 tokio = {version="1",features = ["rt-multi-thread","macros"]}
