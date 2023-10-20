@@ -28,8 +28,7 @@ impl RecordFormat for FastLogFormat {
                         fastdate::DateTime::from(arg.now).set_offset(fastdate::offset_sec())
                     }
                     TimeType::Utc => fastdate::DateTime::from(arg.now),
-                }
-                .to_string();
+                };
                 if arg.level.to_level_filter() <= self.display_line_level {
                     arg.formated = format!(
                         "{:27} {} {}:{} {}\n",
