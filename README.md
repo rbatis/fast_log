@@ -3,6 +3,8 @@
 ![Build Status](https://api.travis-ci.com/rbatis/fast_log.svg?branch=master)
 [![GitHub release](https://img.shields.io/github/v/release/rbatis/fast_log)](https://github.com/rbatis/fast_log/releases)
 
+<img style="width: 200px;height: 200px;" width="200" height="200" src="https://github.com/rbatis/rbatis/blob/master/logo.png?raw=true" />
+
 
 the fast log . This crate uses #! [forbid(unsafe_code)] to ensure everything is implemented in 100% Safe Rust.
 
