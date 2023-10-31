@@ -105,6 +105,7 @@ pub trait Packer: Send + Sync {
             None => {
                 new_log_name.push_str(
                     &DateTime::now()
+                        .display_stand()
                         .to_string()
                         .replace(" ", "T")
                         .replace(":", "-"),
@@ -116,6 +117,7 @@ pub trait Packer: Send + Sync {
                     "{}{}{}",
                     name,
                     DateTime::now()
+                        .display_stand()
                         .to_string()
                         .replace(" ", "T")
                         .replace(":", "-"),

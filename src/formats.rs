@@ -24,10 +24,10 @@ impl RecordFormat for FastLogFormat {
         match &arg.command {
             Command::CommandRecord => {
                 let now = match self.time_type {
-                    TimeType::Local => {
-                        fastdate::DateTime::from(arg.now).set_offset(fastdate::offset_sec())
-                    }
-                    TimeType::Utc => fastdate::DateTime::from(arg.now),
+                    TimeType::Local => fastdate::DateTime::from(arg.now)
+                        .set_offset(fastdate::offset_sec())
+                        .display_stand(),
+                    TimeType::Utc => fastdate::DateTime::from(arg.now).display_stand(),
                 };
                 if arg.level.to_level_filter() <= self.display_line_level {
                     arg.formated = format!(
@@ -83,10 +83,10 @@ impl RecordFormat for FastLogFormatJson {
         match &arg.command {
             Command::CommandRecord => {
                 let now = match self.time_type {
-                    TimeType::Local => {
-                        fastdate::DateTime::from(arg.now).add_sub_sec(fastdate::offset_sec() as i64)
-                    }
-                    TimeType::Utc => fastdate::DateTime::from(arg.now),
+                    TimeType::Local => fastdate::DateTime::from(arg.now)
+                        .add_sub_sec(fastdate::offset_sec() as i64)
+                        .display_stand(),
+                    TimeType::Utc => fastdate::DateTime::from(arg.now).display_stand(),
                 };
                 //{"args":"Commencing yak shaving","date":"2022-08-19 09:53:47.798674","file":"example/src/split_log.rs","level":"INFO","line":21}
                 let args = arg.args.replace("\"", "\\\"");
