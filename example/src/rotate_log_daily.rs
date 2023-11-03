@@ -10,7 +10,7 @@ use fast_log::plugin::file_rotate::Rotate;
 use fast_log::plugin::file_split::Keep;
 use fast_log::plugin::packer::LogPacker;
 use fast_log::{appender::FastLogRecord, plugin::file_split::Packer};
-use fastdate::{DateTime, DurationFrom};
+use fastdate::{Date, DateTime, DurationFrom};
 
 /// daily rolling keep type
 #[derive(Copy, Clone, Debug)]
@@ -29,13 +29,18 @@ pub struct DailyKeeper {
     index: AtomicUsize,
 }
 
+fn date(datetime: DateTime) -> DateTime {
+    let offset = datetime.offset();
+    DateTime::from((Into::<Date>::into(datetime), offset))
+}
+
+fn today() -> DateTime {
+    date(DateTime::now())
+}
+
 impl DailyKeeper {
     pub fn new(keep_type: DailyKeepType, base_name: &str) -> Self {
-        let today = DateTime::now()
-            .set_hour(0)
-            .set_min(0)
-            .set_sec(0)
-            .set_nano(0);
+        let today = today();
 
         Self {
             keep_type,
@@ -88,11 +93,7 @@ impl Keep for DailyKeeper {
         match self.keep_type {
             DailyKeepType::KeepDays(n) => {
                 let paths_vec = self.read_paths(dir, base_name);
-                let now = DateTime::now()
-                    .set_hour(0)
-                    .set_min(0)
-                    .set_sec(0)
-                    .set_nano(0);
+                let now = today();
                 for index in 0..paths_vec.len() {
                     let item = &paths_vec[index];
                     let file_name = item.file_name();
@@ -161,12 +162,10 @@ impl Rotate for DailyKeeper {
 
     fn next(&self, record: &FastLogRecord) -> String {
         if self.should_rotate(record) {
-            let record_date = fastdate::DateTime::from(record.now)
-                .add_sub_sec(fastdate::offset_sec() as i64)
-                .set_hour(0)
-                .set_min(0)
-                .set_sec(0)
-                .set_nano(0);
+            let record_date = date(fastdate::DateTime::from_system_time(
+                record.now,
+                fastdate::offset_sec(),
+            ));
 
             self.index.store(0, Ordering::Relaxed);
             *self.date.write().unwrap() = record_date.clone();
@@ -179,12 +178,10 @@ impl Rotate for DailyKeeper {
     }
 
     fn should_rotate(&self, record: &FastLogRecord) -> bool {
-        let record_date = fastdate::DateTime::from(record.now)
-            .add_sub_sec(fastdate::offset_sec() as i64)
-            .set_hour(0)
-            .set_min(0)
-            .set_sec(0)
-            .set_nano(0);
+        let record_date = date(fastdate::DateTime::from_system_time(
+            record.now,
+            fastdate::offset_sec(),
+        ));
         record_date >= *self.rotate_date.read().unwrap()
     }
 }
@@ -212,14 +209,25 @@ mod tests {
     use std::time::Duration;
 
     #[test]
+    fn test_datetime_parse() {
+        let date = DateTime::parse("YYYYMMDD", "20231103").unwrap();
+        assert_eq!(2023, date.year());
+        assert_eq!(11, date.mon());
+        assert_eq!(3, date.day());
+        assert_eq!(0, date.hour());
+        assert_eq!(0, date.minute());
+        assert_eq!(0, date.sec());
+        assert_eq!(0, date.ms());
+        assert_eq!(0, date.micro());
+        assert_eq!(0, date.nano());
+        assert_eq!(fastdate::offset_sec(), date.offset());
+    }
+
+    #[test]
     fn test_log_dailykeeper() {
         let keeper = DailyKeeper::new(DailyKeepType::All, "log.txt");
         let log_packer = LogPacker {};
-        let today = DateTime::now()
-            .set_hour(0)
-            .set_min(0)
-            .set_sec(0)
-            .set_nano(0);
+        let today = today();
         let date_str = |date: &DateTime| date.to_string()[0..10].replace("-", "");
         let today_date_str = date_str(&today);
         let today_record = FastLogRecord {
