@@ -31,7 +31,7 @@ impl RecordFormat for FastLogFormat {
                 };
                 if arg.level.to_level_filter() <= self.display_line_level {
                     arg.formated = format!(
-                        "{:27} {} {}:{} {}\n",
+                        "{:27} [{}] [{}:{}] {}\n",
                         &now,
                         arg.level,
                         arg.file,
@@ -39,7 +39,7 @@ impl RecordFormat for FastLogFormat {
                         arg.args,
                     );
                 } else {
-                    arg.formated = format!("{:27} {} - {}\n", &now, arg.level, arg.args);
+                    arg.formated = format!("{:27} [{}] {}\n", &now, arg.level, arg.args);
                 }
             }
             Command::CommandExit => {}
