@@ -50,10 +50,11 @@ impl Packer for ZipPacker {
         let zip_file = zip_file.unwrap();
         //write zip bytes data
         let mut zip = zip::ZipWriter::new(zip_file);
-        zip.start_file(log_name, FileOptions::default()).map_err(|e|LogError::from(e.to_string()))?;
+        zip.start_file(log_name, FileOptions::default())
+            .map_err(|e| LogError::from(e.to_string()))?;
         //buf reader
-        std::io::copy(&mut log_file, &mut zip).map_err(|e|LogError::from(e.to_string()))?;
-        zip.flush().map_err(|e|LogError::from(e.to_string()))?;
+        std::io::copy(&mut log_file, &mut zip).map_err(|e| LogError::from(e.to_string()))?;
+        zip.flush().map_err(|e| LogError::from(e.to_string()))?;
         let finish: ZipResult<File> = zip.finish();
         if finish.is_err() {
             //println!("[fast_log] try zip fail{:?}", finish.err());
@@ -94,7 +95,7 @@ impl Packer for LZ4Packer {
         //write lz4 bytes data
         let mut encoder = FrameEncoder::new(lz4_file);
         //buf reader
-        std::io::copy(&mut log_file, &mut encoder).map_err(|e|LogError::from(e.to_string()))?;
+        std::io::copy(&mut log_file, &mut encoder).map_err(|e| LogError::from(e.to_string()))?;
         let result = encoder.finish();
         if result.is_err() {
             return Err(LogError::from(format!(
@@ -134,8 +135,8 @@ impl Packer for GZipPacker {
         let zip_file = zip_file.unwrap();
         //write zip bytes data
         let mut zip = GzEncoder::new(zip_file, Compression::default());
-        std::io::copy(&mut log_file, &mut zip).map_err(|e|LogError::from(e.to_string()))?;
-        zip.flush().map_err(|e|LogError::from(e.to_string()))?;
+        std::io::copy(&mut log_file, &mut zip).map_err(|e| LogError::from(e.to_string()))?;
+        zip.flush().map_err(|e| LogError::from(e.to_string()))?;
         let finish = zip.finish();
         if finish.is_err() {
             return Err(LogError::from(format!(

@@ -39,10 +39,7 @@ impl RecordFormat for FastLogFormat {
                         arg.args,
                     );
                 } else {
-                    arg.formated = format!(
-                        "{:27} {} {} - {}\n",
-                        &now, arg.level, arg.module_path, arg.args
-                    );
+                    arg.formated = format!("{:27} {} - {}\n", &now, arg.level, arg.args);
                 }
             }
             Command::CommandExit => {}
@@ -62,6 +59,12 @@ impl FastLogFormat {
     ///show line level
     pub fn set_display_line_level(mut self, level: LevelFilter) -> Self {
         self.display_line_level = level;
+        self
+    }
+
+    /// set time_type
+    pub fn set_time_type(mut self, time_type: TimeType) -> Self {
+        self.time_type = time_type;
         self
     }
 }

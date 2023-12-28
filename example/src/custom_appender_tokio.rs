@@ -1,6 +1,6 @@
-use fastdate::DateTime;
 use fast_log::appender::{FastLogRecord, LogAppender};
 use fast_log::config::Config;
+use fastdate::DateTime;
 use log::Level;
 use tokio::runtime::Runtime;
 

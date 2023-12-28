@@ -16,7 +16,7 @@ fn main() {
                 LogPacker {},
             ),
     )
-        .unwrap();
+    .unwrap();
     for _ in 0..40000 {
         log::info!("Commencing yak shaving");
     }

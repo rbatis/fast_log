@@ -11,12 +11,7 @@ fn main() {
     let _ = std::fs::remove_dir("target/logs/");
     fast_log::init(
         Config::new()
-            .file_split(
-                "target/logs/",
-                LogSize::MB(1),
-                KeepType::All,
-                LogPacker {},
-            )
+            .file_split("target/logs/", LogSize::MB(1), KeepType::All, LogPacker {})
             .chan_len(Some(100000)),
     )
     .unwrap();
