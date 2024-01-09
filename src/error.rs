@@ -11,13 +11,13 @@ pub enum LogError {
 
 impl From<&str> for LogError {
     fn from(arg: &str) -> Self {
-        return LogError::E(arg.to_string());
+        LogError::E(arg.to_string())
     }
 }
 
 impl From<std::string::String> for LogError {
     fn from(arg: String) -> Self {
-        return LogError::E(arg);
+        LogError::E(arg)
     }
 }
 
@@ -35,11 +35,11 @@ impl From<std::io::Error> for LogError {
 
 impl Display for LogError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        return match self {
+        match self {
             LogError::E(ref err) => {
                 write!(f, "Rbatis Error: {}", err)
             }
-        };
+        }
     }
 }
 

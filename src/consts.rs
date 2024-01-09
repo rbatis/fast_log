@@ -22,6 +22,10 @@ impl LogSize {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     pub fn get_len(&self) -> usize {
         self.len()
     }
@@ -47,9 +51,9 @@ impl LogSize {
             Ok(Self::KB(
                 value.trim_end_matches("KB").parse().unwrap_or_default(),
             ))
-        } else if value.ends_with("B") {
+        } else if value.ends_with('B') {
             Ok(Self::B(
-                value.trim_end_matches("B").parse().unwrap_or_default(),
+                value.trim_end_matches('B').parse().unwrap_or_default(),
             ))
         } else {
             Err(LogError::from("unknow LogSize"))

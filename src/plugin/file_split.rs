@@ -11,6 +11,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
+#[allow(clippy::len_without_is_empty)]
 pub trait SplitFile: Send {
     fn new(path: &str, temp_size: LogSize) -> Result<Self, LogError>
     where
@@ -45,7 +46,7 @@ impl SplitFile for RawFile {
             .create(true)
             .read(true)
             .write(true)
-            .open(&path)?;
+            .open(path)?;
         Ok(Self {
             inner: RefCell::new(file),
         })
@@ -80,9 +81,7 @@ impl SplitFile for RawFile {
 
     fn offset(&self) -> usize {
         let mut offset = self.len();
-        if offset > 0 {
-            offset = offset - 1;
-        }
+        offset = offset.saturating_sub(1);
         offset
     }
 }
@@ -94,21 +93,21 @@ pub trait Packer: Send + Sync {
     fn do_pack(&self, log_file: File, log_file_path: &str) -> Result<bool, LogError>;
     /// default 0 is not retry pack. if retry > 0 ,it will trying rePack
     fn retry(&self) -> i32 {
-        return 0;
+        0
     }
 
     fn log_name_create(&self, first_file_path: &str) -> String {
         let file_name = first_file_path.extract_file_name();
         let mut new_log_name = String::new();
-        let point = file_name.rfind(".");
+        let point = file_name.rfind('.');
         match point {
             None => {
                 new_log_name.push_str(
                     &DateTime::now()
                         .display_stand()
                         .to_string()
-                        .replace(" ", "T")
-                        .replace(":", "-"),
+                        .replace(' ', "T")
+                        .replace(':', "-"),
                 );
             }
             Some(i) => {
@@ -119,14 +118,14 @@ pub trait Packer: Send + Sync {
                     DateTime::now()
                         .display_stand()
                         .to_string()
-                        .replace(" ", "T")
-                        .replace(":", "-"),
+                        .replace(' ', "T")
+                        .replace(':', "-"),
                     ext
                 );
             }
         }
         new_log_name = first_file_path.trim_end_matches(&file_name).to_string() + &new_log_name;
-        return new_log_name;
+        new_log_name
     }
 }
 
@@ -198,7 +197,7 @@ impl<F: SplitFile> FileSplitAppender<F> {
     /// send data make an pack,and truncate data when finish.
     pub fn send_pack(&self) {
         let mut sp = "";
-        if !self.dir_path.is_empty() && !self.dir_path.ends_with("/") {
+        if !self.dir_path.is_empty() && !self.dir_path.ends_with('/') {
             sp = "/";
         }
         let first_file_path = format!("{}{}{}", self.dir_path, sp, &self.temp_name);
@@ -207,7 +206,7 @@ impl<F: SplitFile> FileSplitAppender<F> {
         let _ = std::fs::copy(&first_file_path, &new_log_name);
         let _ = self.sender.send(LogPack {
             dir: self.dir_path.clone(),
-            new_log_name: new_log_name,
+            new_log_name,
             wg: None,
         });
         self.truncate();
@@ -228,6 +227,7 @@ pub struct LogPack {
 
 impl LogPack {
     /// write an Pack to zip file
+    #[allow(clippy::borrowed_box)]
     pub fn do_pack(&self, packer: &Box<dyn Packer>) -> Result<bool, LogError> {
         let log_file_path = self.new_log_name.as_str();
         if log_file_path.is_empty() {
@@ -257,7 +257,7 @@ impl LogPack {
         if let Ok(b) = r {
             return Ok(b);
         }
-        return Ok(false);
+        Ok(false)
     }
 }
 
@@ -273,26 +273,21 @@ pub trait Keep: Send {
         if let Ok(paths) = paths {
             //let mut temp_file = None;
             let mut paths_vec = vec![];
-            for path in paths {
-                match path {
-                    Ok(path) => {
-                        if let Some(v) = path.file_name().to_str() {
-                            if v == temp_name {
-                                continue;
-                            }
-                            if !v.starts_with(&base_name) {
-                                continue;
-                            }
-                        }
-                        paths_vec.push(path);
+            for path in paths.flatten() {
+                if let Some(v) = path.file_name().to_str() {
+                    if v == temp_name {
+                        continue;
                     }
-                    _ => {}
+                    if !v.starts_with(&base_name) {
+                        continue;
+                    }
                 }
+                paths_vec.push(path);
             }
-            paths_vec.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
+            paths_vec.sort_by_key(|b| std::cmp::Reverse(b.file_name()));
             return paths_vec;
         }
-        return vec![];
+        vec![]
     }
 }
 
@@ -319,9 +314,8 @@ impl Keep for KeepType {
         match self {
             KeepType::KeepNum(n) => {
                 let paths_vec = self.read_paths(dir, temp_name);
-                for index in 0..paths_vec.len() {
+                for (index,item) in paths_vec.iter().enumerate() {
                     if index >= (*n) as usize {
-                        let item = &paths_vec[index];
                         let _ = std::fs::remove_file(item.path());
                         removed += 1;
                     }
@@ -330,12 +324,11 @@ impl Keep for KeepType {
             KeepType::KeepTime(duration) => {
                 let paths_vec = self.read_paths(dir, temp_name);
                 let now = DateTime::now();
-                for index in 0..paths_vec.len() {
-                    let item = &paths_vec[index];
+                for item in &paths_vec {
                     if let Ok(m) = item.metadata() {
                         if let Ok(c) = m.created() {
                             let time = DateTime::from(c);
-                            if now.clone().sub(duration.clone()) > time {
+                            if now.clone().sub(*duration) > time {
                                 let _ = std::fs::remove_file(item.path());
                                 removed += 1;
                             }
@@ -411,31 +404,27 @@ fn spawn_saver<R: Keep + 'static>(
     packer: Arc<Box<dyn Packer>>,
 ) {
     std::thread::spawn(move || {
-        loop {
-            if let Ok(pack) = r.recv() {
-                if pack.wg.is_some() {
-                    return;
-                }
-                let log_file_path = pack.new_log_name.clone();
-                //do save pack
-                let remove = pack.do_pack(packer.as_ref());
-                if let Ok(remove) = remove {
-                    if remove {
-                        let _ = std::fs::remove_file(log_file_path);
-                    }
-                }
-                //do rolling
-                rolling_type.do_keep(&pack.dir, &temp_name);
-            } else {
-                break;
+        while let Ok(pack) = r.recv() {
+            if pack.wg.is_some() {
+                return;
             }
+            let log_file_path = pack.new_log_name.clone();
+            //do save pack
+            let remove = pack.do_pack(packer.as_ref());
+            if let Ok(remove) = remove {
+                if remove {
+                    let _ = std::fs::remove_file(log_file_path);
+                }
+            }
+            //do rolling
+            rolling_type.do_keep(&pack.dir, &temp_name);
         }
     });
 }
 
 fn get_base_name(path: &str) -> String {
     let file_name = path.extract_file_name();
-    let p = file_name.rfind(".");
+    let p = file_name.rfind('.');
     match p {
         None => file_name,
         Some(i) => file_name[0..i].to_string(),

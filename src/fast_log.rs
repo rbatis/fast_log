@@ -30,6 +30,7 @@ impl Logger {
     }
 
     /// print no other info
+    #[allow(clippy::result_large_err)]
     pub fn print(&self, log: String) -> Result<(), SendError<FastLogRecord>> {
         let fast_log_record = FastLogRecord {
             command: Command::CommandRecord,
@@ -70,7 +71,7 @@ impl Log for Logger {
                         args: record.args().to_string(),
                         module_path: record.module_path().unwrap_or_default().to_string(),
                         file: record.file().unwrap_or_default().to_string(),
-                        line: record.line().clone(),
+                        line: record.line(),
                         now: SystemTime::now(),
                         formated: String::new(),
                     });
@@ -79,11 +80,8 @@ impl Log for Logger {
         }
     }
     fn flush(&self) {
-        match flush() {
-            Ok(v) => {
-                v.wait();
-            }
-            Err(_) => {}
+        if let Ok(v) = flush() {
+            v.wait();
         }
     }
 }
@@ -103,7 +101,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     //main recv data
     log::set_logger(LOGGER.deref())
         .map(|()| log::set_max_level(LOGGER.cfg.get().unwrap().level))
-        .map_err(|e| LogError::from(e))?;
+        .map_err(LogError::from)?;
 
     let mut receiver_vec = vec![];
     let mut sender_vec: Vec<Sender<Arc<Vec<FastLogRecord>>>> = vec![];
@@ -118,21 +116,14 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
             let mut exit = false;
             loop {
                 let mut remain = vec![];
-                if receiver.len() == 0 {
+                if receiver.is_empty() {
                     if let Ok(msg) = receiver.recv() {
                         remain.push(msg);
                     }
                 }
                 //recv all
-                loop {
-                    match receiver.try_recv() {
-                        Ok(v) => {
-                            remain.push(v);
-                        }
-                        Err(_) => {
-                            break;
-                        }
-                    }
+                while let Ok(v) = receiver.try_recv() {
+                    remain.push(v);
                 }
                 let append = appender.lock();
                 for msg in remain {
@@ -164,21 +155,14 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                 let recv = LOGGER.recv.get().unwrap();
                 let mut remain = Vec::with_capacity(recv.len());
                 //recv
-                if recv.len() == 0 {
+                if recv.is_empty() {
                     if let Ok(item) = recv.recv() {
                         remain.push(item);
                     }
                 }
                 //recv all
-                loop {
-                    match recv.try_recv() {
-                        Ok(v) => {
-                            remain.push(v);
-                        }
-                        Err(_) => {
-                            break;
-                        }
-                    }
+                while let Ok(v) = recv.try_recv() {
+                    remain.push(v);
                 }
                 let mut exit = false;
                 for x in &mut remain {
@@ -219,13 +203,10 @@ pub fn exit() -> Result<(), LogError> {
         .get()
         .ok_or_else(|| LogError::from("not init"))?
         .send(fast_log_record);
-    match result {
-        Ok(()) => {
-            return Ok(());
-        }
-        _ => {}
+    if let Ok(()) = result {
+        return Ok(());
     }
-    return Err(LogError::E("[fast_log] exit fail!".to_string()));
+    Err(LogError::E("[fast_log] exit fail!".to_string()))
 }
 
 pub fn flush() -> Result<WaitGroup, LogError> {
@@ -246,15 +227,13 @@ pub fn flush() -> Result<WaitGroup, LogError> {
         .get()
         .ok_or_else(|| LogError::from("not init"))?
         .send(fast_log_record);
-    match result {
-        Ok(()) => {
-            return Ok(wg);
-        }
-        _ => {}
+    if let Ok(()) = result {
+        return Ok(wg);
     }
-    return Err(LogError::E("[fast_log] flush fail!".to_string()));
+    Err(LogError::E("[fast_log] flush fail!".to_string()))
 }
 
+#[allow(clippy::result_large_err)]
 pub fn print(log: String) -> Result<(), SendError<FastLogRecord>> {
     LOGGER.print(log)
 }

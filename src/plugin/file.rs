@@ -11,8 +11,8 @@ pub struct FileAppender {
 
 impl FileAppender {
     pub fn new(log_file_path: &str) -> Result<FileAppender, LogError> {
-        let log_file_path = log_file_path.replace("\\", "/");
-        if let Some(right) = log_file_path.rfind("/") {
+        let log_file_path = log_file_path.replace('\\', "/");
+        if let Some(right) = log_file_path.rfind('/') {
             let path = &log_file_path[0..right];
             let _ = std::fs::create_dir_all(path);
         }
