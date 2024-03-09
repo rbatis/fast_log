@@ -64,11 +64,9 @@ impl Log for Logger {
             if let Some(send) = LOGGER.send.get() {
                 for filter in filter.filters.iter() {
                     if !filter.do_log(record) {
-                        println!("no");
                         return;
                     }
                 }
-                println!("send");
                 let _ = send.send(FastLogRecord {
                     command: Command::CommandRecord,
                     level: record.level(),
