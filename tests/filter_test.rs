@@ -8,7 +8,7 @@ mod test {
     #[test]
     fn test_send_pack() {
         let m = ModuleFilter::new();
-        m.add( module_path!());
+        m.modules.push(module_path!().to_string());
         pub struct A{}
         impl LogAppender for A{
             fn do_logs(&self, _records: &[FastLogRecord]) {

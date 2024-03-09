@@ -12,7 +12,7 @@ pub trait Filter: Send + Sync {
 ///    use fast_log::Config;
 ///    use fast_log::filter::ModuleFilter;
 ///    let filter = ModuleFilter::new();
-///    filter.add(module_path!());
+///    filter.modules.push(module_path!().to_string());
 ///    fast_log::init(Config::new().console().add_filter(filter)).unwrap();
 /// }
 /// ```
@@ -23,10 +23,6 @@ pub struct ModuleFilter {
 impl ModuleFilter {
     pub fn new() -> Self {
         Self { modules: SyncVec::new() }
-    }
-
-    pub fn add(&self, module: &str) {
-        self.modules.push(module.to_string());
     }
 }
 
