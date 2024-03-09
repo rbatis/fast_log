@@ -140,8 +140,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                         }
                     }
                 }
-                let addr: *const dyn LogAppender = unsafe { std::mem::transmute(raw_appender) };
-                let shared_appender: &dyn LogAppender = unsafe { &*(addr) };
+                let shared_appender: &dyn LogAppender = unsafe { &*(std::mem::transmute::<u128,*const dyn LogAppender>(raw_appender)) };
                 for msg in remain {
                     shared_appender.do_logs(msg.as_ref());
                     for x in msg.iter() {
