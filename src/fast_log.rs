@@ -1,4 +1,4 @@
-use crate::appender::{Command, FastLogRecord};
+use crate::appender::{Command, FastLogRecord, LogAppender};
 use crate::config::Config;
 use crate::error::LogError;
 use crate::{chan, spawn, Receiver, SendError, Sender, WaitGroup};
@@ -117,6 +117,9 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
         receiver_vec.push((r, a));
     }
     for (receiver, appender) in receiver_vec {
+        let append = appender.as_ref();
+        let ptr = append as *const dyn LogAppender;
+        let raw_appender: u128 = unsafe { std::mem::transmute(ptr) };
         spawn(move || {
             let mut exit = false;
             loop {
@@ -137,9 +140,10 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                         }
                     }
                 }
-                let append = appender.lock();
+                let addr: *const dyn LogAppender = unsafe { std::mem::transmute(raw_appender) };
+                let shared_appender: &dyn LogAppender = unsafe { &*(addr) };
                 for msg in remain {
-                    append.do_logs(msg.as_ref());
+                    shared_appender.do_logs(msg.as_ref());
                     for x in msg.iter() {
                         match x.command {
                             Command::CommandRecord => {}
