@@ -121,6 +121,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
         let ptr = append as *const dyn LogAppender;
         let raw_appender: u128 = unsafe { std::mem::transmute(ptr) };
         spawn(move || {
+            let shared_appender: &dyn LogAppender = unsafe { &*(std::mem::transmute::<u128,*const dyn LogAppender>(raw_appender)) };
             let mut exit = false;
             loop {
                 let mut remain = vec![];
@@ -140,7 +141,6 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                         }
                     }
                 }
-                let shared_appender: &dyn LogAppender = unsafe { &*(std::mem::transmute::<u128,*const dyn LogAppender>(raw_appender)) };
                 for msg in remain {
                     shared_appender.do_logs(msg.as_ref());
                     for x in msg.iter() {
