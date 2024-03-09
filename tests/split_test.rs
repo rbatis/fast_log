@@ -74,4 +74,10 @@ mod test {
         let p = "C:/logs/aa.log".extract_file_name();
         assert_eq!(p, "aa.log");
     }
+
+    #[test]
+    fn test_extract_file_name6() {
+        let p = "C:\\logs\\aa.log".extract_file_name();
+        assert_eq!(p, "aa.log");
+    }
 }
