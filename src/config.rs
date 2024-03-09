@@ -25,7 +25,7 @@ pub struct Config {
     pub level: LevelFilter,
     /// filter log
     pub filters: SyncVec<Box<dyn Filter>>,
-    /// format record into field fast_log_record's formated:String
+    /// format record into field fast_log_record's formatted:String
     pub format: Box<dyn RecordFormat>,
     /// the channel length,default None(Unbounded channel)
     pub chan_len: Option<usize>,
