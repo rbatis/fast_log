@@ -140,6 +140,11 @@ impl Config {
     }
     /// add a custom LogAppender
     pub fn custom<Appender: LogAppender + 'static>(self, arg: Appender) -> Self {
+        self.add_appender(arg)
+    }
+
+    /// add a LogAppender
+    pub fn add_appender<Appender: LogAppender + 'static>(self, arg: Appender) -> Self {
         self.appends.push(Mutex::new(Box::new(arg)));
         self
     }
