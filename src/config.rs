@@ -21,6 +21,7 @@ use parking_lot::Mutex;
 /// ```
 pub struct Config {
     /// Each appender is responsible for printing its own business
+    /// every LogAppender have one thread(need Mutex) access this.
     pub appends: SyncVec<Mutex<Box<dyn LogAppender>>>,
     /// the log level filter
     pub level: LevelFilter,
