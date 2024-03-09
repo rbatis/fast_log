@@ -1,6 +1,6 @@
 use crate::appender::{LogAppender, RecordFormat};
 use crate::consts::LogSize;
-use crate::filter::{Filter, NoFilter};
+use crate::filter::{Filter};
 use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
 use crate::plugin::file_loop::FileLoopAppender;
@@ -22,7 +22,7 @@ pub struct Config {
     /// the log level filter
     pub level: LevelFilter,
     /// filter log
-    pub filter: Box<dyn Filter>,
+    pub filters: SyncVec<Box<dyn Filter>>,
     /// format record into field fast_log_record's formated:String
     pub format: Box<dyn RecordFormat>,
     /// the channel length,default None(Unbounded channel)
@@ -44,7 +44,7 @@ impl Default for Config {
         Self {
             appends: SyncVec::new(),
             level: LevelFilter::Trace,
-            filter: Box::new(NoFilter {}),
+            filters: SyncVec::new(),
             format: Box::new(FastLogFormat::new()),
             chan_len: None,
         }
@@ -61,9 +61,17 @@ impl Config {
         self.level = level;
         self
     }
-    /// set log Filter
-    pub fn filter<F: Filter + 'static>(mut self, filter: F) -> Self {
-        self.filter = Box::new(filter);
+    /// add log Filter
+    pub fn add_filter<F: Filter + 'static>(self, filter: F) -> Self {
+        self.filters.push(Box::new(filter));
+        self
+    }
+
+    /// add log Filter
+    pub fn filter(self, filters: Vec<Box<dyn Filter>>) -> Self {
+        for x in filters {
+            self.filters.push(x);
+        }
         self
     }
     /// set log format
