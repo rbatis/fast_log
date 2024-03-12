@@ -42,7 +42,7 @@ mod test {
     fn test_log_name_create() {
         let p = LogPacker {};
         let name = p.log_name_create("temp.log");
-        assert_eq!(name.ends_with(".log"), true);
+        assert!(name.ends_with(".log"));
     }
 
     #[test]
@@ -72,6 +72,12 @@ mod test {
     #[test]
     fn test_extract_file_name5() {
         let p = "C:/logs/aa.log".extract_file_name();
+        assert_eq!(p, "aa.log");
+    }
+
+    #[test]
+    fn test_extract_file_name6() {
+        let p = "C:\\logs\\aa.log".extract_file_name();
         assert_eq!(p, "aa.log");
     }
 }

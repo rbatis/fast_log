@@ -63,19 +63,22 @@ impl Log for Logger {
     fn log(&self, record: &Record) {
         if let Some(filter) = LOGGER.cfg.get() {
             if let Some(send) = LOGGER.send.get() {
-                if !filter.filter.filter(record) {
-                    let _ = send.send(FastLogRecord {
-                        command: Command::CommandRecord,
-                        level: record.level(),
-                        target: record.metadata().target().to_string(),
-                        args: record.args().to_string(),
-                        module_path: record.module_path().unwrap_or_default().to_string(),
-                        file: record.file().unwrap_or_default().to_string(),
-                        line: record.line(),
-                        now: SystemTime::now(),
-                        formated: String::new(),
-                    });
+                for filter in filter.filters.iter() {
+                    if !filter.do_log(record) {
+                        return;
+                    }
                 }
+                let _ = send.send(FastLogRecord {
+                    command: Command::CommandRecord,
+                    level: record.level(),
+                    target: record.metadata().target().to_string(),
+                    args: record.args().to_string(),
+                    module_path: record.module_path().unwrap_or_default().to_string(),
+                    file: record.file().unwrap_or_default().to_string(),
+                    line: record.line(),
+                    now: SystemTime::now(),
+                    formated: String::new(),
+                });
             }
         }
     }
@@ -125,9 +128,10 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                 while let Ok(v) = receiver.try_recv() {
                     remain.push(v);
                 }
-                let append = appender.lock();
+                //lock get appender
+                let shared_appender= appender.lock();
                 for msg in remain {
-                    append.do_logs(msg.as_ref());
+                    shared_appender.do_logs(msg.as_ref());
                     for x in msg.iter() {
                         match x.command {
                             Command::CommandRecord => {}
