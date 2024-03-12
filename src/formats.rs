@@ -1,17 +1,15 @@
 use crate::appender::{Command, FastLogRecord, RecordFormat};
 use log::LevelFilter;
 
+#[derive(Default)]
 pub enum TimeType {
+    #[default]
     Local,
     //default
     Utc,
 }
 
-impl Default for TimeType {
-    fn default() -> Self {
-        TimeType::Local
-    }
-}
+
 
 pub struct FastLogFormat {
     // show line level
@@ -48,6 +46,12 @@ impl RecordFormat for FastLogFormat {
     }
 }
 
+impl Default for FastLogFormat {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FastLogFormat {
     pub fn new() -> FastLogFormat {
         Self {
@@ -69,17 +73,12 @@ impl FastLogFormat {
     }
 }
 
+#[derive(Default)]
 pub struct FastLogFormatJson {
     pub time_type: TimeType,
 }
 
-impl Default for FastLogFormatJson {
-    fn default() -> Self {
-        Self {
-            time_type: TimeType::default(),
-        }
-    }
-}
+
 
 impl RecordFormat for FastLogFormatJson {
     fn do_format(&self, arg: &mut FastLogRecord) {
@@ -92,8 +91,8 @@ impl RecordFormat for FastLogFormatJson {
                     TimeType::Utc => fastdate::DateTime::from(arg.now).display_stand(),
                 };
                 //{"args":"Commencing yak shaving","date":"2022-08-19 09:53:47.798674","file":"example/src/split_log.rs","level":"INFO","line":21}
-                let args = arg.args.replace("\"", "\\\"");
-                let file = arg.file.replace("\\", "/");
+                let args = arg.args.replace('\"', "\\\"");
+                let file = arg.file.replace('\\', "/");
                 arg.formated = format!(
                     "{}\"args\":\"{}\",\"date\":\"{}\",\"file\":\"{}\",\"level\":\"{}\",\"line\":{}{}",
                     "{",

@@ -5,7 +5,7 @@ pub struct ConsoleAppender {}
 
 impl LogAppender for ConsoleAppender {
     fn do_logs(&self, records: &[FastLogRecord]) {
-        if records.len() == 0 {
+        if records.is_empty() {
             return;
         }
         let mut buffer = String::with_capacity(records.len());

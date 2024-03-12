@@ -12,7 +12,7 @@ impl Packer for LogPacker {
 
     fn do_pack(&self, _log_file: File, _log_file_path: &str) -> Result<bool, LogError> {
         //do nothing,and not remove file
-        return Ok(false);
+        Ok(false)
     }
 }
 

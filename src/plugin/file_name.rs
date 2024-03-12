@@ -8,7 +8,7 @@ impl FileName for String {
 }
 impl FileName for &str {
     fn extract_file_name(&self) -> String {
-        let path = self.replace("\\", "/");
+        let path = self.replace('\\', "/");
         match path.rfind('/') {
             Some(index) => path[(index + 1)..].to_string(),
             None => path,

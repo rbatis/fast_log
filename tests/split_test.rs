@@ -42,7 +42,7 @@ mod test {
     fn test_log_name_create() {
         let p = LogPacker {};
         let name = p.log_name_create("temp.log");
-        assert_eq!(name.ends_with(".log"), true);
+        assert!(name.ends_with(".log"));
     }
 
     #[test]

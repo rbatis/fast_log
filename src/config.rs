@@ -15,9 +15,7 @@ use parking_lot::Mutex;
 /// for example:
 /// ```rust
 /// use fast_log::Config;
-/// fn main(){
-///    fast_log::init(Config::new().console().chan_len(Some(1000000))).unwrap();
-/// }
+/// fast_log::init(Config::new().console().chan_len(Some(1000000))).unwrap();
 /// ```
 pub struct Config {
     /// Each appender is responsible for printing its own business

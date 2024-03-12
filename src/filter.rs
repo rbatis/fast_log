@@ -8,13 +8,11 @@ pub trait Filter: Send + Sync {
 
 /// an Module Filter
 /// ```rust
-/// fn main(){
-///    use fast_log::Config;
-///    use fast_log::filter::ModuleFilter;
-///    let filter = ModuleFilter::new();
-///    filter.modules.push(module_path!().to_string());
-///    fast_log::init(Config::new().console().add_filter(filter)).unwrap();
-/// }
+/// use fast_log::Config;
+/// use fast_log::filter::ModuleFilter;
+/// let filter = ModuleFilter::new();
+/// filter.modules.push(module_path!().to_string());
+/// fast_log::init(Config::new().console().add_filter(filter)).unwrap();
 /// ```
 pub struct ModuleFilter {
     pub modules: SyncVec<String>,
@@ -23,6 +21,12 @@ pub struct ModuleFilter {
 impl ModuleFilter {
     pub fn new() -> Self {
         Self { modules: SyncVec::new() }
+    }
+}
+
+impl Default for ModuleFilter {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -36,6 +40,6 @@ impl Filter for ModuleFilter {
                 }
             }
         }
-        return true;
+        true
     }
 }
