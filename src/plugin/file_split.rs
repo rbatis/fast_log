@@ -118,11 +118,11 @@ pub trait Packer: Send + Sync {
         let point = file_name.rfind(".");
         match point {
             None => {
-                new_log_name.push_str(&self.date_string(date));
+                new_log_name.push_str(&self.date_to_string(date));
             }
             Some(i) => {
                 let (name, ext) = file_name.split_at(i);
-                new_log_name = format!("{}{}{}", name, self.date_string(date), ext);
+                new_log_name = format!("{}{}{}", name, self.date_to_string(date), ext);
             }
         }
         new_log_name = first_file_path.trim_end_matches(&file_name).to_string() + &new_log_name;
