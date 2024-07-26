@@ -1,12 +1,12 @@
 use fast_log::config::Config;
 use fast_log::consts::LogSize;
-use fast_log::plugin::file_split::KeepType;
+use fast_log::plugin::file_split::{HowPackType, KeepType};
 use fast_log::plugin::packer::GZipPacker;
 
 fn main() {
     fast_log::init(Config::new().chan_len(Some(100000)).console().file_split(
         "target/logs/",
-        LogSize::KB(50),
+        HowPackType::BySize(LogSize::KB(50)),
         KeepType::KeepNum(5),
         GZipPacker {},
     ))

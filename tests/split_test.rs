@@ -3,7 +3,7 @@ mod test {
     use fast_log::appender::{Command, FastLogRecord, LogAppender};
     use fast_log::consts::LogSize;
     use fast_log::plugin::file_name::FileName;
-    use fast_log::plugin::file_split::{FileSplitAppender, HowToPackType, Keep, Packer, RawFile, RollingType};
+    use fast_log::plugin::file_split::{FileSplitAppender, HowPackType, Keep, Packer, RawFile, RollingType};
     use fast_log::plugin::packer::LogPacker;
     use fastdate::DateTime;
     use log::Level;
@@ -16,7 +16,7 @@ mod test {
         let _ = remove_dir_all("target/test/");
         let mut appender = FileSplitAppender::new::<RawFile>(
             "target/test/",
-            Box::new(HowToPackType::BySize(LogSize::MB(1))),
+            Box::new(HowPackType::BySize(LogSize::MB(1))),
             Box::new(RollingType::All),
             Box::new(LogPacker {}),
         )

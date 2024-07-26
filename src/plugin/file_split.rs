@@ -55,7 +55,7 @@ pub trait Packer: Send + Sync {
 }
 
 
-pub trait HowToPack: Send {
+pub trait HowPack: Send {
     fn need_pack(&mut self, temp_size: usize, arg: &FastLogRecord) -> bool;
 }
 
@@ -172,15 +172,15 @@ impl SplitFile for RawFile {
 }
 
 
-pub enum HowToPackType {
+pub enum HowPackType {
     ByDate(DateTime),
     BySize(LogSize),
 }
 
-impl HowToPack for HowToPackType {
+impl HowPack for HowPackType {
     fn need_pack(&mut self, temp_size: usize, arg: &FastLogRecord) -> bool {
         match self {
-            HowToPackType::ByDate(date_time) => {
+            HowPackType::ByDate(date_time) => {
                 let dt = fastdate::DateTime::from_system_time(arg.now, fastdate::offset_sec());
                 if dt.day() > date_time.day() {
                     *date_time = dt;
@@ -189,7 +189,7 @@ impl HowToPack for HowToPackType {
                     return false;
                 }
             }
-            HowToPackType::BySize(limit) => {
+            HowPackType::BySize(limit) => {
                 if temp_size >= limit.get_len() {
                     return true;
                 } else {
@@ -207,7 +207,7 @@ pub struct FileSplitAppender {
     packer: Arc<Box<dyn Packer>>,
     dir_path: String,
     sender: Sender<LogPack>,
-    how_to_pack: Box<dyn HowToPack>,
+    how_to_pack: Box<dyn HowPack>,
     //cache data
     temp_bytes: AtomicUsize,
     temp_name: String,
@@ -216,7 +216,7 @@ pub struct FileSplitAppender {
 impl FileSplitAppender {
     pub fn new<F: SplitFile + 'static>(
         file_path: &str,
-        how_to_pack: Box<dyn HowToPack>,
+        how_to_pack: Box<dyn HowPack>,
         rolling_type: Box<dyn Keep>,
         packer: Box<dyn Packer>,
     ) -> Result<FileSplitAppender, LogError> {
