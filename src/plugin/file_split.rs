@@ -54,9 +54,9 @@ pub trait Packer: Send + Sync {
     }
 }
 
-
-pub trait IsPack: Send {
-    fn need_pack(&mut self, temp_size: usize, arg: &FastLogRecord) -> bool;
+/// is can do pack?
+pub trait CanPack: Send {
+    fn is(&mut self, temp_size: usize, arg: &FastLogRecord) -> bool;
 }
 
 /// keep logs, for example keep by log num or keep by log create time.
@@ -177,8 +177,8 @@ pub enum PackType {
     BySize(LogSize),
 }
 
-impl IsPack for PackType {
-    fn need_pack(&mut self, temp_size: usize, arg: &FastLogRecord) -> bool {
+impl CanPack for PackType {
+    fn is(&mut self, temp_size: usize, arg: &FastLogRecord) -> bool {
         match self {
             PackType::ByDate(date_time) => {
                 let dt = fastdate::DateTime::from_system_time(arg.now, fastdate::offset_sec());
@@ -207,7 +207,7 @@ pub struct FileSplitAppender {
     packer: Arc<Box<dyn Packer>>,
     dir_path: String,
     sender: Sender<LogPack>,
-    is_pack: Box<dyn IsPack>,
+    is_pack: Box<dyn CanPack>,
     //cache data
     temp_bytes: AtomicUsize,
     temp_name: String,
@@ -216,7 +216,7 @@ pub struct FileSplitAppender {
 impl FileSplitAppender {
     pub fn new<F: SplitFile + 'static>(
         file_path: &str,
-        how_to_pack: Box<dyn IsPack>,
+        how_to_pack: Box<dyn CanPack>,
         rolling_type: Box<dyn Keep>,
         packer: Box<dyn Packer>,
     ) -> Result<FileSplitAppender, LogError> {
@@ -399,7 +399,7 @@ impl LogAppender for FileSplitAppender {
                     let current_temp_size = self.temp_bytes.load(Ordering::Relaxed)
                         + temp.as_bytes().len()
                         + x.formated.as_bytes().len();
-                    if self.is_pack.need_pack(current_temp_size, x) {
+                    if self.is_pack.is(current_temp_size, x) {
                         self.temp_bytes.fetch_add(
                             {
                                 let w = self.file.write(temp.as_bytes());
@@ -419,7 +419,7 @@ impl LogAppender for FileSplitAppender {
                 Command::CommandExit => {}
                 Command::CommandFlush(ref w) => {
                     let current_temp_size = self.temp_bytes.load(Ordering::Relaxed);
-                    if self.is_pack.need_pack(current_temp_size, x) {
+                    if self.is_pack.is(current_temp_size, x) {
                         self.temp_bytes.fetch_add(
                             {
                                 let w = self.file.write(temp.as_bytes());
