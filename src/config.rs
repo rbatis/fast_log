@@ -4,7 +4,7 @@ use crate::filter::Filter;
 use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
 use crate::plugin::file_loop::FileLoopAppender;
-use crate::plugin::file_split::{FileSplitAppender, Keep, Packer, RawFile, SplitFile};
+use crate::plugin::file_split::{FileSplitAppender, HowToPack, Keep, Packer, RawFile, SplitFile};
 use crate::FastLogFormat;
 use dark_std::sync::SyncVec;
 use log::LevelFilter;
@@ -102,17 +102,17 @@ impl Config {
         self
     }
     /// add a FileSplitAppender
-    pub fn file_split<P: Packer + Sync + 'static, R: Keep + 'static>(
+    pub fn file_split<P: Packer + Sync + 'static, R: Keep + 'static,H:HowToPack+'static>(
         self,
         file_path: &str,
-        temp_size: LogSize,
         rolling_type: R,
         packer: P,
+        how:H
     ) -> Self {
         self.appends.push(Mutex::new(Box::new(
-            FileSplitAppender::new::<R, RawFile>(
+            FileSplitAppender::new::<RawFile,R,H>(
                 file_path,
-                temp_size,
+                how,
                 rolling_type,
                 Box::new(packer),
             )
@@ -124,26 +124,33 @@ impl Config {
     /// add a SplitAppender
     /// .split::<FileType, Packer>()
     /// for example:
-    ///
-    // fast_log::init(
-    //         Config::new()
-    //             .chan_len(Some(100000))
-    //             .split::<MmapFile, LogPacker>(
-    //                 "target/logs/temp.log",
-    //                 LogSize::MB(1),
-    //                 RollingType::All,
-    //                 LogPacker {},
-    //             ),
-    //     );
-    pub fn split<F: SplitFile + 'static, R: Keep + 'static, P: Packer + Sync + 'static>(
+    /// ```rust
+    /// use fast_log::Config;
+    /// use fast_log::consts::LogSize;
+    /// use fast_log::plugin::file_split::{HowToPackType, RawFile, RollingType};
+    /// use fast_log::plugin::packer::LogPacker;
+    /// fn new(){
+    ///  fast_log::init(
+    ///         Config::new()
+    ///             .chan_len(Some(100000))
+    ///             .split::<RawFile, RollingType, LogPacker, HowToPackType>(
+    ///                 "target/logs/temp.log",
+    ///                 RollingType::All,
+    ///                 LogPacker {},
+    ///                 HowToPackType::BySize(LogSize::MB(1)),
+    ///             ),
+    ///     );
+    /// }
+    /// ```
+    pub fn split<F: SplitFile + 'static, R: Keep + 'static, P: Packer + Sync + 'static,H:HowToPack+'static>(
         self,
         file_path: &str,
-        temp_size: LogSize,
         keeper: R,
         packer: P,
+        how_pack:H,
     ) -> Self {
         self.appends.push(Mutex::new(Box::new(
-            FileSplitAppender::new::<R, F>(file_path, temp_size, keeper, Box::new(packer)).unwrap(),
+            FileSplitAppender::new::<F,R,H>(file_path,how_pack, keeper, Box::new(packer)).unwrap(),
         )));
         self
     }

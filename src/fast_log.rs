@@ -141,7 +141,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                     }
                 }
                 //lock get appender
-                let shared_appender = appender.lock();
+                let mut shared_appender = appender.lock();
                 for msg in remain {
                     shared_appender.do_logs(msg.as_ref());
                     for x in msg.iter() {

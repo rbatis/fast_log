@@ -45,9 +45,6 @@ path = "src/format_log.rs"
 name = "format_log_json"
 path = "src/format_log_json.rs"
 [[bin]]
-name = "split_log_mmap"
-path = "src/split_log_mmap.rs"
-[[bin]]
 name = "split_log_date"
 path = "src/split_log_date.rs"
 [dependencies]
@@ -57,7 +54,7 @@ crossbeam-utils = "0.8"
 crossbeam = "0.8"
 fastdate = "0.3"
 # features=["lz4"] or add features=["zip","lz4"] if you need lz4 packer
-fast_log = { path = "../", features = ["lz4","zip","gzip","mmap"]}
+fast_log = { path = "../", features = ["lz4","zip","gzip"]}
 tokio = {version="1",features = ["rt-multi-thread","macros"]}
 meilisearch-sdk = "0.15.0"
 serde = { version = "1.0", features = ["derive"] }

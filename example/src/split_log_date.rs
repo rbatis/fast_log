@@ -1,25 +1,20 @@
-use fast_log::appender::FastLogRecord;
 use fast_log::config::Config;
-use fast_log::consts::LogSize;
 use fast_log::error::LogError;
 use fast_log::plugin::file_name::FileName;
-use fast_log::plugin::file_split::{KeepType, Packer};
+use fast_log::plugin::file_split::{HowToPackType, KeepType, Packer};
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::thread::sleep;
 use std::time::Duration;
+use fastdate::DateTime;
 
 ///pack by an date
 #[derive(Clone)]
 pub struct DateLogPacker {}
+
 impl Packer for DateLogPacker {
     fn pack_name(&self) -> &'static str {
         "log"
-    }
-
-    fn is_allow(&self, temp_size: usize, arg: FastLogRecord) -> bool {
-        //TODO
-        false
     }
 
     fn do_pack(&self, mut log_file: File, log_file_path: &str) -> Result<bool, LogError> {
@@ -35,11 +30,7 @@ impl Packer for DateLogPacker {
             }
         }
         //do nothing,and not remove file
-        let now = fastdate::DateTime::now()
-            .set_hour(0)
-            .set_min(0)
-            .set_sec(0)
-            .set_nano(0);
+        let now = DateTime::now();
         let name = self.new_log_name(log_file_path, now);
         let mut f = OpenOptions::new()
             .write(true)
@@ -70,11 +61,11 @@ fn main() {
     //file_path also can use '"target/logs/test.log"'
     fast_log::init(Config::new().chan_len(Some(100000)).console().file_split(
         "target/logs/",
-        LogSize::MB(1),
         KeepType::KeepNum(2),
         DateLogPacker {},
+        HowToPackType::ByDate(DateTime::now()),
     ))
-    .unwrap();
+        .unwrap();
     for _ in 0..40000 {
         log::info!("Commencing yak shaving");
     }

@@ -11,7 +11,7 @@ mod test {
         m.modules.push(module_path!().to_string());
         pub struct A {}
         impl LogAppender for A {
-            fn do_logs(&self, records: &[FastLogRecord]) {
+            fn do_logs(&mut self, records: &[FastLogRecord]) {
                 for x in records {
                     if x.command == Command::CommandRecord {
                         panic!("must be filter log,but do_log");

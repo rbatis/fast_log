@@ -154,41 +154,6 @@ pub fn test_file_compation() {
 }
 ```
 
-#### Split Log(mmap)
-* Mmap (memory map) maps files or devices into memory and enables direct memory access. 
-* It is supported on Windows, Linux and macOS to map a file's contents into a program's address space.
-* This allows very fast I/O without intermediate copying. Mmap is efficient for reading and writing files as it utilizes caching. 
-* It also enables easy sharing of memory between processes.  Overall mmap provides fast, convenient file access while the operating system handles low level details like caching and swapping.
-```rust
-use fast_log::config::Config;
-use fast_log::consts::LogSize;
-use fast_log::plugin::file_mmap::MmapFile;
-use fast_log::plugin::file_split::RollingType;
-use fast_log::plugin::packer::LogPacker;
-
-fn main() {
-    fast_log::init(
-        Config::new()
-            .chan_len(Some(100000))
-            .console()
-            .split::<MmapFile, LogPacker>(
-                "target/logs/temp.log",
-                LogSize::MB(1),
-                RollingType::All,
-                LogPacker {},
-            ),
-    )
-    .unwrap();
-    for _ in 0..40000 {
-        log::info!("Commencing yak shaving");
-    }
-    log::logger().flush();
-    println!("you can see log files in path: {}", "target/logs/");
-}
-
-```
-
-
 
 ##### Custom Log(impl do_log method)
 

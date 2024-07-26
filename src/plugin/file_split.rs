@@ -11,8 +11,91 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
+/// .zip or .lz4 or any one packer
+///
+/// must impl pack_name,is_allow,do_pack method
+pub trait Packer: Send + Sync {
+    fn pack_name(&self) -> &'static str;
+
+    ///return bool: remove_log_file
+    fn do_pack(&self, log_file: File, log_file_path: &str) -> Result<bool, LogError>;
+
+    /// default 0 is not retry pack. if retry > 0 ,it will trying rePack
+    fn retry(&self) -> i32 {
+        return 0;
+    }
+
+    /// date to string
+    fn date_to_string(&self, arg: DateTime) -> String {
+        arg.display_stand()
+            .to_string()
+            .replace(" ", "T")
+            .replace(":", "-")
+    }
+
+    /// create date style log name
+    /// input: 'temp.log'
+    /// output: 'temp2024-07-26T16-04-17.685429.log'
+    fn new_data_log_name(&self, first_file_path: &str, date: DateTime) -> String {
+        let file_name = first_file_path.extract_file_name();
+        let mut new_log_name = String::new();
+        let point = file_name.rfind(".");
+        match point {
+            None => {
+                new_log_name.push_str(&self.date_to_string(date));
+            }
+            Some(i) => {
+                let (name, ext) = file_name.split_at(i);
+                new_log_name = format!("{}{}{}", name, self.date_to_string(date), ext);
+            }
+        }
+        new_log_name = first_file_path.trim_end_matches(&file_name).to_string() + &new_log_name;
+        return new_log_name;
+    }
+}
+
+
+pub trait HowToPack: Send {
+    fn need_pack(&mut self, temp_size: usize, arg: &FastLogRecord) -> bool;
+}
+
+/// keep logs, for example keep by log num or keep by log create time.
+/// that do not meet the retention conditions will be deleted
+/// you can use KeepType or RollingType::All
+pub trait Keep: Send {
+    /// return removed nums
+    fn do_keep(&self, dir: &str, temp_name: &str) -> i64;
+    fn read_paths(&self, dir: &str, temp_name: &str) -> Vec<DirEntry> {
+        let base_name = get_base_name(temp_name);
+        let paths = std::fs::read_dir(dir);
+        if let Ok(paths) = paths {
+            //let mut temp_file = None;
+            let mut paths_vec = vec![];
+            for path in paths {
+                match path {
+                    Ok(path) => {
+                        if let Some(v) = path.file_name().to_str() {
+                            if v == temp_name {
+                                continue;
+                            }
+                            if !v.starts_with(&base_name) {
+                                continue;
+                            }
+                        }
+                        paths_vec.push(path);
+                    }
+                    _ => {}
+                }
+            }
+            paths_vec.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
+            return paths_vec;
+        }
+        return vec![];
+    }
+}
+
 pub trait SplitFile: Send {
-    fn new(path: &str, temp_size: LogSize) -> Result<Self, LogError>
+    fn new(path: &str) -> Result<Self, LogError>
     where
         Self: Sized;
     fn seek(&self, pos: SeekFrom) -> std::io::Result<u64>;
@@ -22,6 +105,7 @@ pub trait SplitFile: Send {
     fn len(&self) -> usize;
     fn offset(&self) -> usize;
 }
+
 
 ///only use File
 pub struct RawFile {
@@ -37,7 +121,7 @@ impl From<File> for RawFile {
 }
 
 impl SplitFile for RawFile {
-    fn new(path: &str, _temp_size: LogSize) -> Result<Self, LogError>
+    fn new(path: &str) -> Result<Self, LogError>
     where
         Self: Sized,
     {
@@ -87,49 +171,32 @@ impl SplitFile for RawFile {
     }
 }
 
-/// .zip or .lz4 or any one packer
-///
-/// must impl pack_name,is_allow,do_pack method
-pub trait Packer: Send + Sync {
-    fn pack_name(&self) -> &'static str;
 
-    /// is allow do pack
-    fn is_allow(&self, current_size: usize, arg: FastLogRecord) -> bool;
+pub enum HowToPackType {
+    ByDate(DateTime),
+    BySize(LogSize),
+}
 
-    ///return bool: remove_log_file
-    fn do_pack(&self, log_file: File, log_file_path: &str) -> Result<bool, LogError>;
-
-    /// default 0 is not retry pack. if retry > 0 ,it will trying rePack
-    fn retry(&self) -> i32 {
-        return 0;
-    }
-
-    /// date to string
-    fn date_to_string(&self, arg: DateTime) -> String {
-        arg.display_stand()
-            .to_string()
-            .replace(" ", "T")
-            .replace(":", "-")
-    }
-
-    /// create date style log name
-    /// input: 'temp.log'
-    /// output: 'temp2024-07-26T16-04-17.685429.log'
-    fn new_data_log_name(&self, first_file_path: &str, date: DateTime) -> String {
-        let file_name = first_file_path.extract_file_name();
-        let mut new_log_name = String::new();
-        let point = file_name.rfind(".");
-        match point {
-            None => {
-                new_log_name.push_str(&self.date_to_string(date));
+impl HowToPack for HowToPackType {
+    fn need_pack(&mut self, temp_size: usize, arg: &FastLogRecord) -> bool {
+        match self {
+            HowToPackType::ByDate(date_time) => {
+                let dt = fastdate::DateTime::from_system_time(arg.now, fastdate::offset_sec());
+                if dt.day() > date_time.day() {
+                    *date_time = dt;
+                    return true;
+                } else {
+                    return false;
+                }
             }
-            Some(i) => {
-                let (name, ext) = file_name.split_at(i);
-                new_log_name = format!("{}{}{}", name, self.date_to_string(date), ext);
+            HowToPackType::BySize(limit) => {
+                if temp_size >= limit.get_len() {
+                    return true;
+                } else {
+                    return false;
+                }
             }
         }
-        new_log_name = first_file_path.trim_end_matches(&file_name).to_string() + &new_log_name;
-        return new_log_name;
     }
 }
 
@@ -140,16 +207,18 @@ pub struct FileSplitAppender {
     packer: Arc<Box<dyn Packer>>,
     dir_path: String,
     sender: Sender<LogPack>,
-    temp_size: LogSize,
+    how_to_pack: Box<dyn HowToPack>,
     //cache data
     temp_bytes: AtomicUsize,
     temp_name: String,
 }
 
 impl FileSplitAppender {
-    pub fn new<R: Keep + 'static, F: SplitFile + 'static>(
+    pub fn new<F: SplitFile + 'static,
+        R: Keep + 'static,
+        H: HowToPack + 'static>(
         file_path: &str,
-        temp_size: LogSize,
+        how_to_pack: H,
         rolling_type: R,
         packer: Box<dyn Packer>,
     ) -> Result<FileSplitAppender, LogError> {
@@ -173,7 +242,7 @@ impl FileSplitAppender {
         }
         let temp_file = format!("{}{}{}", dir_path, sp, temp_name);
         let temp_bytes = AtomicUsize::new(0);
-        let file = F::new(&temp_file, temp_size)?;
+        let file = F::new(&temp_file)?;
         let mut offset = file.offset();
         if offset != 0 {
             offset += 1;
@@ -193,13 +262,13 @@ impl FileSplitAppender {
             dir_path: dir_path.to_string(),
             file: Box::new(file) as Box<dyn SplitFile>,
             sender,
-            temp_size,
+            how_to_pack: Box::new(how_to_pack),
             temp_name,
             packer: arc_packer,
         })
     }
     /// send data make an pack,and truncate data when finish.
-    pub fn send_pack(&self) {
+    pub fn send_pack(&self,wg:Option<WaitGroup>) {
         let mut sp = "";
         if !self.dir_path.is_empty() && !self.dir_path.ends_with("/") {
             sp = "/";
@@ -213,7 +282,7 @@ impl FileSplitAppender {
         let _ = self.sender.send(LogPack {
             dir: self.dir_path.clone(),
             new_log_name: new_log_name,
-            wg: None,
+            wg: wg,
         });
         self.truncate();
     }
@@ -224,6 +293,7 @@ impl FileSplitAppender {
         self.temp_bytes.store(0, Ordering::SeqCst);
     }
 }
+
 ///log data pack
 pub struct LogPack {
     pub dir: String,
@@ -266,40 +336,6 @@ impl LogPack {
     }
 }
 
-/// keep logs, for example keep by log num or keep by log create time.
-/// that do not meet the retention conditions will be deleted
-/// you can use KeepType or RollingType::All
-pub trait Keep: Send {
-    /// return removed nums
-    fn do_keep(&self, dir: &str, temp_name: &str) -> i64;
-    fn read_paths(&self, dir: &str, temp_name: &str) -> Vec<DirEntry> {
-        let base_name = get_base_name(temp_name);
-        let paths = std::fs::read_dir(dir);
-        if let Ok(paths) = paths {
-            //let mut temp_file = None;
-            let mut paths_vec = vec![];
-            for path in paths {
-                match path {
-                    Ok(path) => {
-                        if let Some(v) = path.file_name().to_str() {
-                            if v == temp_name {
-                                continue;
-                            }
-                            if !v.starts_with(&base_name) {
-                                continue;
-                            }
-                        }
-                        paths_vec.push(path);
-                    }
-                    _ => {}
-                }
-            }
-            paths_vec.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
-            return paths_vec;
-        }
-        return vec![];
-    }
-}
 
 ///rolling keep type
 pub type RollingType = KeepType;
@@ -316,6 +352,7 @@ pub enum KeepType {
     KeepTime(Duration),
     /// keep log pack num(.log,.zip.lz4...more)
     KeepNum(i64),
+    KeepDate,
 }
 
 impl Keep for KeepType {
@@ -355,7 +392,7 @@ impl Keep for KeepType {
 }
 
 impl LogAppender for FileSplitAppender {
-    fn do_logs(&self, records: &[FastLogRecord]) {
+    fn do_logs(&mut self, records: &[FastLogRecord]) {
         //if temp_bytes is full,must send pack
         let mut temp = String::with_capacity(records.len() * 10);
         for x in records {
@@ -364,7 +401,7 @@ impl LogAppender for FileSplitAppender {
                     let current_temp_size = self.temp_bytes.load(Ordering::Relaxed)
                         + temp.as_bytes().len()
                         + x.formated.as_bytes().len();
-                    if current_temp_size >= self.temp_size.get_len() {
+                    if self.how_to_pack.need_pack(current_temp_size, x) {
                         self.temp_bytes.fetch_add(
                             {
                                 let w = self.file.write(temp.as_bytes());
@@ -377,17 +414,28 @@ impl LogAppender for FileSplitAppender {
                             Ordering::SeqCst,
                         );
                         temp.clear();
-                        self.send_pack();
+                        self.send_pack(None);
                     }
                     temp.push_str(x.formated.as_str());
                 }
                 Command::CommandExit => {}
                 Command::CommandFlush(ref w) => {
-                    let _ = self.sender.send(LogPack {
-                        dir: "".to_string(),
-                        new_log_name: "".to_string(),
-                        wg: Some(w.clone()),
-                    });
+                    let current_temp_size = self.temp_bytes.load(Ordering::Relaxed);
+                    if self.how_to_pack.need_pack(current_temp_size, x) {
+                        self.temp_bytes.fetch_add(
+                            {
+                                let w = self.file.write(temp.as_bytes());
+                                if let Ok(w) = w {
+                                    w
+                                } else {
+                                    0
+                                }
+                            },
+                            Ordering::SeqCst,
+                        );
+                        temp.clear();
+                        self.send_pack(Some(w.clone()));
+                    }
                 }
             }
         }
