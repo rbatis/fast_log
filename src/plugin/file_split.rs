@@ -179,21 +179,21 @@ pub enum PackType {
 
 impl CanPack for PackType {
     fn is(&mut self, temp_size: usize, arg: &FastLogRecord) -> bool {
-        match self {
+        return match self {
             PackType::ByDate(date_time) => {
                 let dt = fastdate::DateTime::from_system_time(arg.now, fastdate::offset_sec());
                 if dt.day() > date_time.day() {
                     *date_time = dt;
-                    return true;
+                    true
                 } else {
-                    return false;
+                    false
                 }
             }
             PackType::BySize(limit) => {
                 if temp_size >= limit.get_len() {
-                    return true;
+                    true
                 } else {
-                    return false;
+                    false
                 }
             }
         }
