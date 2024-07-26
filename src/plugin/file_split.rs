@@ -214,12 +214,10 @@ pub struct FileSplitAppender {
 }
 
 impl FileSplitAppender {
-    pub fn new<F: SplitFile + 'static,
-        R: Keep + 'static,
-        H: HowToPack + 'static>(
+    pub fn new<F: SplitFile + 'static>(
         file_path: &str,
-        how_to_pack: H,
-        rolling_type: R,
+        how_to_pack: Box<dyn HowToPack>,
+        rolling_type: Box<dyn Keep>,
         packer: Box<dyn Packer>,
     ) -> Result<FileSplitAppender, LogError> {
         let temp_name = {
@@ -262,7 +260,7 @@ impl FileSplitAppender {
             dir_path: dir_path.to_string(),
             file: Box::new(file) as Box<dyn SplitFile>,
             sender,
-            how_to_pack: Box::new(how_to_pack),
+            how_to_pack: how_to_pack,
             temp_name,
             packer: arc_packer,
         })
@@ -456,10 +454,10 @@ impl LogAppender for FileSplitAppender {
 }
 
 ///spawn an saver thread to save log file or zip file
-fn spawn_saver<R: Keep + 'static>(
+fn spawn_saver(
     temp_name: String,
     r: Receiver<LogPack>,
-    rolling_type: R,
+    rolling_type: Box<dyn Keep>,
     packer: Arc<Box<dyn Packer>>,
 ) {
     std::thread::spawn(move || {

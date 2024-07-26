@@ -12,10 +12,10 @@ pub struct FileLoopAppender {
 impl FileLoopAppender {
     pub fn new(log_file_path: &str, size: LogSize) -> Result<FileLoopAppender, LogError> {
         Ok(Self {
-            file: FileSplitAppender::new::<RawFile,KeepType,HowToPackType>(
+            file: FileSplitAppender::new::<RawFile>(
                 log_file_path,
-                HowToPackType::BySize(size),
-                KeepType::KeepNum(1),
+                Box::new(HowToPackType::BySize(size)),
+                Box::new(KeepType::KeepNum(1)),
                 Box::new(LogPacker {}),
             )?,
         })

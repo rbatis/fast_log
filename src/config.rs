@@ -110,10 +110,10 @@ impl Config {
         how:H
     ) -> Self {
         self.appends.push(Mutex::new(Box::new(
-            FileSplitAppender::new::<RawFile,R,H>(
+            FileSplitAppender::new::<RawFile>(
                 file_path,
-                how,
-                rolling_type,
+                Box::new(how),
+                Box::new(rolling_type),
                 Box::new(packer),
             )
             .unwrap(),
@@ -150,7 +150,7 @@ impl Config {
         how_pack:H,
     ) -> Self {
         self.appends.push(Mutex::new(Box::new(
-            FileSplitAppender::new::<F,R,H>(file_path,how_pack, keeper, Box::new(packer)).unwrap(),
+            FileSplitAppender::new::<F>(file_path, Box::new(how_pack), Box::new(keeper), Box::new(packer)).unwrap(),
         )));
         self
     }
