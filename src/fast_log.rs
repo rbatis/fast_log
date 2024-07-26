@@ -3,24 +3,27 @@ use crate::config::Config;
 use crate::error::LogError;
 use crate::{chan, spawn, Receiver, SendError, Sender, WaitGroup};
 use log::{LevelFilter, Log, Metadata, Record};
-use once_cell::sync::{Lazy, OnceCell};
 use std::ops::Deref;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock, OnceLock};
 use std::time::SystemTime;
 
-pub static LOGGER: Lazy<Logger> = Lazy::new(|| Logger {
-    cfg: OnceCell::new(),
-    send: OnceCell::new(),
-    recv: OnceCell::new(),
-});
+pub static LOGGER: LazyLock<Logger> = LazyLock::new(|| Logger::default());
 
 pub struct Logger {
-    pub cfg: OnceCell<Config>,
-    pub send: OnceCell<Sender<FastLogRecord>>,
-    pub recv: OnceCell<Receiver<FastLogRecord>>,
+    pub cfg: OnceLock<Config>,
+    pub send: OnceLock<Sender<FastLogRecord>>,
+    pub recv: OnceLock<Receiver<FastLogRecord>>,
 }
 
 impl Logger {
+    pub fn default() -> Self {
+        Self {
+            cfg: OnceLock::default(),
+            send: OnceLock::default(),
+            recv: OnceLock::default(),
+        }
+    }
+
     pub fn set_level(&self, level: LevelFilter) {
         log::set_max_level(level);
     }
@@ -138,7 +141,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                     }
                 }
                 //lock get appender
-                let shared_appender= appender.lock();
+                let shared_appender = appender.lock();
                 for msg in remain {
                     shared_appender.do_logs(msg.as_ref());
                     for x in msg.iter() {
