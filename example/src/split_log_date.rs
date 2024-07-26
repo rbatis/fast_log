@@ -1,7 +1,7 @@
 use fast_log::config::Config;
 use fast_log::error::LogError;
 use fast_log::plugin::file_name::FileName;
-use fast_log::plugin::file_split::{HowPackType, KeepType, Packer};
+use fast_log::plugin::file_split::{PackType, KeepType, Packer};
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::thread::sleep;
@@ -63,7 +63,7 @@ fn main() {
         "target/logs/",
         KeepType::KeepNum(2),
         DateLogPacker {},
-        HowPackType::ByDate(DateTime::now()),
+        PackType::ByDate(DateTime::now()),
     ))
         .unwrap();
     for _ in 0..40000 {
