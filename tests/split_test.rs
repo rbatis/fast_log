@@ -3,8 +3,11 @@ mod test {
     use fast_log::appender::{Command, FastLogRecord, LogAppender};
     use fast_log::consts::LogSize;
     use fast_log::plugin::file_name::FileName;
-    use fast_log::plugin::file_split::{FileSplitAppender, Keep, Packer, RawFile, RollingType};
+    use fast_log::plugin::file_split::{
+        FileSplitAppender, Keep, Packer, RawFile, RollingType, SplitFile,
+    };
     use fast_log::plugin::packer::LogPacker;
+    use fastdate::DateTime;
     use log::Level;
     use std::fs::remove_dir_all;
     use std::thread::sleep;
@@ -13,7 +16,7 @@ mod test {
     #[test]
     fn test_send_pack() {
         let _ = remove_dir_all("target/test/");
-        let appender = FileSplitAppender::<RawFile>::new(
+        let appender = FileSplitAppender::new::<RollingType, RawFile>(
             "target/test/",
             LogSize::MB(1),
             RollingType::All,
@@ -41,7 +44,8 @@ mod test {
     #[test]
     fn test_log_name_create() {
         let p = LogPacker {};
-        let name = p.log_name_create("temp.log");
+        let name = p.new_data_log_name("temp.log", DateTime::now());
+        println!("{}", name);
         assert_eq!(name.ends_with(".log"), true);
     }
 

@@ -90,39 +90,39 @@ impl SplitFile for RawFile {
 /// .zip or .lz4 or any one packer
 pub trait Packer: Send + Sync {
     fn pack_name(&self) -> &'static str;
-    //return bool: remove_log_file
+
+    /// is allow do pack
+    fn is_allow(&self, current_size: usize, arg: FastLogRecord) -> bool;
+
+    ///return bool: remove_log_file
     fn do_pack(&self, log_file: File, log_file_path: &str) -> Result<bool, LogError>;
     /// default 0 is not retry pack. if retry > 0 ,it will trying rePack
     fn retry(&self) -> i32 {
         return 0;
     }
 
-    fn log_name_create(&self, first_file_path: &str) -> String {
+    /// date to string
+    fn date_to_string(&self, arg: DateTime) -> String {
+        arg.display_stand()
+            .to_string()
+            .replace(" ", "T")
+            .replace(":", "-")
+    }
+
+    /// create date style log name
+    /// input: 'temp.log'
+    /// output: 'temp2024-07-26T16-04-17.685429.log'
+    fn new_data_log_name(&self, first_file_path: &str, date: DateTime) -> String {
         let file_name = first_file_path.extract_file_name();
         let mut new_log_name = String::new();
         let point = file_name.rfind(".");
         match point {
             None => {
-                new_log_name.push_str(
-                    &DateTime::now()
-                        .display_stand()
-                        .to_string()
-                        .replace(" ", "T")
-                        .replace(":", "-"),
-                );
+                new_log_name.push_str(&self.date_string(date));
             }
             Some(i) => {
                 let (name, ext) = file_name.split_at(i);
-                new_log_name = format!(
-                    "{}{}{}",
-                    name,
-                    DateTime::now()
-                        .display_stand()
-                        .to_string()
-                        .replace(" ", "T")
-                        .replace(":", "-"),
-                    ext
-                );
+                new_log_name = format!("{}{}{}", name, self.date_string(date), ext);
             }
         }
         new_log_name = first_file_path.trim_end_matches(&file_name).to_string() + &new_log_name;
@@ -132,8 +132,8 @@ pub trait Packer: Send + Sync {
 
 /// split log file allow pack compress log
 /// Memory space swop running time , reduces the number of repeated queries for IO
-pub struct FileSplitAppender<F: SplitFile> {
-    file: F,
+pub struct FileSplitAppender {
+    file: Box<dyn SplitFile>,
     packer: Arc<Box<dyn Packer>>,
     dir_path: String,
     sender: Sender<LogPack>,
@@ -143,13 +143,13 @@ pub struct FileSplitAppender<F: SplitFile> {
     temp_name: String,
 }
 
-impl<F: SplitFile> FileSplitAppender<F> {
-    pub fn new<R: Keep + 'static>(
+impl FileSplitAppender {
+    pub fn new<R: Keep + 'static, F: SplitFile + 'static>(
         file_path: &str,
         temp_size: LogSize,
         rolling_type: R,
         packer: Box<dyn Packer>,
-    ) -> Result<FileSplitAppender<F>, LogError> {
+    ) -> Result<FileSplitAppender, LogError> {
         let temp_name = {
             let mut name = file_path.extract_file_name().to_string();
             if name.is_empty() {
@@ -188,7 +188,7 @@ impl<F: SplitFile> FileSplitAppender<F> {
         Ok(Self {
             temp_bytes,
             dir_path: dir_path.to_string(),
-            file,
+            file: Box::new(file) as Box<dyn SplitFile>,
             sender,
             temp_size,
             temp_name,
@@ -202,7 +202,9 @@ impl<F: SplitFile> FileSplitAppender<F> {
             sp = "/";
         }
         let first_file_path = format!("{}{}{}", self.dir_path, sp, &self.temp_name);
-        let new_log_name = self.packer.log_name_create(&first_file_path);
+        let new_log_name = self
+            .packer
+            .new_data_log_name(&first_file_path, DateTime::now());
         self.file.flush();
         let _ = std::fs::copy(&first_file_path, &new_log_name);
         let _ = self.sender.send(LogPack {
@@ -349,18 +351,17 @@ impl Keep for KeepType {
     }
 }
 
-impl<F: SplitFile> LogAppender for FileSplitAppender<F> {
+impl LogAppender for FileSplitAppender {
     fn do_logs(&self, records: &[FastLogRecord]) {
         //if temp_bytes is full,must send pack
         let mut temp = String::with_capacity(records.len() * 10);
         for x in records {
             match x.command {
                 Command::CommandRecord => {
-                    if (self.temp_bytes.load(Ordering::Relaxed)
+                    let current_temp_size = self.temp_bytes.load(Ordering::Relaxed)
                         + temp.as_bytes().len()
-                        + x.formated.as_bytes().len())
-                        >= self.temp_size.get_len()
-                    {
+                        + x.formated.as_bytes().len();
+                    if current_temp_size >= self.temp_size.get_len() {
                         self.temp_bytes.fetch_add(
                             {
                                 let w = self.file.write(temp.as_bytes());

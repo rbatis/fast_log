@@ -10,6 +10,11 @@ impl Packer for LogPacker {
         "log"
     }
 
+    fn is_allow(&self, temp_size: usize, arg: FastLogRecord) -> bool {
+        //TODO
+        false
+    }
+
     fn do_pack(&self, _log_file: File, _log_file_path: &str) -> Result<bool, LogError> {
         //do nothing,and not remove file
         return Ok(false);
@@ -31,7 +36,10 @@ impl Packer for ZipPacker {
     fn pack_name(&self) -> &'static str {
         "zip"
     }
-
+    fn is_allow(&self, temp_size: usize, arg: FastLogRecord) -> bool {
+        //TODO
+        false
+    }
     fn do_pack(&self, mut log_file: File, log_file_path: &str) -> Result<bool, LogError> {
         use std::io::Write;
         let mut log_name = log_file_path.replace("\\", "/").to_string();
@@ -80,7 +88,10 @@ impl Packer for LZ4Packer {
     fn pack_name(&self) -> &'static str {
         "lz4"
     }
-
+    fn is_allow(&self, temp_size: usize, arg: FastLogRecord) -> bool {
+        //TODO
+        false
+    }
     fn do_pack(&self, mut log_file: File, log_file_path: &str) -> Result<bool, LogError> {
         let lz4_path = log_file_path.replace(".log", ".lz4");
         let lz4_file = File::create(&lz4_path);
@@ -107,6 +118,7 @@ impl Packer for LZ4Packer {
     }
 }
 
+use crate::appender::FastLogRecord;
 #[cfg(feature = "gzip")]
 use flate2::write::GzEncoder;
 #[cfg(feature = "gzip")]
@@ -120,7 +132,10 @@ impl Packer for GZipPacker {
     fn pack_name(&self) -> &'static str {
         "gz"
     }
-
+    fn is_allow(&self, temp_size: usize, arg: FastLogRecord) -> bool {
+        //TODO
+        false
+    }
     fn do_pack(&self, mut log_file: File, log_file_path: &str) -> Result<bool, LogError> {
         use std::io::Write;
         let zip_path = log_file_path.replace(".log", ".gz");

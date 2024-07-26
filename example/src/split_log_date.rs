@@ -1,3 +1,4 @@
+use fast_log::appender::FastLogRecord;
 use fast_log::config::Config;
 use fast_log::consts::LogSize;
 use fast_log::error::LogError;
@@ -14,6 +15,11 @@ pub struct DateLogPacker {}
 impl Packer for DateLogPacker {
     fn pack_name(&self) -> &'static str {
         "log"
+    }
+
+    fn is_allow(&self, temp_size: usize, arg: FastLogRecord) -> bool {
+        //TODO
+        false
     }
 
     fn do_pack(&self, mut log_file: File, log_file_path: &str) -> Result<bool, LogError> {
