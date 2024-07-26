@@ -88,6 +88,8 @@ impl SplitFile for RawFile {
 }
 
 /// .zip or .lz4 or any one packer
+///
+/// must impl pack_name,is_allow,do_pack method
 pub trait Packer: Send + Sync {
     fn pack_name(&self) -> &'static str;
 
@@ -96,6 +98,7 @@ pub trait Packer: Send + Sync {
 
     ///return bool: remove_log_file
     fn do_pack(&self, log_file: File, log_file_path: &str) -> Result<bool, LogError>;
+
     /// default 0 is not retry pack. if retry > 0 ,it will trying rePack
     fn retry(&self) -> i32 {
         return 0;
