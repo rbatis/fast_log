@@ -9,7 +9,7 @@ use std::fs::{DirEntry, File, OpenOptions};
 use std::io::{Seek, SeekFrom, Write};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 /// .zip or .lz4 or any one packer
 ///
@@ -196,7 +196,7 @@ impl CanPack for PackType {
                     false
                 }
             }
-        }
+        };
     }
 }
 
@@ -266,15 +266,16 @@ impl FileSplitAppender {
         })
     }
     /// send data make an pack,and truncate data when finish.
-    pub fn send_pack(&self,wg:Option<WaitGroup>) {
+    pub fn send_pack(&self, time: SystemTime, wg: Option<WaitGroup>) {
         let mut sp = "";
         if !self.dir_path.is_empty() && !self.dir_path.ends_with("/") {
             sp = "/";
         }
         let first_file_path = format!("{}{}{}", self.dir_path, sp, &self.temp_name);
+        let date = DateTime::from_system_time(time, fastdate::offset_sec());
         let new_log_name = self
             .packer
-            .new_data_log_name(&first_file_path, DateTime::now());
+            .new_data_log_name(&first_file_path, date);
         self.file.flush();
         let _ = std::fs::copy(&first_file_path, &new_log_name);
         let _ = self.sender.send(LogPack {
@@ -412,7 +413,7 @@ impl LogAppender for FileSplitAppender {
                             Ordering::SeqCst,
                         );
                         temp.clear();
-                        self.send_pack(None);
+                        self.send_pack(x.now, None);
                     }
                     temp.push_str(x.formated.as_str());
                 }
@@ -432,7 +433,7 @@ impl LogAppender for FileSplitAppender {
                             Ordering::SeqCst,
                         );
                         temp.clear();
-                        self.send_pack(Some(w.clone()));
+                        self.send_pack(x.now, Some(w.clone()));
                     }
                 }
             }
