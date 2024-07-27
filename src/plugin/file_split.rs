@@ -317,8 +317,8 @@ pub struct FileSplitAppender {
 impl FileSplitAppender {
     pub fn new<F: SplitFile + 'static>(
         file_path: &str,
-        how_to_pack: Box<dyn CanRollingPack>,
-        rolling_type: Box<dyn Keep>,
+        rolling: Box<dyn CanRollingPack>,
+        keeper: Box<dyn Keep>,
         packer: Box<dyn Packer>,
     ) -> Result<FileSplitAppender, LogError> {
         let temp_name = {
@@ -353,7 +353,7 @@ impl FileSplitAppender {
         spawn_saver(
             temp_name.clone(),
             receiver,
-            rolling_type,
+            keeper,
             arc_packer.clone(),
         );
         Ok(Self {
@@ -361,7 +361,7 @@ impl FileSplitAppender {
             dir_path: dir_path.to_string(),
             file: Box::new(file) as Box<dyn SplitFile>,
             sender,
-            can_pack: how_to_pack,
+            can_pack: rolling,
             temp_name,
             packer: arc_packer,
         })
