@@ -257,7 +257,7 @@ impl CanPack for HowPack {
             PackType::BySize(limit) => {
                 if temp_size >= limit.get_len() {
                     let log_name = {
-                        let last_time = DateTime::now();
+                        let last_time = DateTime::from_system_time(last_time, fastdate::offset_sec());
                         if let Some(idx) = temp_name.rfind(".") {
                             let suffix = &temp_name[idx..];
                             temp_name.replace(suffix, &last_time.format(&format!("YYYY-MM-DDThh-mm-ss.000000{}", suffix)))
