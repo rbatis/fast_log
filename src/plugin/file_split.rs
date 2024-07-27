@@ -196,10 +196,10 @@ pub struct HowPack {
 }
 
 impl HowPack {
-    pub fn new(how:PackType)->Self{
-        Self{
+    pub fn new(how: PackType) -> Self {
+        Self {
             last: SystemTime::now(),
-            how:how,
+            how: how,
         }
     }
 }
@@ -239,7 +239,16 @@ impl CanPack for HowPack {
                     }
                 };
                 if diff {
-                    let log_name = temp_name.replace(".log", &last_time.format("YYYY-MM-DDThh-mm-ss.000000.log"));
+                    let log_name = {
+                        if let Some(idx) = temp_name.rfind(".") {
+                            let suffix = &temp_name[idx..];
+                            temp_name.replace(suffix, &last_time.format(&format!("YYYY-MM-DDThh-mm-ss.000000{}", suffix)))
+                        } else {
+                            let mut temp_name = temp_name.to_string();
+                            temp_name.push_str(&last_time.format("YYYY-MM-DDThh-mm-ss.000000"));
+                            temp_name
+                        }
+                    };
                     Some(log_name)
                 } else {
                     None
@@ -247,7 +256,18 @@ impl CanPack for HowPack {
             }
             PackType::BySize(limit) => {
                 if temp_size >= limit.get_len() {
-                    Some(temp_name.replace(".log", &DateTime::now().format("YYYY-MM-DDThh-mm-ss.000000.log")))
+                    let log_name = {
+                        let last_time = DateTime::now();
+                        if let Some(idx) = temp_name.rfind(".") {
+                            let suffix = &temp_name[idx..];
+                            temp_name.replace(suffix, &last_time.format(&format!("YYYY-MM-DDThh-mm-ss.000000{}", suffix)))
+                        } else {
+                            let mut temp_name = temp_name.to_string();
+                            temp_name.push_str(&last_time.format("YYYY-MM-DDThh-mm-ss.000000"));
+                            temp_name
+                        }
+                    };
+                    Some(log_name)
                 } else {
                     None
                 }
@@ -258,7 +278,16 @@ impl CanPack for HowPack {
                 if log_time >= next {
                     let now = DateTime::now();
                     let last_time = DateTime::from_system_time(last_time, fastdate::offset_sec());
-                    let log_name = temp_name.replace(".log", &last_time.format("YYYY-MM-DDThh-mm-ss.000000.log"));
+                    let log_name = {
+                        if let Some(idx) = temp_name.rfind(".") {
+                            let suffix = &temp_name[idx..];
+                            temp_name.replace(suffix, &last_time.format(&format!("YYYY-MM-DDThh-mm-ss.000000{}", suffix)))
+                        } else {
+                            let mut temp_name = temp_name.to_string();
+                            temp_name.push_str(&last_time.format("YYYY-MM-DDThh-mm-ss.000000"));
+                            temp_name
+                        }
+                    };
                     *start_time = now;
                     Some(log_name)
                 } else {
