@@ -127,17 +127,17 @@ impl Config {
     /// ```rust
     /// use fast_log::Config;
     /// use fast_log::consts::LogSize;
-    /// use fast_log::plugin::file_split::{PackType, RawFile, RollingType};
+    /// use fast_log::plugin::file_split::{HowPack, PackType, RawFile, RollingType};
     /// use fast_log::plugin::packer::LogPacker;
     /// fn new(){
     ///  fast_log::init(
     ///         Config::new()
     ///             .chan_len(Some(100000))
-    ///             .split::<RawFile, RollingType, LogPacker, PackType>(
+    ///             .split::<RawFile, _, _, _>(
     ///                 "target/logs/temp.log",
     ///                 RollingType::All,
     ///                 LogPacker {},
-    ///                 PackType::BySize(LogSize::MB(1)),
+    ///                 HowPack::new(PackType::BySize(LogSize::MB(1))),
     ///             ),
     ///     );
     /// }
