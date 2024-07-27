@@ -10,7 +10,7 @@ use std::io::{Seek, SeekFrom, Write};
 use std::ops::Deref;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::time::{Duration};
+use std::time::{Duration, SystemTime};
 
 /// .zip or .lz4 or any one packer
 ///
@@ -190,14 +190,14 @@ impl DurationType {
 
 
 pub struct HowPack {
-    last: DateTime,
+    last: SystemTime,
     pub how: PackType,
 }
 
 impl HowPack {
     pub fn new(how:PackType)->Self{
         Self{
-            last: DateTime::now(),
+            last: SystemTime::now(),
             how:how,
         }
     }
@@ -211,35 +211,36 @@ pub enum PackType {
 
 impl CanPack for HowPack {
     fn is_pack(&mut self, _appender: &dyn Packer, temp_name: &str, temp_size: usize, arg: &FastLogRecord) -> Option<String> {
+        let last_time = self.last.clone();
+        self.last = arg.now.clone();
         return match &mut self.how {
             PackType::ByDate(date_type) => {
-                let dt = DateTime::from_system_time(arg.now, fastdate::offset_sec());
+                let last_time = DateTime::from_system_time(last_time, fastdate::offset_sec());
+                let log_time = DateTime::from_system_time(arg.now, fastdate::offset_sec());
                 let diff = match date_type {
                     DateType::Sec => {
-                        dt.sec() != self.last.sec()
+                        log_time.sec() != last_time.sec()
                     }
                     DateType::Hour => {
-                        dt.hour() != self.last.hour()
+                        log_time.hour() != last_time.hour()
                     }
                     DateType::Minute => {
-                        dt.minute() != self.last.minute()
+                        log_time.minute() != last_time.minute()
                     }
                     DateType::Day => {
-                        dt.day() != self.last.day()
+                        log_time.day() != last_time.day()
                     }
                     DateType::Month => {
-                        dt.mon() != self.last.mon()
+                        log_time.mon() != last_time.mon()
                     }
                     DateType::Year => {
-                        dt.year() != self.last.year()
+                        log_time.year() != last_time.year()
                     }
                 };
                 if diff {
-                    let log_name = temp_name.replace(".log", &self.last.format("YYYY-MM-DDThh-mm-ss.000000.log"));
-                    self.last = dt;
+                    let log_name = temp_name.replace(".log", &last_time.format("YYYY-MM-DDThh-mm-ss.000000.log"));
                     Some(log_name)
                 } else {
-                    self.last = dt;
                     None
                 }
             }
@@ -251,16 +252,15 @@ impl CanPack for HowPack {
                 }
             }
             PackType::ByDuration((start_time, duration)) => {
-                let dt = DateTime::from_system_time(arg.now, fastdate::offset_sec());
+                let log_time = DateTime::from_system_time(arg.now, fastdate::offset_sec());
                 let next = start_time.clone().add(duration.clone());
-                if dt >= next {
+                if log_time >= next {
                     let now = DateTime::now();
-                    let log_name = temp_name.replace(".log", &self.last.format("YYYY-MM-DDThh-mm-ss.000000.log"));
+                    let last_time = DateTime::from_system_time(last_time, fastdate::offset_sec());
+                    let log_name = temp_name.replace(".log", &last_time.format("YYYY-MM-DDThh-mm-ss.000000.log"));
                     *start_time = now;
-                    self.last = dt;
                     Some(log_name)
                 } else {
-                    self.last = dt;
                     None
                 }
             }

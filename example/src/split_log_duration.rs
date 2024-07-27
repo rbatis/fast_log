@@ -1,5 +1,5 @@
 use fast_log::config::Config;
-use fast_log::plugin::file_split::{PackType, KeepType, DurationType, HowPack};
+use fast_log::plugin::file_split::{PackType, KeepType, HowPack};
 use std::thread::sleep;
 use std::time::Duration;
 use fastdate::DateTime;
