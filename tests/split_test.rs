@@ -3,7 +3,7 @@ mod test {
     use fast_log::appender::{Command, FastLogRecord, LogAppender};
     use fast_log::consts::LogSize;
     use fast_log::plugin::file_name::FileName;
-    use fast_log::plugin::file_split::{FileSplitAppender, PackType, Keep, Packer, RawFile, RollingType};
+    use fast_log::plugin::file_split::{FileSplitAppender, PackType, Keep, RawFile, RollingType};
     use fast_log::plugin::packer::LogPacker;
     use fastdate::DateTime;
     use log::Level;
