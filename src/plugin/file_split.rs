@@ -276,7 +276,7 @@ pub struct FileSplitAppender {
     packer: Arc<Box<dyn Packer>>,
     dir_path: String,
     sender: Sender<LogPack>,
-    is_pack: Box<dyn CanPack>,
+    can_pack: Box<dyn CanPack>,
     //cache data
     temp_bytes: AtomicUsize,
     temp_name: String,
@@ -329,7 +329,7 @@ impl FileSplitAppender {
             dir_path: dir_path.to_string(),
             file: Box::new(file) as Box<dyn SplitFile>,
             sender,
-            is_pack: how_to_pack,
+            can_pack: how_to_pack,
             temp_name,
             packer: arc_packer,
         })
@@ -470,7 +470,7 @@ impl LogAppender for FileSplitAppender {
                     let current_temp_size = self.temp_bytes.load(Ordering::Relaxed)
                         + temp.as_bytes().len()
                         + x.formated.as_bytes().len();
-                    if let Some(new_log_name) = self.is_pack.is_pack(self.packer.deref(), &self.temp_name, current_temp_size, x) {
+                    if let Some(new_log_name) = self.can_pack.is_pack(self.packer.deref(), &self.temp_name, current_temp_size, x) {
                         self.temp_bytes.fetch_add(
                             {
                                 let w = self.file.write(temp.as_bytes());
@@ -490,7 +490,7 @@ impl LogAppender for FileSplitAppender {
                 Command::CommandExit => {}
                 Command::CommandFlush(ref w) => {
                     let current_temp_size = self.temp_bytes.load(Ordering::Relaxed);
-                    if let Some(new_log_name) = self.is_pack.is_pack(self.packer.deref(), &self.temp_name, current_temp_size, x) {
+                    if let Some(new_log_name) = self.can_pack.is_pack(self.packer.deref(), &self.temp_name, current_temp_size, x) {
                         self.temp_bytes.fetch_add(
                             {
                                 let w = self.file.write(temp.as_bytes());
