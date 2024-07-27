@@ -30,7 +30,14 @@ impl FileAppender {
 impl LogAppender for FileAppender {
     fn do_logs(&mut self, records: &[FastLogRecord]) {
         let mut log_file = self.file.borrow_mut();
-        let mut buf = String::new();
+        let mut cap = 0;
+        if records.len() != 0 {
+            cap = 0;
+            for x in records {
+                cap += x.formated.len();
+            }
+        }
+        let mut buf = String::with_capacity(cap);
         for x in records {
             buf.push_str(&x.formated);
             match &x.command {
