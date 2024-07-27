@@ -102,12 +102,16 @@ impl Config {
         self
     }
     /// add a FileSplitAppender
-    pub fn file_split<Packer: Packer + Sync + 'static, Keeper: Keep + 'static, Rolling: CanRollingPack + 'static>(
+    pub fn file_split<
+        R: CanRollingPack + 'static,
+        K: Keep + 'static,
+        P: Packer + Sync + 'static,
+        >(
         self,
         file_path: &str,
-        rolling: Rolling,
-        keeper: Keeper,
-        packer: Packer,
+        rolling: R,
+        keeper: K,
+        packer: P,
     ) -> Self {
         self.appends.push(Mutex::new(Box::new(
             FileSplitAppender::new::<RawFile>(
@@ -127,7 +131,7 @@ impl Config {
     /// ```rust
     /// use fast_log::Config;
     /// use fast_log::consts::LogSize;
-    /// use fast_log::plugin::file_split::{Rolling, RollingType, RawFile, RollingType};
+    /// use fast_log::plugin::file_split::{Rolling, RawFile, RollingType, KeepType};
     /// use fast_log::plugin::packer::LogPacker;
     /// fn new(){
     ///  fast_log::init(
@@ -135,7 +139,7 @@ impl Config {
     ///             .chan_len(Some(100000))
     ///             .split::<RawFile, _, _, _>(
     ///                 "target/logs/temp.log",
-    ///                 RollingType::All,
+    ///                 KeepType::All,
     ///                 LogPacker {},
     ///                 Rolling::new(RollingType::BySize(LogSize::MB(1))),
     ///             ),
