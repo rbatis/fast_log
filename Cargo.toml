@@ -13,7 +13,6 @@ authors = ["ce <zhuxiujia@qq.com>"]
 repository = "https://github.com/rbatis/fast_log"
 edition = "2021"
 license = "MIT"
-categories = ["logging"]
 keywords = ["metrics", "async", "tracing"]
 
 [features]
