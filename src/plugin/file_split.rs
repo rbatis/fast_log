@@ -155,7 +155,7 @@ impl SplitFile for RawFile {
 }
 
 
-pub enum DiffDateType {
+pub enum DateType {
     Sec,
     Hour,
     Minute,
@@ -164,23 +164,9 @@ pub enum DiffDateType {
     Year,
 }
 
-pub struct DateType {
-    last: DateTime,
-    pub diff: DiffDateType,
-}
-
-impl DateType {
-    pub fn new(arg: DiffDateType) -> Self {
-        Self {
-            last: DateTime::now(),
-            diff: arg,
-        }
-    }
-}
-
 impl Default for DateType {
     fn default() -> Self {
-        Self::new(DiffDateType::Day)
+        Self::Day
     }
 }
 
@@ -202,44 +188,58 @@ impl DurationType {
     }
 }
 
+
+pub struct HowPack {
+    last: DateTime,
+    pub how: PackType,
+}
+
+impl HowPack {
+    pub fn new(how:PackType)->Self{
+        Self{
+            last: DateTime::now(),
+            how:how,
+        }
+    }
+}
+
 pub enum PackType {
     ByDate(DateType),
     BySize(LogSize),
-    ByDuration(DurationType),
-    ByCustom(Box<dyn CanPack>),
+    ByDuration((DateTime, Duration)),
 }
 
-impl CanPack for PackType {
+impl CanPack for HowPack {
     fn is_pack(&mut self, _appender: &dyn Packer, temp_name: &str, temp_size: usize, arg: &FastLogRecord) -> Option<String> {
-        return match self {
+        return match &mut self.how {
             PackType::ByDate(date_type) => {
                 let dt = DateTime::from_system_time(arg.now, fastdate::offset_sec());
-                let diff = match date_type.diff {
-                    DiffDateType::Sec => {
-                        dt.sec() != date_type.last.sec()
+                let diff = match date_type {
+                    DateType::Sec => {
+                        dt.sec() != self.last.sec()
                     }
-                    DiffDateType::Hour => {
-                        dt.hour() != date_type.last.hour()
+                    DateType::Hour => {
+                        dt.hour() != self.last.hour()
                     }
-                    DiffDateType::Minute => {
-                        dt.minute() != date_type.last.minute()
+                    DateType::Minute => {
+                        dt.minute() != self.last.minute()
                     }
-                    DiffDateType::Day => {
-                        dt.day() != date_type.last.day()
+                    DateType::Day => {
+                        dt.day() != self.last.day()
                     }
-                    DiffDateType::Month => {
-                        dt.mon() != date_type.last.mon()
+                    DateType::Month => {
+                        dt.mon() != self.last.mon()
                     }
-                    DiffDateType::Year => {
-                        dt.year() != date_type.last.year()
+                    DateType::Year => {
+                        dt.year() != self.last.year()
                     }
                 };
                 if diff {
-                    let log_name = temp_name.replace(".log", &date_type.last.format("YYYY-MM-DDThh-mm-ss.000000.log"));
-                    date_type.last = dt;
+                    let log_name = temp_name.replace(".log", &self.last.format("YYYY-MM-DDThh-mm-ss.000000.log"));
+                    self.last = dt;
                     Some(log_name)
                 } else {
-                    date_type.last = dt;
+                    self.last = dt;
                     None
                 }
             }
@@ -250,22 +250,19 @@ impl CanPack for PackType {
                     None
                 }
             }
-            PackType::ByDuration(duration_type) => {
+            PackType::ByDuration((start_time, duration)) => {
                 let dt = DateTime::from_system_time(arg.now, fastdate::offset_sec());
-                let next = duration_type.start_time.clone().add(duration_type.duration.clone());
+                let next = start_time.clone().add(duration.clone());
                 if dt >= next {
                     let now = DateTime::now();
-                    let log_name = temp_name.replace(".log", &duration_type.last.format("YYYY-MM-DDThh-mm-ss.000000.log"));
-                    duration_type.start_time = now;
-                    duration_type.last = dt;
+                    let log_name = temp_name.replace(".log", &self.last.format("YYYY-MM-DDThh-mm-ss.000000.log"));
+                    *start_time = now;
+                    self.last = dt;
                     Some(log_name)
                 } else {
-                    duration_type.last = dt;
+                    self.last = dt;
                     None
                 }
-            }
-            PackType::ByCustom(c) => {
-                c.is_pack(_appender, temp_name, temp_size, arg)
             }
         };
     }
