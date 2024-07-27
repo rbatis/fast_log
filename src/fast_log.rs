@@ -3,11 +3,9 @@ use crate::config::Config;
 use crate::error::LogError;
 use crate::{chan, spawn, Receiver, SendError, Sender, WaitGroup};
 use log::{LevelFilter, Log, Metadata, Record};
-use std::ops::Deref;
-use std::sync::{Arc, LazyLock, OnceLock};
+use std::sync::{Arc, OnceLock};
 use std::time::SystemTime;
-
-pub static LOGGER: LazyLock<Logger> = LazyLock::new(|| Logger::default());
+pub static LOGGER: OnceLock<Logger> = OnceLock::new();
 
 pub struct Logger {
     pub cfg: OnceLock<Config>,
@@ -45,7 +43,7 @@ impl Logger {
             now: SystemTime::now(),
             formated: log,
         };
-        if let Some(send) = LOGGER.send.get() {
+        if let Some(send) = LOGGER.get_or_init(||{ Logger::default() }).send.get() {
             send.send(fast_log_record)
         } else {
             // Ok(())
@@ -63,8 +61,8 @@ impl Log for Logger {
         metadata.level() <= self.get_level()
     }
     fn log(&self, record: &Record) {
-        if let Some(filter) = LOGGER.cfg.get() {
-            if let Some(send) = LOGGER.send.get() {
+        if let Some(filter) = LOGGER.get_or_init(||{ Logger::default() }).cfg.get() {
+            if let Some(send) = LOGGER.get_or_init(||{ Logger::default() }).send.get() {
                 for filter in filter.filters.iter() {
                     if !filter.do_log(record) {
                         return;
@@ -99,21 +97,21 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
         return Err(LogError::from("[fast_log] appends can not be empty!"));
     }
     let (s, r) = chan(config.chan_len);
-    LOGGER.send.set(s).map_err(|_| LogError::from("set fail"))?;
-    LOGGER.recv.set(r).map_err(|_| LogError::from("set fail"))?;
-    LOGGER.set_level(config.level);
-    LOGGER
+    LOGGER.get_or_init(||{ Logger::default() }).send.set(s).map_err(|_| LogError::from("set fail"))?;
+    LOGGER.get_or_init(||{ Logger::default() }).recv.set(r).map_err(|_| LogError::from("set fail"))?;
+    LOGGER.get_or_init(||{ Logger::default() }).set_level(config.level);
+    LOGGER.get_or_init(||{ Logger::default() })
         .cfg
         .set(config)
         .map_err(|_| LogError::from("set fail="))?;
     //main recv data
-    log::set_logger(LOGGER.deref())
-        .map(|()| log::set_max_level(LOGGER.cfg.get().unwrap().level))
+    log::set_logger(LOGGER.get_or_init(||{ Logger::default() }))
+        .map(|()| log::set_max_level(LOGGER.get_or_init(||{ Logger::default() }).cfg.get().unwrap().level))
         .map_err(|e| LogError::from(e))?;
 
     let mut receiver_vec = vec![];
     let mut sender_vec: Vec<Sender<Arc<Vec<FastLogRecord>>>> = vec![];
-    let cfg = LOGGER.cfg.get().unwrap();
+    let cfg = LOGGER.get_or_init(||{ Logger::default() }).cfg.get().unwrap();
     for a in cfg.appends.iter() {
         let (s, r) = chan(cfg.chan_len);
         sender_vec.push(s);
@@ -168,7 +166,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
         let senders = sender_vec.clone();
         spawn(move || {
             loop {
-                let recv = LOGGER.recv.get().unwrap();
+                let recv = LOGGER.get_or_init(||{ Logger::default() }).recv.get().unwrap();
                 let mut remain = Vec::with_capacity(recv.len());
                 //recv
                 if recv.len() == 0 {
@@ -190,7 +188,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                 let mut exit = false;
                 for x in &mut remain {
                     if x.formated.is_empty() {
-                        LOGGER.cfg.get().unwrap().format.do_format(x);
+                        LOGGER.get_or_init(||{ Logger::default() }).cfg.get().unwrap().format.do_format(x);
                     }
                     if x.command.eq(&Command::CommandExit) {
                         exit = true;
@@ -206,7 +204,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
             }
         });
     }
-    return Ok(LOGGER.deref());
+    return Ok(LOGGER.get_or_init(||{ Logger::default() }));
 }
 
 pub fn exit() -> Result<(), LogError> {
@@ -221,7 +219,7 @@ pub fn exit() -> Result<(), LogError> {
         now: SystemTime::now(),
         formated: String::new(),
     };
-    let result = LOGGER
+    let result = LOGGER.get_or_init(||{ Logger::default() })
         .send
         .get()
         .ok_or_else(|| LogError::from("not init"))?
@@ -248,7 +246,7 @@ pub fn flush() -> Result<WaitGroup, LogError> {
         now: SystemTime::now(),
         formated: String::new(),
     };
-    let result = LOGGER
+    let result = LOGGER.get_or_init(||{ Logger::default() })
         .send
         .get()
         .ok_or_else(|| LogError::from("not init"))?
@@ -263,5 +261,5 @@ pub fn flush() -> Result<WaitGroup, LogError> {
 }
 
 pub fn print(log: String) -> Result<(), SendError<FastLogRecord>> {
-    LOGGER.print(log)
+    LOGGER.get_or_init(||{ Logger::default() }).print(log)
 }
