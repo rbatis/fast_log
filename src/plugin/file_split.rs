@@ -171,6 +171,7 @@ impl Default for DateType {
 }
 
 
+#[allow(dead_code)]
 pub struct DurationType {
     last: DateTime,
     pub start_time: DateTime,
