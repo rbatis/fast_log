@@ -38,8 +38,8 @@ impl Packer for Box<dyn Packer> {
 }
 
 /// is can do pack?
-pub trait CanPack: Send {
-    fn is_pack(&mut self, appender: &dyn Packer, temp_name: &str, temp_size: usize, arg: &FastLogRecord) -> Option<String>;
+pub trait CanRollingPack: Send {
+    fn can(&mut self, appender: &dyn Packer, temp_name: &str, temp_size: usize, arg: &FastLogRecord) -> Option<String>;
 }
 
 /// keep logs, for example keep by log num or keep by log create time.
@@ -190,13 +190,13 @@ impl DurationType {
 }
 
 
-pub struct HowPack {
+pub struct Rolling {
     last: SystemTime,
-    pub how: PackType,
+    pub how: RollingType,
 }
 
-impl HowPack {
-    pub fn new(how: PackType) -> Self {
+impl Rolling {
+    pub fn new(how: RollingType) -> Self {
         Self {
             last: SystemTime::now(),
             how: how,
@@ -204,18 +204,19 @@ impl HowPack {
     }
 }
 
-pub enum PackType {
+///log rolling type
+pub enum RollingType {
     ByDate(DateType),
     BySize(LogSize),
     ByDuration((DateTime, Duration)),
 }
 
-impl CanPack for HowPack {
-    fn is_pack(&mut self, _appender: &dyn Packer, temp_name: &str, temp_size: usize, arg: &FastLogRecord) -> Option<String> {
+impl CanRollingPack for Rolling {
+    fn can(&mut self, _appender: &dyn Packer, temp_name: &str, temp_size: usize, arg: &FastLogRecord) -> Option<String> {
         let last_time = self.last.clone();
         self.last = arg.now.clone();
         return match &mut self.how {
-            PackType::ByDate(date_type) => {
+            RollingType::ByDate(date_type) => {
                 let last_time = DateTime::from_system_time(last_time, fastdate::offset_sec());
                 let log_time = DateTime::from_system_time(arg.now, fastdate::offset_sec());
                 let diff = match date_type {
@@ -254,7 +255,7 @@ impl CanPack for HowPack {
                     None
                 }
             }
-            PackType::BySize(limit) => {
+            RollingType::BySize(limit) => {
                 if temp_size >= limit.get_len() {
                     let log_name = {
                         let last_time = DateTime::from_system_time(last_time, fastdate::offset_sec());
@@ -272,7 +273,7 @@ impl CanPack for HowPack {
                     None
                 }
             }
-            PackType::ByDuration((start_time, duration)) => {
+            RollingType::ByDuration((start_time, duration)) => {
                 let log_time = DateTime::from_system_time(arg.now, fastdate::offset_sec());
                 let next = start_time.clone().add(duration.clone());
                 if log_time >= next {
@@ -305,7 +306,7 @@ pub struct FileSplitAppender {
     packer: Arc<Box<dyn Packer>>,
     dir_path: String,
     sender: Sender<LogPack>,
-    can_pack: Box<dyn CanPack>,
+    can_pack: Box<dyn CanRollingPack>,
     //cache data
     temp_bytes: AtomicUsize,
     temp_name: String,
@@ -314,7 +315,7 @@ pub struct FileSplitAppender {
 impl FileSplitAppender {
     pub fn new<F: SplitFile + 'static>(
         file_path: &str,
-        how_to_pack: Box<dyn CanPack>,
+        how_to_pack: Box<dyn CanRollingPack>,
         rolling_type: Box<dyn Keep>,
         packer: Box<dyn Packer>,
     ) -> Result<FileSplitAppender, LogError> {
@@ -434,10 +435,6 @@ impl LogPack {
     }
 }
 
-
-///rolling keep type
-pub type RollingType = KeepType;
-
 ///rolling keep type
 #[derive(Copy, Clone, Debug)]
 pub enum KeepType {
@@ -499,7 +496,7 @@ impl LogAppender for FileSplitAppender {
                     let current_temp_size = self.temp_bytes.load(Ordering::Relaxed)
                         + temp.as_bytes().len()
                         + x.formated.as_bytes().len();
-                    if let Some(new_log_name) = self.can_pack.is_pack(self.packer.deref(), &self.temp_name, current_temp_size, x) {
+                    if let Some(new_log_name) = self.can_pack.can(self.packer.deref(), &self.temp_name, current_temp_size, x) {
                         self.temp_bytes.fetch_add(
                             {
                                 let w = self.file.write(temp.as_bytes());
@@ -519,7 +516,7 @@ impl LogAppender for FileSplitAppender {
                 Command::CommandExit => {}
                 Command::CommandFlush(ref w) => {
                     let current_temp_size = self.temp_bytes.load(Ordering::Relaxed);
-                    if let Some(new_log_name) = self.can_pack.is_pack(self.packer.deref(), &self.temp_name, current_temp_size, x) {
+                    if let Some(new_log_name) = self.can_pack.can(self.packer.deref(), &self.temp_name, current_temp_size, x) {
                         self.temp_bytes.fetch_add(
                             {
                                 let w = self.file.write(temp.as_bytes());

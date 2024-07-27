@@ -4,7 +4,7 @@ use crate::filter::Filter;
 use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
 use crate::plugin::file_loop::FileLoopAppender;
-use crate::plugin::file_split::{FileSplitAppender, CanPack, Keep, Packer, RawFile, SplitFile};
+use crate::plugin::file_split::{FileSplitAppender, CanRollingPack, Keep, Packer, RawFile, SplitFile};
 use crate::FastLogFormat;
 use dark_std::sync::SyncVec;
 use log::LevelFilter;
@@ -102,21 +102,21 @@ impl Config {
         self
     }
     /// add a FileSplitAppender
-    pub fn file_split<P: Packer + Sync + 'static, R: Keep + 'static,H: CanPack +'static>(
+    pub fn file_split<Packer: Packer + Sync + 'static, Keeper: Keep + 'static, Rolling: CanRollingPack + 'static>(
         self,
         file_path: &str,
-        how:H,
-        rolling_type: R,
-        packer: P,
+        rolling: Rolling,
+        keeper: Keeper,
+        packer: Packer,
     ) -> Self {
         self.appends.push(Mutex::new(Box::new(
             FileSplitAppender::new::<RawFile>(
                 file_path,
-                Box::new(how),
-                Box::new(rolling_type),
+                Box::new(rolling),
+                Box::new(keeper),
                 Box::new(packer),
             )
-            .unwrap(),
+                .unwrap(),
         )));
         self
     }
@@ -127,7 +127,7 @@ impl Config {
     /// ```rust
     /// use fast_log::Config;
     /// use fast_log::consts::LogSize;
-    /// use fast_log::plugin::file_split::{HowPack, PackType, RawFile, RollingType};
+    /// use fast_log::plugin::file_split::{Rolling, RollingType, RawFile, RollingType};
     /// use fast_log::plugin::packer::LogPacker;
     /// fn new(){
     ///  fast_log::init(
@@ -137,17 +137,17 @@ impl Config {
     ///                 "target/logs/temp.log",
     ///                 RollingType::All,
     ///                 LogPacker {},
-    ///                 HowPack::new(PackType::BySize(LogSize::MB(1))),
+    ///                 Rolling::new(RollingType::BySize(LogSize::MB(1))),
     ///             ),
     ///     );
     /// }
     /// ```
-    pub fn split<F: SplitFile + 'static, R: Keep + 'static, P: Packer + Sync + 'static,H: CanPack +'static>(
+    pub fn split<F: SplitFile + 'static, R: Keep + 'static, P: Packer + Sync + 'static, H: CanRollingPack + 'static>(
         self,
         file_path: &str,
         keeper: R,
         packer: P,
-        how_pack:H,
+        how_pack: H,
     ) -> Self {
         self.appends.push(Mutex::new(Box::new(
             FileSplitAppender::new::<F>(file_path, Box::new(how_pack), Box::new(keeper), Box::new(packer)).unwrap(),

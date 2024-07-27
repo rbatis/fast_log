@@ -134,19 +134,18 @@ fn  main(){
 
 ```rust
 use fast_log::config::Config;
-use fast_log::plugin::file_split::{PackType, KeepType, DateType, HowPack};
+use fast_log::plugin::file_split::{RollingType, KeepType, DateType, Rolling};
 use std::thread::sleep;
 use std::time::Duration;
 use fast_log::plugin::packer::LogPacker;
-
 fn main() {
-    //file_path also can use '"target/logs/test.log"'
     fast_log::init(Config::new().chan_len(Some(100000)).console().file_split(
         "target/logs/",
-        HowPack::new(PackType::ByDate(DateType::Day)),
+        Rolling::new(RollingType::ByDate(DateType::Day)),
         KeepType::KeepNum(2),
         LogPacker {},
-    )).unwrap();
+    ))
+        .unwrap();
     for _ in 0..60 {
         sleep(Duration::from_secs(1));
         log::info!("Commencing yak shaving");
@@ -163,23 +162,23 @@ fn main() {
 ```rust
 use fast_log::config::Config;
 use fast_log::consts::LogSize;
+use fast_log::plugin::file_split::{RollingType, KeepType, Rolling};
 use fast_log::plugin::packer::LogPacker;
-use fast_log::plugin::file_split::{PackType, KeepType, HowPack};
-
-#[test]
-pub fn test_file_compation() {
-    fast_log::init(Config::new()
-        .console()
-        .chan_len(Some(100000))
-        .file_split("target/logs/",
-                    HowPack::new(PackType::BySize(LogSize::MB(1))),
-                    KeepType::All,
-                    LogPacker{})).unwrap();
-    for _ in 0..200000 {
-        info!("Commencing yak shaving");
+fn main() {
+    fast_log::init(Config::new().chan_len(Some(100000)).console().file_split(
+        "target/logs/",
+        Rolling::new(RollingType::BySize(LogSize::KB(500))),
+        KeepType::KeepNum(2),
+        LogPacker {},
+    ))
+        .unwrap();
+    for _ in 0..40000 {
+        log::info!("Commencing yak shaving");
     }
     log::logger().flush();
+    println!("you can see log files in path: {}", "target/logs/")
 }
+
 ```
 
 
