@@ -75,13 +75,13 @@ test bench_log ... bench:          323 ns/iter (+/- 0)
 
 ```toml
 log = "0.4"
-fast_log = {version = "1.5"}
+fast_log = {version = "1.7"}
 ```
 or enable zip/lz4/gzip Compression library
 ```toml
 log = "0.4"
 # "lz4","zip","gzip"
-fast_log = {version = "1.5" , features = ["lz4","zip","gzip"]}
+fast_log = {version = "1.7" , features = ["lz4","zip","gzip"]}
 ```
 
 #### Performance optimization(important)
