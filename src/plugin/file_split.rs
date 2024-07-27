@@ -39,6 +39,8 @@ impl Packer for Box<dyn Packer> {
 
 /// is can do pack?
 pub trait CanRollingPack: Send {
+    /// is it can do rolling? just return Some(log_file_name).notice the log_file_name must have prefix of temp_name.
+    /// if you return None, it's not do rolling now.
     fn can(&mut self, appender: &dyn Packer, temp_name: &str, temp_size: usize, arg: &FastLogRecord) -> Option<String>;
 }
 
