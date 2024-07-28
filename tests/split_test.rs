@@ -32,7 +32,7 @@ mod test {
             now: SystemTime::now(),
             formated: "".to_string(),
         }]);
-        appender.send_pack(SystemTime::now(),None);
+        appender.send_pack(format!("{}",DateTime::now()),None);
         sleep(Duration::from_secs(1));
         let rolling_num = RollingType::KeepNum(0).do_keep("target/test/", "temp.log");
         assert_eq!(rolling_num, 1);

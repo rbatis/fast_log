@@ -1,3 +1,4 @@
+use std::thread::sleep;
 use fast_log::config::Config;
 use fast_log::consts::LogSize;
 use fast_log::plugin::file_split::{PackType, KeepType};

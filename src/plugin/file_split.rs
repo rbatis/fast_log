@@ -7,9 +7,10 @@ use fastdate::DateTime;
 use std::cell::RefCell;
 use std::fs::{DirEntry, File, OpenOptions};
 use std::io::{Seek, SeekFrom, Write};
+use std::ops::Deref;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::time::{Duration, SystemTime};
+use std::time::{Duration};
 
 /// .zip or .lz4 or any one packer
 ///
@@ -24,39 +25,21 @@ pub trait Packer: Send + Sync {
     fn retry(&self) -> i32 {
         return 0;
     }
+}
 
-    /// date to string
-    fn date_to_string(&self, arg: DateTime) -> String {
-        arg.display_stand()
-            .to_string()
-            .replace(" ", "T")
-            .replace(":", "-")
+impl Packer for Box<dyn Packer> {
+    fn pack_name(&self) -> &'static str {
+        self.deref().pack_name()
     }
 
-    /// create date style log name
-    /// input: 'temp.log'
-    /// output: 'temp2024-07-26T16-04-17.685429.log'
-    fn new_data_log_name(&self, first_file_path: &str, date: DateTime) -> String {
-        let file_name = first_file_path.extract_file_name();
-        let mut new_log_name = String::new();
-        let point = file_name.rfind(".");
-        match point {
-            None => {
-                new_log_name.push_str(&self.date_to_string(date));
-            }
-            Some(i) => {
-                let (name, ext) = file_name.split_at(i);
-                new_log_name = format!("{}{}{}", name, self.date_to_string(date), ext);
-            }
-        }
-        new_log_name = first_file_path.trim_end_matches(&file_name).to_string() + &new_log_name;
-        return new_log_name;
+    fn do_pack(&self, log_file: File, log_file_path: &str) -> Result<bool, LogError> {
+        self.deref().do_pack(log_file, log_file_path)
     }
 }
 
 /// is can do pack?
 pub trait CanPack: Send {
-    fn is(&mut self, temp_size: usize, arg: &FastLogRecord) -> Option<DateTime>;
+    fn is_pack(&mut self, appender: &dyn Packer, temp_name: &str, temp_size: usize, arg: &FastLogRecord) -> Option<String>;
 }
 
 /// keep logs, for example keep by log num or keep by log create time.
@@ -178,21 +161,21 @@ pub enum PackType {
 }
 
 impl CanPack for PackType {
-    fn is(&mut self, temp_size: usize, arg: &FastLogRecord) -> Option<DateTime> {
+    fn is_pack(&mut self, _appender: &dyn Packer, temp_name: &str, temp_size: usize, arg: &FastLogRecord) -> Option<String> {
         return match self {
             PackType::ByDate(date_time) => {
-                let dt = fastdate::DateTime::from_system_time(arg.now, fastdate::offset_sec());
+                let dt = DateTime::from_system_time(arg.now, fastdate::offset_sec());
                 if dt.day() > date_time.day() {
                     let last_time = date_time.clone();
                     *date_time = dt;
-                    Some(last_time)
+                    Some(temp_name.to_string() + &last_time.format("YYYY-MM-DDThh-mm-ss.000000.log"))
                 } else {
                     None
                 }
             }
             PackType::BySize(limit) => {
                 if temp_size >= limit.get_len() {
-                    Some(DateTime::now())
+                    Some(temp_name.to_string() + &DateTime::now().format("YYYY-MM-DDThh-mm-ss.000000.log"))
                 } else {
                     None
                 }
@@ -267,21 +250,19 @@ impl FileSplitAppender {
         })
     }
     /// send data make an pack,and truncate data when finish.
-    pub fn send_pack(&self, date: DateTime, wg: Option<WaitGroup>) {
+    pub fn send_pack(&self, new_log_name: String, wg: Option<WaitGroup>) {
         let mut sp = "";
         if !self.dir_path.is_empty() && !self.dir_path.ends_with("/") {
             sp = "/";
         }
         let first_file_path = format!("{}{}{}", self.dir_path, sp, &self.temp_name);
-        let new_log_name = self
-            .packer
-            .new_data_log_name(&first_file_path, date);
+        let new_log_path = first_file_path.replace(&self.temp_name, &new_log_name);
         self.file.flush();
-        let _ = std::fs::copy(&first_file_path, &new_log_name);
+        let _ = std::fs::copy(&first_file_path, &new_log_path);
         let _ = self.sender.send(LogPack {
             dir: self.dir_path.clone(),
-            new_log_name: new_log_name,
-            wg: wg,
+            new_log_name: new_log_path,
+            wg,
         });
         self.truncate();
     }
@@ -400,7 +381,7 @@ impl LogAppender for FileSplitAppender {
                     let current_temp_size = self.temp_bytes.load(Ordering::Relaxed)
                         + temp.as_bytes().len()
                         + x.formated.as_bytes().len();
-                    if let Some(pack_time) = self.is_pack.is(current_temp_size, x) {
+                    if let Some(new_log_name) = self.is_pack.is_pack(self.packer.deref(), &self.temp_name, current_temp_size, x) {
                         self.temp_bytes.fetch_add(
                             {
                                 let w = self.file.write(temp.as_bytes());
@@ -413,14 +394,14 @@ impl LogAppender for FileSplitAppender {
                             Ordering::SeqCst,
                         );
                         temp.clear();
-                        self.send_pack(pack_time, None);
+                        self.send_pack(new_log_name, None);
                     }
                     temp.push_str(x.formated.as_str());
                 }
                 Command::CommandExit => {}
                 Command::CommandFlush(ref w) => {
                     let current_temp_size = self.temp_bytes.load(Ordering::Relaxed);
-                    if let Some(pack_time) = self.is_pack.is(current_temp_size, x) {
+                    if let Some(new_log_name) = self.is_pack.is_pack(self.packer.deref(), &self.temp_name, current_temp_size, x) {
                         self.temp_bytes.fetch_add(
                             {
                                 let w = self.file.write(temp.as_bytes());
@@ -433,7 +414,7 @@ impl LogAppender for FileSplitAppender {
                             Ordering::SeqCst,
                         );
                         temp.clear();
-                        self.send_pack(pack_time, Some(w.clone()));
+                        self.send_pack(new_log_name, Some(w.clone()));
                     }
                 }
             }
