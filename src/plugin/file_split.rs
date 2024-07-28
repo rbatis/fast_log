@@ -155,33 +155,95 @@ impl SplitFile for RawFile {
 }
 
 
+pub enum DiffDateType {
+    Sec,
+    Hour,
+    Minute,
+    Day,
+    Month,
+    Year,
+}
+
+pub struct DateType {
+    inner: DateTime,
+    pub diff: DiffDateType,
+}
+
+impl DateType {
+    pub fn new(arg: DiffDateType) -> Self {
+        Self {
+            inner: DateTime::now(),
+            diff: arg,
+        }
+    }
+}
+
+impl Default for DateType {
+    fn default() -> Self {
+        Self::new(DiffDateType::Day)
+    }
+}
+
 pub enum PackType {
-    ByDate(DateTime),
+    ByDate(DateType),
     BySize(LogSize),
-    ByCanPack(Box<dyn CanPack>),
+    ByDuration((DateTime, Duration)),
+    ByCustom(Box<dyn CanPack>),
 }
 
 impl CanPack for PackType {
     fn is_pack(&mut self, _appender: &dyn Packer, temp_name: &str, temp_size: usize, arg: &FastLogRecord) -> Option<String> {
         return match self {
-            PackType::ByDate(date_time) => {
+            PackType::ByDate(date_type) => {
                 let dt = DateTime::from_system_time(arg.now, fastdate::offset_sec());
-                if dt.day() > date_time.day() {
-                    let last_time = date_time.clone();
-                    *date_time = dt;
-                    Some(temp_name.replace(".log",&last_time.format("YYYY-MM-DDThh-mm-ss.000000.log")))
+                let diff = match date_type.diff {
+                    DiffDateType::Sec => {
+                        dt.sec() != date_type.inner.sec()
+                    }
+                    DiffDateType::Hour => {
+                        dt.hour() != date_type.inner.hour()
+                    }
+                    DiffDateType::Minute => {
+                        dt.minute() != date_type.inner.minute()
+                    }
+                    DiffDateType::Day => {
+                        dt.day() != date_type.inner.day()
+                    }
+                    DiffDateType::Month => {
+                        dt.mon() != date_type.inner.mon()
+                    }
+                    DiffDateType::Year => {
+                        dt.year() != date_type.inner.year()
+                    }
+                };
+                if diff {
+                    let log_name = temp_name.replace(".log", &date_type.inner.format("YYYY-MM-DDThh-mm-ss.000000.log"));
+                    date_type.inner = dt;
+                    Some(log_name)
                 } else {
                     None
                 }
             }
             PackType::BySize(limit) => {
                 if temp_size >= limit.get_len() {
-                    Some(temp_name.replace(".log",&DateTime::now().format("YYYY-MM-DDThh-mm-ss.000000.log")))
+                    Some(temp_name.replace(".log", &DateTime::now().format("YYYY-MM-DDThh-mm-ss.000000.log")))
                 } else {
                     None
                 }
             }
-            PackType::ByCanPack(c) => {
+            PackType::ByDuration((start_time, d)) => {
+                let dt = DateTime::from_system_time(arg.now, fastdate::offset_sec());
+                let next = start_time.clone().add(d.clone());
+                if dt >= next {
+                    let now = DateTime::now();
+                    let log_name = temp_name.replace(".log", &now.format("YYYY-MM-DDThh-mm-ss.000000.log"));
+                    *start_time = now;
+                    Some(log_name)
+                } else {
+                    None
+                }
+            }
+            PackType::ByCustom(c) => {
                 c.is_pack(_appender, temp_name, temp_size, arg)
             }
         };
@@ -277,7 +339,7 @@ impl FileSplitAppender {
         self.temp_bytes.store(0, Ordering::SeqCst);
     }
 
-    pub fn temp_name(&self) ->&str{
+    pub fn temp_name(&self) -> &str {
         &self.temp_name
     }
 }

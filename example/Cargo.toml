@@ -47,6 +47,9 @@ path = "src/format_log_json.rs"
 [[bin]]
 name = "split_log_date"
 path = "src/split_log_date.rs"
+[[bin]]
+name = "split_log_duration"
+path = "src/split_log_duration.rs"
 [dependencies]
 log = { version = "0.4", features = ["std"] }
 crossbeam-channel = "0.5"
