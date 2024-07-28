@@ -169,14 +169,14 @@ impl CanPack for PackType {
                 if dt.day() > date_time.day() {
                     let last_time = date_time.clone();
                     *date_time = dt;
-                    Some(temp_name.to_string() + &last_time.format("YYYY-MM-DDThh-mm-ss.000000.log"))
+                    Some(temp_name.replace(".log",&last_time.format("YYYY-MM-DDThh-mm-ss.000000.log")))
                 } else {
                     None
                 }
             }
             PackType::BySize(limit) => {
                 if temp_size >= limit.get_len() {
-                    Some(temp_name.to_string() + &DateTime::now().format("YYYY-MM-DDThh-mm-ss.000000.log"))
+                    Some(temp_name.replace(".log",&DateTime::now().format("YYYY-MM-DDThh-mm-ss.000000.log")))
                 } else {
                     None
                 }
