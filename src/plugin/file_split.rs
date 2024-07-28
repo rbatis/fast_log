@@ -239,6 +239,7 @@ impl CanPack for PackType {
                     date_type.last = dt;
                     Some(log_name)
                 } else {
+                    date_type.last = dt;
                     None
                 }
             }
