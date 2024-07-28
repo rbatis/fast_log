@@ -158,6 +158,7 @@ impl SplitFile for RawFile {
 pub enum PackType {
     ByDate(DateTime),
     BySize(LogSize),
+    ByCanPack(Box<dyn CanPack>),
 }
 
 impl CanPack for PackType {
@@ -179,6 +180,9 @@ impl CanPack for PackType {
                 } else {
                     None
                 }
+            }
+            PackType::ByCanPack(c) => {
+                c.is_pack(_appender, temp_name, temp_size, arg)
             }
         };
     }
