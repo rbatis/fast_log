@@ -276,6 +276,10 @@ impl FileSplitAppender {
         let _ = self.file.truncate();
         self.temp_bytes.store(0, Ordering::SeqCst);
     }
+
+    pub fn temp_name(&self) ->&str{
+        &self.temp_name
+    }
 }
 
 ///log data pack

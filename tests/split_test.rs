@@ -32,20 +32,13 @@ mod test {
             now: SystemTime::now(),
             formated: "".to_string(),
         }]);
-        appender.send_pack(format!("{}",DateTime::now()),None);
+        appender.send_pack(appender.temp_name().replace(".log", &DateTime::now().format("YYYY-MM-DDThh-mm-ss.000000.log")), None);
         sleep(Duration::from_secs(1));
         let rolling_num = RollingType::KeepNum(0).do_keep("target/test/", "temp.log");
         assert_eq!(rolling_num, 1);
         let _ = remove_dir_all("target/test/");
     }
 
-    #[test]
-    fn test_log_name_create() {
-        let p = LogPacker {};
-        let name = p.new_data_log_name("temp.log", DateTime::now());
-        println!("{}", name);
-        assert_eq!(name.ends_with(".log"), true);
-    }
 
     #[test]
     fn test_extract_file_name() {
