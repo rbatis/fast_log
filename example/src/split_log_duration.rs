@@ -1,8 +1,7 @@
 use fast_log::config::Config;
-use fast_log::plugin::file_split::{PackType, KeepType};
+use fast_log::plugin::file_split::{PackType, KeepType, DurationType};
 use std::thread::sleep;
 use std::time::Duration;
-use fastdate::DateTime;
 use fast_log::plugin::packer::LogPacker;
 
 
@@ -10,7 +9,7 @@ fn main() {
     //file_path also can use '"target/logs/test.log"'
     fast_log::init(Config::new().chan_len(Some(100000)).console().file_split(
         "target/logs/",
-        PackType::ByDuration((DateTime::now(),Duration::from_secs(5))),
+        PackType::ByDuration(DurationType::new(Duration::from_secs(5))),
         KeepType::KeepNum(5),
         LogPacker {},
     ))

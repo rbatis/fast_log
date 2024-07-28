@@ -165,14 +165,14 @@ pub enum DiffDateType {
 }
 
 pub struct DateType {
-    inner: DateTime,
+    last: DateTime,
     pub diff: DiffDateType,
 }
 
 impl DateType {
     pub fn new(arg: DiffDateType) -> Self {
         Self {
-            inner: DateTime::now(),
+            last: DateTime::now(),
             diff: arg,
         }
     }
@@ -184,10 +184,28 @@ impl Default for DateType {
     }
 }
 
+
+pub struct DurationType {
+    last: DateTime,
+    pub start_time: DateTime,
+    pub duration: Duration,
+}
+
+impl DurationType {
+    pub fn new(d: Duration) -> Self {
+        let now = DateTime::now();
+        Self {
+            last: now.clone(),
+            start_time: now,
+            duration: d,
+        }
+    }
+}
+
 pub enum PackType {
     ByDate(DateType),
     BySize(LogSize),
-    ByDuration((DateTime, Duration)),
+    ByDuration(DurationType),
     ByCustom(Box<dyn CanPack>),
 }
 
@@ -198,27 +216,27 @@ impl CanPack for PackType {
                 let dt = DateTime::from_system_time(arg.now, fastdate::offset_sec());
                 let diff = match date_type.diff {
                     DiffDateType::Sec => {
-                        dt.sec() != date_type.inner.sec()
+                        dt.sec() != date_type.last.sec()
                     }
                     DiffDateType::Hour => {
-                        dt.hour() != date_type.inner.hour()
+                        dt.hour() != date_type.last.hour()
                     }
                     DiffDateType::Minute => {
-                        dt.minute() != date_type.inner.minute()
+                        dt.minute() != date_type.last.minute()
                     }
                     DiffDateType::Day => {
-                        dt.day() != date_type.inner.day()
+                        dt.day() != date_type.last.day()
                     }
                     DiffDateType::Month => {
-                        dt.mon() != date_type.inner.mon()
+                        dt.mon() != date_type.last.mon()
                     }
                     DiffDateType::Year => {
-                        dt.year() != date_type.inner.year()
+                        dt.year() != date_type.last.year()
                     }
                 };
                 if diff {
-                    let log_name = temp_name.replace(".log", &date_type.inner.format("YYYY-MM-DDThh-mm-ss.000000.log"));
-                    date_type.inner = dt;
+                    let log_name = temp_name.replace(".log", &date_type.last.format("YYYY-MM-DDThh-mm-ss.000000.log"));
+                    date_type.last = dt;
                     Some(log_name)
                 } else {
                     None
@@ -231,15 +249,17 @@ impl CanPack for PackType {
                     None
                 }
             }
-            PackType::ByDuration((start_time, d)) => {
+            PackType::ByDuration(duration_type) => {
                 let dt = DateTime::from_system_time(arg.now, fastdate::offset_sec());
-                let next = start_time.clone().add(d.clone());
+                let next = duration_type.start_time.clone().add(duration_type.duration.clone());
                 if dt >= next {
                     let now = DateTime::now();
-                    let log_name = temp_name.replace(".log", &now.format("YYYY-MM-DDThh-mm-ss.000000.log"));
-                    *start_time = now;
+                    let log_name = temp_name.replace(".log", &duration_type.last.format("YYYY-MM-DDThh-mm-ss.000000.log"));
+                    duration_type.start_time = now;
+                    duration_type.last = dt;
                     Some(log_name)
                 } else {
+                    duration_type.last = dt;
                     None
                 }
             }
