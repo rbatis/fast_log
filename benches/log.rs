@@ -11,7 +11,7 @@ use test::{black_box, Bencher};
 fn bench_log(b: &mut Bencher) {
     struct BenchRecvLog {}
     impl LogAppender for BenchRecvLog {
-        fn do_logs(&self, _records: &[FastLogRecord]) {
+        fn do_logs(&mut self, _records: &[FastLogRecord]) {
             //nothing
         }
     }
