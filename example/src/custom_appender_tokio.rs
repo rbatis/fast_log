@@ -9,7 +9,7 @@ struct CustomLog {
 }
 
 impl LogAppender for CustomLog {
-    fn do_logs(&self, records: &[FastLogRecord]) {
+    fn do_logs(&mut self, records: &[FastLogRecord]) {
         let mut datas = String::new();
         for record in records {
             let now = DateTime::from(record.now);
