@@ -5,7 +5,8 @@
 
 <img style="width: 200px;height: 200px;" width="200" height="200" src="https://github.com/rbatis/rbatis/blob/master/logo.png?raw=true" />
 
-A log implementation for extreme speed, using Crossbeam/channel ,once Batch write logs,fast log date, Appender architecture, appender per thread
+A log implementation for extreme speed, using Crossbeam/channel ,once Batch write logs,fast log date, Appender
+architecture, appender per thread
 
 * High performance,Low overhead, logs auto merge, Full APPEND mode file writing
 * Built-in `ZIP`,`LZ4` compression
@@ -14,6 +15,7 @@ A log implementation for extreme speed, using Crossbeam/channel ,once Batch writ
 * Support rolling log(`ByDate`,`BySize`,`ByDuration`)
 * Support Keep log(`All`,`KeepTime`,`KeepNum`) Delete old logs,Prevent logs from occupying the disk
 * uses `#![forbid(unsafe_code)]` 100% Safe Rust.
+
 ```
               -----------------
 log data->    | main channel(crossbeam)  |   ->          
@@ -40,12 +42,14 @@ log data->    | main channel(crossbeam)  |   ->
 * How fast is?
 
 * no flush(chan_len=1000000) benches/log.rs
+
 ```
 //MACOS(Apple M1MAX-32GB)
 test bench_log ... bench:          85 ns/iter (+/- 1,800)
 ```
 
 * all log flush into file(chan_len=1000000) example/bench_test_file.rs
+
 ```
 //MACOS(Apple M1MAX-32GB)
 test bench_log ... bench:          323 ns/iter (+/- 0)
@@ -55,13 +59,15 @@ test bench_log ... bench:          323 ns/iter (+/- 0)
 
 ```toml
 log = "0.4"
-fast_log = {version = "1.7"}
+fast_log = { version = "1.7" }
 ```
+
 or enable zip/lz4/gzip Compression library
+
 ```toml
 log = "0.4"
 # "lz4","zip","gzip"
-fast_log = {version = "1.7" , features = ["lz4","zip","gzip"]}
+fast_log = { version = "1.7", features = ["lz4", "zip", "gzip"] }
 ```
 
 #### Performance optimization(important)
@@ -70,18 +76,17 @@ fast_log = {version = "1.7" , features = ["lz4","zip","gzip"]}
 
 ```rust
 use log::{error, info, warn};
-fn  main(){
+fn main() {
     fast_log::init(Config::new().file("target/test.log").chan_len(Some(100000))).unwrap();
     log::info!("Commencing yak shaving{}", 0);
 }
 ```
 
-
 #### Use Log(Console)
 
 ```rust
 use log::{error, info, warn};
-fn  main(){
+fn main() {
     fast_log::init(Config::new().console().chan_len(Some(100000))).unwrap();
     log::info!("Commencing yak shaving{}", 0);
 }
@@ -91,7 +96,7 @@ fn  main(){
 
 ```rust
 use log::{error, info, warn};
-fn  main(){
+fn main() {
     fast_log::init(Config::new().console().chan_len(Some(100000))).unwrap();
     fast_log::print("Commencing print\n".into());
 }
@@ -102,13 +107,12 @@ fn  main(){
 ```rust
 use fast_log::{init_log};
 use log::{error, info, warn};
-fn  main(){
+fn main() {
     fast_log::init(Config::new().file("target/test.log").chan_len(Some(100000))).unwrap();
     log::info!("Commencing yak shaving{}", 0);
     info!("Commencing yak shaving");
 }
 ```
-
 
 #### Split Log(ByLogDate)
 
@@ -136,7 +140,6 @@ fn main() {
 
 ```
 
-
 #### Split Log(ByLogSize)
 
 ```rust
@@ -161,22 +164,45 @@ fn main() {
 
 ```
 
-
 ##### Custom Log(impl do_log method)
 
 ```rust
-use fast_log::{LogAppender};
-use log::{error, info, warn};
+use fast_log::appender::{FastLogRecord, LogAppender};
+use fast_log::config::Config;
+use fastdate::DateTime;
+use log::Level;
 
-pub struct CustomLog{}
-impl LogAppender for CustomLog{
-    fn do_log(&mut self, record: &FastLogRecord) {
-        print!("{}",record);
+struct CustomLog {}
+
+impl LogAppender for CustomLog {
+    fn do_logs(&self, records: &[FastLogRecord]) {
+        for record in records {
+            let now = DateTime::from(record.now);
+            let data;
+            match record.level {
+                Level::Warn | Level::Error => {
+                    data = format!(
+                        "{} {} {} - {}  {}\n",
+                        now, record.level, record.module_path, record.args, record.formated
+                    );
+                }
+                _ => {
+                    data = format!(
+                        "{} {} {} - {}\n",
+                        &now, record.level, record.module_path, record.args
+                    );
+                }
+            }
+            print!("{}", data);
+        }
     }
 }
-fn  main(){
-    let wait = fast_log::init(Config::new().custom(CustomLog {}).chan_len(Some(100000))).unwrap();
-    info!("Commencing yak shaving");
+
+fn main() {
+    fast_log::init(Config::new().custom(CustomLog {})).unwrap();
+    log::info!("Commencing yak shaving");
+    log::error!("Commencing error");
     log::logger().flush();
 }
+
 ```
