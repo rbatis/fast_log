@@ -175,7 +175,7 @@ use log::Level;
 struct CustomLog {}
 
 impl LogAppender for CustomLog {
-    fn do_logs(&self, records: &[FastLogRecord]) {
+    fn do_logs(&mut self, records: &[FastLogRecord]) {
         for record in records {
             let now = DateTime::from(record.now);
             let data;
