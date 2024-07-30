@@ -449,13 +449,15 @@ pub enum KeepType {
     KeepTime(Duration),
     /// keep log pack num(.log,.zip.lz4...more)
     KeepNum(i64),
-    KeepDate,
 }
 
 impl Keep for KeepType {
     fn do_keep(&self, dir: &str, temp_name: &str) -> i64 {
         let mut removed = 0;
         match self {
+            KeepType::All => {
+                //do nothing
+            }
             KeepType::KeepNum(n) => {
                 let paths_vec = self.read_paths(dir, temp_name);
                 for index in 0..paths_vec.len() {
@@ -482,7 +484,6 @@ impl Keep for KeepType {
                     }
                 }
             }
-            _ => {}
         }
         removed
     }
