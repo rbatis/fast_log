@@ -1,5 +1,4 @@
-extern crate core;
-
+#![forbid(unsafe_code)]
 pub mod appender;
 pub mod bencher;
 pub mod config;
