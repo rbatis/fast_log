@@ -5,36 +5,15 @@
 
 <img style="width: 200px;height: 200px;" width="200" height="200" src="https://github.com/rbatis/rbatis/blob/master/logo.png?raw=true" />
 
-
-the fast log . This crate uses #! [forbid(unsafe_code)] to ensure everything is implemented in 100% Safe Rust.
-
 A log implementation for extreme speed, using Crossbeam/channel ,once Batch write logs,fast log date, Appender architecture, appender per thread
 
-* Low overhead, log write based on thread, also support tokio/Future
-
-* High performance, use lockless message queue, log is stored in queue, then flush disk. It does not block the caller
-
-* Full APPEND mode file writing, high efficiency for solid state/mechanical disk (solid state and mechanical disk sequential write performance is better than random write)
-
-* When channel pressure increases, logs can be written in batches at a time
-
-* Built-in ZIP compression, compressed file name date + serial number, no need to worry about the log file is too large
-
-* Built-in log segmentation, custom log full number of immediately split
-
-* Built-in filtering configuration support, can be customized to filter out other library printed logs
-
-* Support custom compression algorithms, such as ZIP and LZ4
-
+* High performance,Low overhead, logs auto merge, Full APPEND mode file writing
+* Built-in `ZIP`,`LZ4` compression
 * Support use ```log::logger().flush()``` method wait to flush disk
-
-* Simple and efficient Appender architecture.Both configuration and customization are simple
-
-* Support custom file type, just like mmap/file
-
-
+* Support custom file(impl Trait)
+* Support custom rolling log(`ByDate`,`BySize`,`ByDuration`)
+* uses `#![forbid(unsafe_code)]` 100% Safe Rust.
 ```
-
               -----------------
 log data->    | main channel(crossbeam)  |   ->          
               ----------------- 
