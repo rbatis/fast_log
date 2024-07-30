@@ -11,7 +11,8 @@ A log implementation for extreme speed, using Crossbeam/channel ,once Batch writ
 * Built-in `ZIP`,`LZ4` compression
 * Support use ```log::logger().flush()``` method wait to flush disk
 * Support custom file(impl Trait)
-* Support custom rolling log(`ByDate`,`BySize`,`ByDuration`)
+* Support rolling log(`ByDate`,`BySize`,`ByDuration`)
+* Support Keep log(`All`,`KeepTime`,`KeepNum`) Delete old logs,Prevent logs from occupying the disk
 * uses `#![forbid(unsafe_code)]` 100% Safe Rust.
 ```
               -----------------
