@@ -180,7 +180,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                         remain.push(item);
                     }
                 }
-                //recv all
+                //merge log
                 loop {
                     match recv.try_recv() {
                         Ok(v) => {
