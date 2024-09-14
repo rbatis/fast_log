@@ -6,7 +6,7 @@ members = [
 
 [package]
 name = "fast_log"
-version = "1.7.3"
+version = "1.7.4"
 description = "Rust async log High-performance asynchronous logging"
 readme = "Readme.md"
 authors = ["ce <zhuxiujia@qq.com>"]
@@ -27,7 +27,6 @@ log = { version = "0.4", features = ["std"] }
 crossbeam-utils = "0.8"
 crossbeam = "0.8"
 crossbeam-channel = "0.5"
-once_cell = "1.9"
 dark-std = "0.2"
 parking_lot = "0.12"
 zip = { version = "0.6", optional = true }
