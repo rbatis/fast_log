@@ -10,7 +10,7 @@ pub static LOGGER: OnceLock<Logger> = OnceLock::new();
 
 /// get Logger,but you must call `fast_log::init`
 pub fn logger() -> &'static Logger {
-    LOGGER.get_or_init(|| { Logger::default() })
+    LOGGER.get_or_init(|| Logger::default())
 }
 
 pub struct Logger {
@@ -103,8 +103,14 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
         return Err(LogError::from("[fast_log] appends can not be empty!"));
     }
     let (s, r) = chan(config.chan_len);
-    logger().send.set(s).map_err(|_| LogError::from("set fail"))?;
-    logger().recv.set(r).map_err(|_| LogError::from("set fail"))?;
+    logger()
+        .send
+        .set(s)
+        .map_err(|_| LogError::from("set fail"))?;
+    logger()
+        .recv
+        .set(r)
+        .map_err(|_| LogError::from("set fail"))?;
     logger().set_level(config.level);
     logger()
         .cfg
@@ -112,12 +118,12 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
         .map_err(|_| LogError::from("set fail="))?;
     //main recv data
     log::set_logger(logger())
-        .map(|()| log::set_max_level(logger().cfg.get().unwrap().level))
+        .map(|()| log::set_max_level(logger().cfg.get().expect("logger cfg is none").level))
         .map_err(|e| LogError::from(e))?;
 
     let mut receiver_vec = vec![];
     let mut sender_vec: Vec<Sender<Arc<Vec<FastLogRecord>>>> = vec![];
-    let cfg = logger().cfg.get().unwrap();
+    let cfg = logger().cfg.get().expect("logger cfg is none");
     for a in cfg.appends.iter() {
         let (s, r) = chan(cfg.chan_len);
         sender_vec.push(s);
@@ -172,39 +178,47 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
         let senders = sender_vec.clone();
         spawn(move || {
             loop {
-                let recv = logger().recv.get().unwrap();
-                let mut remain = Vec::with_capacity(recv.len());
-                //recv
-                if recv.len() == 0 {
-                    if let Ok(item) = recv.recv() {
-                        remain.push(item);
-                    }
-                }
-                //merge log
-                loop {
-                    match recv.try_recv() {
-                        Ok(v) => {
-                            remain.push(v);
-                        }
-                        Err(_) => {
-                            break;
+                if let Some(recv) = logger().recv.get() {
+                    let mut remain = Vec::with_capacity(recv.len());
+                    //recv
+                    if recv.len() == 0 {
+                        if let Ok(item) = recv.recv() {
+                            remain.push(item);
                         }
                     }
-                }
-                let mut exit = false;
-                for x in &mut remain {
-                    if x.formated.is_empty() {
-                        logger().cfg.get().unwrap().format.do_format(x);
+                    //merge log
+                    loop {
+                        match recv.try_recv() {
+                            Ok(v) => {
+                                remain.push(v);
+                            }
+                            Err(_) => {
+                                break;
+                            }
+                        }
                     }
-                    if x.command.eq(&Command::CommandExit) {
-                        exit = true;
+                    let mut exit = false;
+                    for x in &mut remain {
+                        if x.formated.is_empty() {
+                            logger()
+                                .cfg
+                                .get()
+                                .expect("logger cfg is none")
+                                .format
+                                .do_format(x);
+                        }
+                        if x.command.eq(&Command::CommandExit) {
+                            exit = true;
+                        }
                     }
-                }
-                let data = Arc::new(remain);
-                for x in senders.iter() {
-                    let _ = x.send(data.clone());
-                }
-                if exit {
+                    let data = Arc::new(remain);
+                    for x in senders.iter() {
+                        let _ = x.send(data.clone());
+                    }
+                    if exit {
+                        break;
+                    }
+                } else {
                     break;
                 }
             }

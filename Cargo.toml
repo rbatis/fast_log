@@ -6,9 +6,9 @@ members = [
 
 [package]
 name = "fast_log"
-version = "1.7.4"
+version = "1.7.5"
 description = "Rust async log High-performance asynchronous logging"
-readme = "Readme.md"
+readme = "README.md"
 authors = ["ce <zhuxiujia@qq.com>"]
 repository = "https://github.com/rbatis/fast_log"
 edition = "2021"

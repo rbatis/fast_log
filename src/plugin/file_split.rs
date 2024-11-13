@@ -41,7 +41,13 @@ impl Packer for Box<dyn Packer> {
 pub trait CanRollingPack: Send {
     /// is it can do rolling? just return Some(log_file_name).notice the log_file_name must have prefix of temp_name.
     /// if you return None, it's not do rolling now.
-    fn can(&mut self, appender: &dyn Packer, temp_name: &str, temp_size: usize, arg: &FastLogRecord) -> Option<String>;
+    fn can(
+        &mut self,
+        appender: &dyn Packer,
+        temp_name: &str,
+        temp_size: usize,
+        arg: &FastLogRecord,
+    ) -> Option<String>;
 }
 
 /// keep logs, for example keep by log num or keep by log create time.
@@ -90,7 +96,6 @@ pub trait SplitFile: Send {
     fn len(&self) -> usize;
     fn offset(&self) -> usize;
 }
-
 
 ///only use File
 pub struct RawFile {
@@ -156,7 +161,6 @@ impl SplitFile for RawFile {
     }
 }
 
-
 pub enum DateType {
     Sec,
     Hour,
@@ -171,7 +175,6 @@ impl Default for DateType {
         Self::Day
     }
 }
-
 
 #[allow(dead_code)]
 pub struct DurationType {
@@ -190,7 +193,6 @@ impl DurationType {
         }
     }
 }
-
 
 pub struct Rolling {
     last: SystemTime,
@@ -214,7 +216,13 @@ pub enum RollingType {
 }
 
 impl CanRollingPack for Rolling {
-    fn can(&mut self, _appender: &dyn Packer, temp_name: &str, temp_size: usize, arg: &FastLogRecord) -> Option<String> {
+    fn can(
+        &mut self,
+        _appender: &dyn Packer,
+        temp_name: &str,
+        temp_size: usize,
+        arg: &FastLogRecord,
+    ) -> Option<String> {
         let last_time = self.last.clone();
         self.last = arg.now.clone();
         return match &mut self.how {
@@ -222,30 +230,21 @@ impl CanRollingPack for Rolling {
                 let last_time = DateTime::from_system_time(last_time, fastdate::offset_sec());
                 let log_time = DateTime::from_system_time(arg.now, fastdate::offset_sec());
                 let diff = match date_type {
-                    DateType::Sec => {
-                        log_time.sec() != last_time.sec()
-                    }
-                    DateType::Hour => {
-                        log_time.hour() != last_time.hour()
-                    }
-                    DateType::Minute => {
-                        log_time.minute() != last_time.minute()
-                    }
-                    DateType::Day => {
-                        log_time.day() != last_time.day()
-                    }
-                    DateType::Month => {
-                        log_time.mon() != last_time.mon()
-                    }
-                    DateType::Year => {
-                        log_time.year() != last_time.year()
-                    }
+                    DateType::Sec => log_time.sec() != last_time.sec(),
+                    DateType::Hour => log_time.hour() != last_time.hour(),
+                    DateType::Minute => log_time.minute() != last_time.minute(),
+                    DateType::Day => log_time.day() != last_time.day(),
+                    DateType::Month => log_time.mon() != last_time.mon(),
+                    DateType::Year => log_time.year() != last_time.year(),
                 };
                 if diff {
                     let log_name = {
                         if let Some(idx) = temp_name.rfind(".") {
                             let suffix = &temp_name[idx..];
-                            temp_name.replace(suffix, &last_time.format(&format!("YYYY-MM-DDThh-mm-ss.000000{}", suffix)))
+                            temp_name.replace(
+                                suffix,
+                                &last_time.format(&format!("YYYY-MM-DDThh-mm-ss.000000{}", suffix)),
+                            )
                         } else {
                             let mut temp_name = temp_name.to_string();
                             temp_name.push_str(&last_time.format("YYYY-MM-DDThh-mm-ss.000000"));
@@ -260,10 +259,14 @@ impl CanRollingPack for Rolling {
             RollingType::BySize(limit) => {
                 if temp_size >= limit.get_len() {
                     let log_name = {
-                        let last_time = DateTime::from_system_time(last_time, fastdate::offset_sec());
+                        let last_time =
+                            DateTime::from_system_time(last_time, fastdate::offset_sec());
                         if let Some(idx) = temp_name.rfind(".") {
                             let suffix = &temp_name[idx..];
-                            temp_name.replace(suffix, &last_time.format(&format!("YYYY-MM-DDThh-mm-ss.000000{}", suffix)))
+                            temp_name.replace(
+                                suffix,
+                                &last_time.format(&format!("YYYY-MM-DDThh-mm-ss.000000{}", suffix)),
+                            )
                         } else {
                             let mut temp_name = temp_name.to_string();
                             temp_name.push_str(&last_time.format("YYYY-MM-DDThh-mm-ss.000000"));
@@ -284,7 +287,10 @@ impl CanRollingPack for Rolling {
                     let log_name = {
                         if let Some(idx) = temp_name.rfind(".") {
                             let suffix = &temp_name[idx..];
-                            temp_name.replace(suffix, &last_time.format(&format!("YYYY-MM-DDThh-mm-ss.000000{}", suffix)))
+                            temp_name.replace(
+                                suffix,
+                                &last_time.format(&format!("YYYY-MM-DDThh-mm-ss.000000{}", suffix)),
+                            )
                         } else {
                             let mut temp_name = temp_name.to_string();
                             temp_name.push_str(&last_time.format("YYYY-MM-DDThh-mm-ss.000000"));
@@ -350,12 +356,7 @@ impl FileSplitAppender {
         let _ = file.seek(SeekFrom::Start(temp_bytes.load(Ordering::Relaxed) as u64));
         let (sender, receiver) = chan(None);
         let arc_packer = Arc::new(packer);
-        spawn_saver(
-            temp_name.clone(),
-            receiver,
-            keeper,
-            arc_packer.clone(),
-        );
+        spawn_saver(temp_name.clone(), receiver, keeper, arc_packer.clone());
         Ok(Self {
             temp_bytes,
             dir_path: dir_path.to_string(),
@@ -412,15 +413,12 @@ impl LogPack {
         let log_file = OpenOptions::new()
             .write(true)
             .read(true)
-            .open(log_file_path);
-        if log_file.is_err() {
-            return Err(LogError::from(format!(
-                "open(log_file_path={}) fail",
-                log_file_path
-            )));
-        }
+            .open(log_file_path)
+            .map_err(|e| {
+                LogError::from(format!("open(log_file_path={}) fail={}", log_file_path, e))
+            })?;
         //make
-        let r = packer.do_pack(log_file.unwrap(), log_file_path);
+        let r = packer.do_pack(log_file, log_file_path);
         if r.is_err() && packer.retry() > 0 {
             let mut retry = 1;
             while let Err(_packs) = self.do_pack(packer) {
@@ -506,7 +504,12 @@ impl LogAppender for FileSplitAppender {
                     let current_temp_size = self.temp_bytes.load(Ordering::Relaxed)
                         + temp.as_bytes().len()
                         + x.formated.as_bytes().len();
-                    if let Some(new_log_name) = self.can_pack.can(self.packer.deref(), &self.temp_name, current_temp_size, x) {
+                    if let Some(new_log_name) = self.can_pack.can(
+                        self.packer.deref(),
+                        &self.temp_name,
+                        current_temp_size,
+                        x,
+                    ) {
                         self.temp_bytes.fetch_add(
                             {
                                 let w = self.file.write(temp.as_bytes());
@@ -526,7 +529,12 @@ impl LogAppender for FileSplitAppender {
                 Command::CommandExit => {}
                 Command::CommandFlush(ref w) => {
                     let current_temp_size = self.temp_bytes.load(Ordering::Relaxed);
-                    if let Some(new_log_name) = self.can_pack.can(self.packer.deref(), &self.temp_name, current_temp_size, x) {
+                    if let Some(new_log_name) = self.can_pack.can(
+                        self.packer.deref(),
+                        &self.temp_name,
+                        current_temp_size,
+                        x,
+                    ) {
                         self.temp_bytes.fetch_add(
                             {
                                 let w = self.file.write(temp.as_bytes());

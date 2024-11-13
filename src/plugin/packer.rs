@@ -39,15 +39,8 @@ impl Packer for ZipPacker {
             log_name = log_name[(v + 1)..log_name.len()].to_string();
         }
         let zip_path = log_file_path.replace(".log", ".zip");
-        let zip_file = std::fs::File::create(&zip_path);
-        if zip_file.is_err() {
-            return Err(LogError::from(format!(
-                "[fast_log] create(&{}) fail:{}",
-                zip_path,
-                zip_file.err().unwrap()
-            )));
-        }
-        let zip_file = zip_file.unwrap();
+        let zip_file = File::create(&zip_path)
+            .map_err(|e| LogError::from(format!("[fast_log] create(&{}) fail:{}", zip_path, e)))?;
         //write zip bytes data
         let mut zip = zip::ZipWriter::new(zip_file);
         zip.start_file(log_name, FileOptions::default())
@@ -83,15 +76,8 @@ impl Packer for LZ4Packer {
 
     fn do_pack(&self, mut log_file: File, log_file_path: &str) -> Result<bool, LogError> {
         let lz4_path = log_file_path.replace(".log", ".lz4");
-        let lz4_file = File::create(&lz4_path);
-        if lz4_file.is_err() {
-            return Err(LogError::from(format!(
-                "[fast_log] create(&{}) fail:{}",
-                lz4_path,
-                lz4_file.err().unwrap()
-            )));
-        }
-        let lz4_file = lz4_file.unwrap();
+        let lz4_file = File::create(&lz4_path)
+            .map_err(|e| LogError::from(format!("[fast_log] create(&{}) fail:{}", lz4_path, e)))?;
         //write lz4 bytes data
         let mut encoder = FrameEncoder::new(lz4_file);
         //buf reader
@@ -124,15 +110,8 @@ impl Packer for GZipPacker {
     fn do_pack(&self, mut log_file: File, log_file_path: &str) -> Result<bool, LogError> {
         use std::io::Write;
         let zip_path = log_file_path.replace(".log", ".gz");
-        let zip_file = File::create(&zip_path);
-        if zip_file.is_err() {
-            return Err(LogError::from(format!(
-                "[fast_log] create(&{}) fail:{}",
-                zip_path,
-                zip_file.err().unwrap()
-            )));
-        }
-        let zip_file = zip_file.unwrap();
+        let zip_file = File::create(&zip_path)
+            .map_err(|e| LogError::from(format!("[fast_log] create(&{}) fail:{}", zip_path, e)))?;
         //write zip bytes data
         let mut zip = GzEncoder::new(zip_file, Compression::default());
         std::io::copy(&mut log_file, &mut zip).map_err(|e| LogError::from(e.to_string()))?;

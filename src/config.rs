@@ -4,7 +4,9 @@ use crate::filter::Filter;
 use crate::plugin::console::ConsoleAppender;
 use crate::plugin::file::FileAppender;
 use crate::plugin::file_loop::FileLoopAppender;
-use crate::plugin::file_split::{FileSplitAppender, CanRollingPack, Keep, Packer, RawFile, SplitFile};
+use crate::plugin::file_split::{
+    CanRollingPack, FileSplitAppender, Keep, Packer, RawFile, SplitFile,
+};
 use crate::FastLogFormat;
 use dark_std::sync::SyncVec;
 use log::LevelFilter;
@@ -106,7 +108,7 @@ impl Config {
         R: CanRollingPack + 'static,
         K: Keep + 'static,
         P: Packer + Sync + 'static,
-        >(
+    >(
         self,
         file_path: &str,
         rolling: R,
@@ -120,7 +122,7 @@ impl Config {
                 Box::new(keeper),
                 Box::new(packer),
             )
-                .unwrap(),
+            .expect("new split file fail"),
         )));
         self
     }
@@ -146,7 +148,12 @@ impl Config {
     ///     );
     /// }
     /// ```
-    pub fn split<F: SplitFile + 'static, R: Keep + 'static, P: Packer + Sync + 'static, H: CanRollingPack + 'static>(
+    pub fn split<
+        F: SplitFile + 'static,
+        R: Keep + 'static,
+        P: Packer + Sync + 'static,
+        H: CanRollingPack + 'static,
+    >(
         self,
         file_path: &str,
         keeper: R,
@@ -154,7 +161,13 @@ impl Config {
         how_pack: H,
     ) -> Self {
         self.appends.push(Mutex::new(Box::new(
-            FileSplitAppender::new::<F>(file_path, Box::new(how_pack), Box::new(keeper), Box::new(packer)).unwrap(),
+            FileSplitAppender::new::<F>(
+                file_path,
+                Box::new(how_pack),
+                Box::new(keeper),
+                Box::new(packer),
+            )
+            .expect("new split file fail"),
         )));
         self
     }
