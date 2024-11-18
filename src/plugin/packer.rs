@@ -43,7 +43,7 @@ impl Packer for ZipPacker {
             .map_err(|e| LogError::from(format!("[fast_log] create(&{}) fail:{}", zip_path, e)))?;
         //write zip bytes data
         let mut zip = zip::ZipWriter::new(zip_file);
-        zip.start_file(log_name, FileOptions::default())
+        zip.start_file::<String, ()>(log_name, FileOptions::default())
             .map_err(|e| LogError::from(e.to_string()))?;
         //buf reader
         std::io::copy(&mut log_file, &mut zip).map_err(|e| LogError::from(e.to_string()))?;
