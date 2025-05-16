@@ -490,13 +490,7 @@ impl Keep for KeepType {
 impl LogAppender for FileSplitAppender {
     fn do_logs(&mut self, records: &[FastLogRecord]) {
         //if temp_bytes is full,must send pack
-        let mut cap = 0;
-        if records.len() != 0 {
-            cap = 0;
-            for x in records {
-                cap += x.formated.len();
-            }
-        }
+        let cap = records.iter().map(|record| record.formated.len()).sum();
         let mut temp = String::with_capacity(cap);
         for x in records {
             match x.command {

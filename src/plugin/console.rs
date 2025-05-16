@@ -8,13 +8,7 @@ impl LogAppender for ConsoleAppender {
         if records.len() == 0 {
             return;
         }
-        let mut cap = 0;
-        if records.len() != 0 {
-            cap = 0;
-            for x in records {
-                cap += x.formated.len();
-            }
-        }
+        let cap = records.iter().map(|record| record.formated.len()).sum();
         let mut buffer = String::with_capacity(cap);
         for x in records {
             buffer.push_str(&x.formated);
