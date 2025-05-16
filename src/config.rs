@@ -1,7 +1,7 @@
 use crate::appender::{LogAppender, RecordFormat};
 use crate::consts::LogSize;
 use crate::filter::Filter;
-use crate::plugin::console::ConsoleAppender;
+use crate::plugin::console::{ConsoleAppender, ConsoleStderrAppender};
 use crate::plugin::file::FileAppender;
 use crate::plugin::file_loop::FileLoopAppender;
 use crate::plugin::file_split::{
@@ -88,6 +88,11 @@ impl Config {
     /// add a ConsoleAppender
     pub fn console(self) -> Self {
         self.appends.push(Mutex::new(Box::new(ConsoleAppender {})));
+        self
+    }
+    /// add a ConsoleStderrAppender
+    pub fn console_stderr(self) -> Self {
+        self.appends.push(Mutex::new(Box::new(ConsoleStderrAppender {})));
         self
     }
     /// add a FileAppender
