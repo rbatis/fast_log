@@ -174,7 +174,8 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
         });
     }
     let sender_vec = Arc::new(sender_vec);
-    for _ in 0..1 {
+    let thread_num = cfg.worker_tasks.unwrap_or(1);
+    for _ in 0..thread_num {
         let senders = sender_vec.clone();
         spawn(move || {
             loop {

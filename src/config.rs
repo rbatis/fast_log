@@ -33,6 +33,8 @@ pub struct Config {
     pub format: Box<dyn RecordFormat>,
     /// the channel length,default None(Unbounded channel)
     pub chan_len: Option<usize>,
+    /// number of worker threads that receive and dispatch log records from the main channel to appenders
+    pub worker_tasks: Option<usize>,
 }
 
 impl Debug for Config {
@@ -53,6 +55,7 @@ impl Default for Config {
             filters: SyncVec::new(),
             format: Box::new(FastLogFormat::new()),
             chan_len: None,
+            worker_tasks: Some(1),
         }
     }
 }
@@ -190,6 +193,12 @@ impl Config {
     /// if none=> unbounded() channel,if Some =>  bounded(len) channel
     pub fn chan_len(mut self, len: Option<usize>) -> Self {
         self.chan_len = len;
+        self
+    }
+
+    /// set the number of worker threads, default is 1
+    pub fn worker_tasks(mut self, num: Option<usize>) -> Self {
+        self.worker_tasks = num;
         self
     }
 }
