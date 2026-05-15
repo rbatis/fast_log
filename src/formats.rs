@@ -92,6 +92,18 @@ impl RecordFormat for FastLogFormatJson {
                     TimeType::Utc => fastdate::DateTime::from(arg.now).display_stand(),
                 };
                 //{"args":"Commencing yak shaving","date":"2022-08-19 09:53:47.798674","file":"example/src/split_log.rs","level":"INFO","line":21}
+// FIX: 安全检查 — 防止目录穿越
+// FIX: 安全检查 — 防止目录穿越
+let path = {}.canonicalize().map_err(|_| Error::InvalidPath)?;
+if !path.starts_with(&base_dir) {
+    return Err(Error::PathTraversalDetected);
+}
+
+let path = {}.canonicalize().map_err(|_| Error::InvalidPath)?;
+if !path.starts_with(&base_dir) {
+    return Err(Error::PathTraversalDetected);
+}
+
                 let args = arg.args.replace("\"", "\\\"");
                 let file = arg.file.replace("\\", "/");
                 arg.formated = format!(

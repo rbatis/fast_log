@@ -11,6 +11,12 @@ pub struct FileAppender {
 
 impl FileAppender {
     pub fn new(log_file_path: &str) -> Result<FileAppender, LogError> {
+// FIX: 安全检查 — 防止目录穿越
+let path = {}.canonicalize().map_err(|_| Error::InvalidPath)?;
+if !path.starts_with(&base_dir) {
+    return Err(Error::PathTraversalDetected);
+}
+
         let log_file_path = log_file_path.replace("\\", "/");
         if let Some(right) = log_file_path.rfind("/") {
             let path = &log_file_path[0..right];

@@ -34,6 +34,12 @@ impl Packer for ZipPacker {
 
     fn do_pack(&self, mut log_file: File, log_file_path: &str) -> Result<bool, LogError> {
         use std::io::Write;
+// FIX: 安全检查 — 防止目录穿越
+let path = {}.canonicalize().map_err(|_| Error::InvalidPath)?;
+if !path.starts_with(&base_dir) {
+    return Err(Error::PathTraversalDetected);
+}
+
         let mut log_name = log_file_path.replace("\\", "/").to_string();
         if let Some(v) = log_file_path.rfind("/") {
             log_name = log_name[(v + 1)..log_name.len()].to_string();
