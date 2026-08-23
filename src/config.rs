@@ -8,10 +8,10 @@ use crate::plugin::file_split::{
     CanRollingPack, FileSplitAppender, Keep, Packer, RawFile, SplitFile,
 };
 use crate::FastLogFormat;
-use dark_std::sync::SyncVec;
+use arc_swap::ArcSwap;
 use log::LevelFilter;
-use parking_lot::Mutex;
 use std::fmt::{Debug, Formatter};
+use std::sync::{Arc, Mutex};
 
 /// the fast_log Config
 /// for example:
@@ -24,11 +24,12 @@ use std::fmt::{Debug, Formatter};
 pub struct Config {
     /// Each appender is responsible for printing its own business
     /// every LogAppender have one thread(need Mutex) access this.
-    pub appends: SyncVec<Mutex<Box<dyn LogAppender>>>,
+    /// copy-on-write, support dynamic append after init
+    pub appends: ArcSwap<Vec<Arc<Mutex<Box<dyn LogAppender>>>>>,
     /// the log level filter
     pub level: LevelFilter,
-    /// filter log
-    pub filters: SyncVec<Box<dyn Filter>>,
+    /// filter log (copy-on-write, support dynamic append after init)
+    pub filters: ArcSwap<Vec<Arc<dyn Filter>>>,
     /// format record into field fast_log_record's formatted:String
     pub format: Box<dyn RecordFormat>,
     /// the channel length,default None(Unbounded channel)
@@ -40,7 +41,8 @@ pub struct Config {
 impl Debug for Config {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Config")
-            .field("appends", &self.appends.len())
+            .field("appends", &self.appends.load().len())
+            .field("filters", &self.filters.load().len())
             .field("level", &self.level)
             .field("chan_len", &self.chan_len)
             .finish()
@@ -50,9 +52,9 @@ impl Debug for Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            appends: SyncVec::new(),
+            appends: ArcSwap::from_pointee(Vec::new()),
             level: LevelFilter::Trace,
-            filters: SyncVec::new(),
+            filters: ArcSwap::from_pointee(Vec::new()),
             format: Box::new(FastLogFormat::new()),
             chan_len: None,
             worker_tasks: Some(1),
@@ -65,6 +67,22 @@ impl Config {
         Self::default()
     }
 
+    /// copy-on-write push appender
+    fn push_appender(self, appender: Box<dyn LogAppender>) -> Self {
+        let mut nv = self.appends.load().as_ref().clone();
+        nv.push(Arc::new(Mutex::new(appender)));
+        self.appends.store(Arc::new(nv));
+        self
+    }
+
+    /// copy-on-write push filter
+    fn push_filter(self, filter: Box<dyn Filter>) -> Self {
+        let mut nv = self.filters.load().as_ref().clone();
+        nv.push(Arc::from(filter));
+        self.filters.store(Arc::new(nv));
+        self
+    }
+
     /// set log LevelFilter
     pub fn level(mut self, level: LevelFilter) -> Self {
         self.level = level;
@@ -72,15 +90,14 @@ impl Config {
     }
     /// add log Filter
     pub fn add_filter<F: Filter + 'static>(self, filter: F) -> Self {
-        self.filters.push(Box::new(filter));
-        self
+        self.push_filter(Box::new(filter))
     }
 
     /// add log Filter
     pub fn filter(self, filters: Vec<Box<dyn Filter>>) -> Self {
-        for x in filters {
-            self.filters.push(x);
-        }
+        let mut nv = self.filters.load().as_ref().clone();
+        nv.extend(filters.into_iter().map(Arc::from));
+        self.filters.store(Arc::new(nv));
         self
     }
     /// set log format
@@ -90,26 +107,21 @@ impl Config {
     }
     /// add a ConsoleAppender
     pub fn console(self) -> Self {
-        self.appends.push(Mutex::new(Box::new(ConsoleAppender {})));
-        self
+        self.push_appender(Box::new(ConsoleAppender {}))
     }
     /// add a ConsoleStderrAppender
     pub fn console_stderr(self) -> Self {
-        self.appends.push(Mutex::new(Box::new(ConsoleStderrAppender {})));
-        self
+        self.push_appender(Box::new(ConsoleStderrAppender {}))
     }
     /// add a FileAppender
     pub fn file(self, file: &str) -> Self {
-        self.appends
-            .push(Mutex::new(Box::new(FileAppender::new(file).unwrap())));
-        self
+        self.push_appender(Box::new(FileAppender::new(file).unwrap()))
     }
     /// add a FileLoopAppender
     pub fn file_loop(self, file: &str, max_temp_size: LogSize) -> Self {
-        self.appends.push(Mutex::new(Box::new(
+        self.push_appender(Box::new(
             FileLoopAppender::new(file, max_temp_size).expect("make file_loop fail"),
-        )));
-        self
+        ))
     }
     /// add a FileSplitAppender
     pub fn file_split<
@@ -123,7 +135,7 @@ impl Config {
         keeper: K,
         packer: P,
     ) -> Self {
-        self.appends.push(Mutex::new(Box::new(
+        self.push_appender(Box::new(
             FileSplitAppender::new::<RawFile>(
                 file_path,
                 Box::new(rolling),
@@ -131,8 +143,7 @@ impl Config {
                 Box::new(packer),
             )
             .expect("new split file fail"),
-        )));
-        self
+        ))
     }
 
     /// add a SplitAppender
@@ -168,7 +179,7 @@ impl Config {
         packer: P,
         how_pack: H,
     ) -> Self {
-        self.appends.push(Mutex::new(Box::new(
+        self.push_appender(Box::new(
             FileSplitAppender::new::<F>(
                 file_path,
                 Box::new(how_pack),
@@ -176,8 +187,7 @@ impl Config {
                 Box::new(packer),
             )
             .expect("new split file fail"),
-        )));
-        self
+        ))
     }
     /// add a custom LogAppender
     pub fn custom<Appender: LogAppender + 'static>(self, arg: Appender) -> Self {
@@ -186,8 +196,7 @@ impl Config {
 
     /// add a LogAppender
     pub fn add_appender<Appender: LogAppender + 'static>(self, arg: Appender) -> Self {
-        self.appends.push(Mutex::new(Box::new(arg)));
-        self
+        self.push_appender(Box::new(arg))
     }
 
     /// if none=> unbounded() channel,if Some =>  bounded(len) channel

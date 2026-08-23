@@ -69,7 +69,7 @@ impl Log for Logger {
     fn log(&self, record: &Record) {
         if let Some(filter) = logger().cfg.get() {
             if let Some(send) = logger().send.get() {
-                for filter in filter.filters.iter() {
+                for filter in filter.filters.load().iter() {
                     if !filter.do_log(record) {
                         return;
                     }
@@ -99,7 +99,7 @@ impl Log for Logger {
 }
 
 pub fn init(config: Config) -> Result<&'static Logger, LogError> {
-    if config.appends.is_empty() {
+    if config.appends.load().is_empty() {
         return Err(LogError::from("[fast_log] appends can not be empty!"));
     }
     let (s, r) = chan(config.chan_len);
@@ -124,10 +124,10 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
     let mut receiver_vec = vec![];
     let mut sender_vec: Vec<Sender<Arc<Vec<FastLogRecord>>>> = vec![];
     let cfg = logger().cfg.get().expect("logger cfg is none");
-    for a in cfg.appends.iter() {
+    for a in cfg.appends.load().iter() {
         let (s, r) = chan(cfg.chan_len);
         sender_vec.push(s);
-        receiver_vec.push((r, a));
+        receiver_vec.push((r, a.clone()));
     }
     for (receiver, appender) in receiver_vec {
         spawn(move || {
@@ -151,7 +151,7 @@ pub fn init(config: Config) -> Result<&'static Logger, LogError> {
                     }
                 }
                 //lock get appender
-                let mut shared_appender = appender.lock();
+                let mut shared_appender = appender.lock().unwrap();
                 for msg in remain {
                     shared_appender.do_logs(msg.as_ref());
                     for x in msg.iter() {
